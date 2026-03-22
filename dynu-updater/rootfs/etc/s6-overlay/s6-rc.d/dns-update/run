@@ -61,8 +61,6 @@ if [[ -f /run/dynu-dns.conf ]]; then
 			fi
 
 			for DOMAIN in "${DOMAIN_ARR[@]}"; do
-				bashio::log.info "Dynu DDNS updater - updating ${DOMAIN}"
-
 				if [[ "$DOMAIN" == "$HOSTNAME" ]]; then
 					bashio::log.info "Dynu DDNS updater - updating Host ${DOMAIN}"
 					COMMAND="https://api.dynu.com/nic/update?hostname=${HOSTNAME}&password=${PASSWORD}"
