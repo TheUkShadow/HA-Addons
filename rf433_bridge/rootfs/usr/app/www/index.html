@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>RF433 Bridge</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h1>RF433 Bridge</h1>
+
+<!-- 3 Column Layout -->
+<div id="columns">
+
+  <!-- LEFT COLUMN: Live RF Monitor -->
+  <section id="col-left">
+    <h2>Live RF Monitor</h2>
+    <ul id="rf-list"></ul>
+    <button class="tx-btn disable-when-offline" onclick="clearRecentCodes()">Clear</button>
+  </section>
+
+  <!-- MIDDLE COLUMN: Saved Devices -->
+  <section id="col-middle">
+    <h2>Saved Devices</h2>
+
+    <table id="devices-table">
+      <thead>
+        <tr>
+          <th class="sortable" onclick="sortDevices('name')">
+            Name <span class="arrow hidden">▲</span>
+          </th>
+
+          <th class="sortable" onclick="sortDevices('code')">
+            Code <span class="arrow hidden">▲</span>
+          </th>
+
+          <th class="sortable" onclick="sortDevices('lastSeen')">
+            Last Seen <span class="arrow hidden">▲</span>
+          </th>
+
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="devices"></tbody>
+    </table>
+  </section>
+
+  <!-- RIGHT COLUMN: Editor + Transmit -->
+  <section id="col-right">
+
+    <!-- Device Editor -->
+    <div id="editor">
+      <h2>Edit / Add Device</h2>
+
+      <label>Code:</label>
+      <input class="disable-when-offline" id="edit-code">
+      
+	  <br>
+	  
+      <label>Type:</label>
+      <select class="disable-when-offline" id="edit-type">
+
+      </select>
+      
+	  <br>
+	  
+      <label>Name:</label>
+      <input class="disable-when-offline" id="edit-name">
+	  
+	  <br>
+
+      <button class="tx-btn disable-when-offline" onclick="addDevice()">Save</button>
+	  <button class="tx-btn disable-when-offline" onclick="testDevice()">Test</button>
+      <button class="tx-btn disable-when-offline" onclick="resetEditor()">Reset</button>
+    </div>
+
+    <hr>
+
+    <!-- Transmit Section -->
+    <div id="tx">
+      <h2>Transmit RF Code</h2>
+	  <label>Code:</label>
+      <input class="disable-when-offline" id="tx-code">
+      <button class="tx-btn disable-when-offline" onclick="sendTx()">Transmit</button>
+	  <button class="tx-btn disable-when-offline" onclick="resetTX()">Reset</button>
+    </div>
+
+  </section>
+
+</div>
+
+<div id="toast-container"></div>
+<div id="serial-offline" class="popup hidden">
+  <p>⚠️ Waiting for serial connection ⚠️<br>Check the log for errors</p>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

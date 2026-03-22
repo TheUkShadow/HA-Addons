@@ -1,0 +1,22 @@
+name: "WSD Host"
+version: "1.0.1"
+slug: "wsdd"
+description: "Advertise Home Assistant Samba shares to Windows using WS-Discovery"
+arch:
+  - amd64
+  - aarch64
+hassio_api: true
+startup: services
+init: false
+boot: auto
+host_network: true
+panel_icon: "mdi:multicast"
+privileged:
+  - NET_ADMIN
+  - NET_RAW
+options:
+  workgroup: WORKGROUP
+  wsdd_verbose: true
+schema:
+  workgroup: str
+  wsdd_verbose: bool

@@ -1,0 +1,37 @@
+name: "RF433 Bridge"
+version: "1.0.0"
+slug: "rf433_bridge"
+description: "RF 433MHz bridge. Generate Home Assistant events for 433MHz Devices"
+startup: services
+init: false
+boot: auto
+
+homeassistant_api: true
+supervisor_api: true
+
+ingress: true
+ingress_port: 8100
+
+host_network: false
+
+uart: true
+
+arch:
+  - amd64
+  - aarch64
+
+panel_icon: "mdi:antenna"
+options:
+  serial_port: "/dev/ttyUSB0"
+  baud_rate: "115200"
+
+schema:
+  log_level: list(trace|debug|info|notice|warning|error|fatal)?
+  serial_port: str
+  baud_rate: list(9600|19200|38400|57600|115200)
+
+map:
+  - addon_config:rw
+  
+ports:
+  8100/tcp: 8100

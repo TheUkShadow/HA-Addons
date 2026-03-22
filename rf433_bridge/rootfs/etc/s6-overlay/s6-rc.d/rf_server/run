@@ -1,0 +1,18 @@
+#!/command/with-contenv bashio
+# vim: ft=bash
+# shellcheck shell=bash
+# ==============================================================================
+# Start gunicorn service
+# ==============================================================================
+
+cd /usr/app
+
+sleep 1
+
+gunicorn \
+    -w 1 \
+    -b 0.0.0.0:8100 \
+    --graceful-timeout 2 \
+    --timeout 30 \
+    --worker-tmp-dir /dev/shm \
+    rf_service:app

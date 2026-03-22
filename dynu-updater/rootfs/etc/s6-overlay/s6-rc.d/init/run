@@ -1,0 +1,305 @@
+#!/usr/bin/with-contenv bashio
+# vim: ft=bash
+# shellcheck shell=bash
+# ==============================================================================
+# Build Config and run script
+# ==============================================================================
+CERT_DIR=/data/letsencrypt
+WORK_DIR=/data/workdir
+DNS_API_KEY=/data/dnsapikey
+DNS_MULTI_CREDS=/data/dns-multi.ini
+ACME_ARGUMENTS=()
+KEY_ARGUMENTS=()
+ADDITIONAL_ARGS=()
+
+HOSTNAME=$(bashio::config 'dynu_hostname' | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
+EMAIL=$(bashio::config 'email' | xargs)
+CERT_DOMAINS=$(bashio::config 'domains' | tr '[:upper:]' '[:lower:]' | xargs)
+IP_DOMAINS=$(bashio::config 'ip_domains' | tr '[:upper:]' '[:lower:]' | xargs)
+VERBOSE=$(bashio::config 'verbose')
+FORCE_RENEW=$(bashio::config 'force_renew')
+DYNU_API_KEY=$(bashio::config 'dynu_api_key' | xargs)
+PASSWORD=$(bashio::config 'dynu_update_password' | xargs)
+KEYFILE=$(bashio::config 'keyfile' | xargs)
+CERTFILE=$(bashio::config 'certfile' | xargs)
+CERT_VALID=$(bashio::config 'update_cert')
+DNS_VALID=$(bashio::config 'update_ip')
+
+PROPAGATION_SECONDS=60
+
+bashio::log.info "Dynu Updater Initialisation - Generating configuration"
+
+if [[ "$CERT_VALID" == "false" && "$DNS_VALID" == "false" ]]; then
+	bashio::log.error "Dynu Updater Initialisation - Options for Update IP Addresses and Generate Certificate are both disabled - Nothing to do"
+    exit 1
+fi
+
+if [[ -z "$HOSTNAME" || ! "$HOSTNAME" =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]; then
+    bashio::log.error "Dynu Updater Initialisation - Invalid Dynu Hostname"
+    exit 1
+fi
+
+if [[ -z "$DYNU_API_KEY" ]]; then
+    bashio::log.error "Dynu Updater Initialisation - Invalid Dynu API Key"
+    exit 1
+fi
+
+if [[ -z "$EMAIL" || ! "$EMAIL" =~ ^[^@]+@[^@]+\.[^@]+$ ]]; then
+    bashio::log.info "Dynu Updater Initialisation - invalid email address"
+	CERT_VALID="false"
+fi
+
+if [[ -z "$CERT_DOMAINS" ]]; then
+    bashio::log.info "Dynu Updater Initialisation - no Certificate Hostnames configured"
+	CERT_VALID="false"
+fi
+
+if [[ -z "$CERTFILE" || ! "$CERTFILE" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+	bashio::log.info "Dynu Updater Initialisation - Invalid Certificate File"
+	CERT_VALID="false"
+fi
+
+if [[ -z "$KEYFILE" || ! "$KEYFILE" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+	bashio::log.info "Dynu Updater Initialisation - Invalid Private Key File"
+	CERT_VALID="false"
+fi
+
+if [[ -z "$IP_DOMAINS" ]]; then
+    bashio::log.info "Dynu Updater Initialisation - no DNS Update Hostnames configured"
+	DNS_VALID="false"
+fi
+
+if [[ -z "$PASSWORD" ]]; then
+    bashio::log.info "Dynu Updater Initialisation - no Dynu Account Password configured"
+	DNS_VALID="false"
+fi
+
+if [[ "$DNS_VALID" == "false" ]] && [[ "$CERT_VALID" == "false" ]]; then
+	bashio::log.error "Dynu Updater Initialisation - No valid configuration for Certificate generation or DNS IP Updates"
+    exit 1
+fi
+
+# Call Dynu API: capture JSON body AND HTTP status separately
+DYNU_API_RESPONSE=$(curl -s --fail --max-time 5 \
+    -H "API-Key: $DYNU_API_KEY" \
+    -w "\n%{http_code}" \
+    "https://api.dynu.com/v2/dns")
+
+CURL_EXIT="$?"
+
+# Did curl itself fail?
+if [[ "$CURL_EXIT" -ne 0 ]]; then
+    bashio::log.error "Dynu Updater Initialisation - unable to contact Dynu API (network or HTTP error)"
+    exit 1
+fi
+
+# Split JSON and HTTP status
+HTTP_STATUS=$(tail -n1 <<< "$DYNU_API_RESPONSE")
+JSON_BODY=$(sed '$d' <<< "$DYNU_API_RESPONSE")
+
+# Handle HTTP status codes explicitly
+case "$HTTP_STATUS" in
+    200)
+        # OK
+        ;;
+    401)
+        bashio::log.error "Dynu Updater Initialisation - Invalid Dynu API key"
+        exit 1
+        ;;
+    403)
+        bashio::log.error "Dynu Updater Initialisation - Dynu API key does not have permission to access DNS records"
+        exit 1
+        ;;
+    *)
+        bashio::log.error "Dynu Updater Initialisation - Dynu API returned HTTP $HTTP_STATUS"
+        exit 1
+        ;;
+esac
+
+DYNU_DOMAINS_JSON=$(jq '.' <<< "$JSON_BODY" 2>/dev/null)
+
+if [[ $? -ne 0 ]]; then
+    bashio::log.error "Dynu Updater Initialisation - invalid JSON returned for DNS Domains"
+    exit 1
+fi
+
+DYNU_DOMAIN_ID=$(echo "$DYNU_DOMAINS_JSON" \
+	| jq -r --arg HOST "$HOSTNAME" '
+		.domains[] | select(.name == $HOST) | .id // empty
+	')
+
+if [[ -z "$DYNU_DOMAIN_ID" ]]; then
+	bashio::log.error "Dynu Updater Initialisation - '$HOSTNAME' not found in Dynu domain list"
+	exit 1
+fi
+
+DYNU_RECORDS=$(curl -s --fail --max-time 5 -H "API-Key: $DYNU_API_KEY" \
+	"https://api.dynu.com/v2/dns/${DYNU_DOMAIN_ID}/record")
+
+if ! echo "$DYNU_RECORDS" | jq empty 2>/dev/null; then
+	bashio::log.error "Dynu Updater Initialisation - failed to retrieve valid DNS records from Dynu API"
+	exit 1
+fi
+
+DYNU_IPV6_ENABLED=$(
+	echo "$DYNU_DOMAINS_JSON" \
+	| jq -r --arg HOST "$HOSTNAME" '
+		.domains[]
+		| select(.name == $HOST)
+		| .ipv6
+	'
+)
+
+DYNU_HOSTNAMES=$(
+  jq -r '
+    [.dnsRecords[].hostname]
+    | unique
+    | sort_by( (split(".") | length), . )
+    | .[]
+  ' <<< "$DYNU_RECORDS"
+)
+
+if [[ -z "${DYNU_HOSTNAMES//[[:space:]]/}" ]]; then
+    bashio::log.error "Dynu Updater Initialisation - Dynu API returned no valid hostnames"
+	exit 1
+fi
+
+if [[ "$DNS_VALID" == "true" ]]; then
+	if [[ "$DYNU_IPV6_ENABLED" == "true" ]]; then
+		bashio::log.info "Dynu Updater Initialisation - IPv6 updating enabled for $HOSTNAME"
+	else
+		DYNU_IPV6_ENABLED="false"
+		bashio::log.info "Dynu Updater Initialisation - IPv6 updating disabled for $HOSTNAME"
+	fi
+
+	DOMAIN_ARR=()
+	for DOMAIN in $IP_DOMAINS; do
+		if [[ "$DOMAIN" == "*.$HOSTNAME" ]]; then
+			if [[ $(wc -w <<< "$IP_DOMAINS") -ne 1 ]]; then
+				bashio::log.error "Dynu DDNS updater - Wildcard found, ignoring other DNS Update Hostnames"
+			fi
+			readarray -t DOMAIN_ARR <<< "$DYNU_HOSTNAMES"
+			break
+		elif ! echo "$DYNU_HOSTNAMES" | grep -qx "$DOMAIN"; then
+			bashio::log.error "Dynu DDNS updater - $DOMAIN is not valid for this account"
+			continue
+		fi
+		DOMAIN_ARR+=("$DOMAIN")
+	done
+	
+	if [[ ${#DOMAIN_ARR[@]} -eq 0 ]]; then
+		bashio::log.error "Dynu Updater Initialisation - no valid domains found for DNS Update"
+		DNS_VALID="false"
+	else
+		jq -n \
+		  --arg ipv6 "$DYNU_IPV6_ENABLED" \
+		  --argjson domains "$(printf '%s\n' "${DOMAIN_ARR[@]}" | jq -R . | jq -s .)" \
+		  '{ipv6: $ipv6, domains: $domains}' \
+		  > /run/dynu-dns.conf
+	fi	
+fi
+
+if [[ "$CERT_VALID" == "true" ]]; then
+	# Gather all domains into a plaintext file and sense check
+
+	DOMAIN_ARR=()
+	for DOMAIN in $CERT_DOMAINS; do
+		if [[ "$DOMAIN" == "*.$HOSTNAME" ]]; then
+			if [[ $(wc -w <<< "$CERT_DOMAINS") -ne 1 ]]; then
+				bashio::log.error "Dynu DDNS updater - Wildcard found, ignoring other Certificate Hostnames"
+			fi
+			DOMAIN_ARR=("$DOMAIN")
+			break
+		elif ! echo "$DYNU_HOSTNAMES" | grep -qx "$DOMAIN"; then
+			bashio::log.error "Dynu Updater Initialisation - Invalid Certificate Hostname: $DOMAIN"
+			continue
+		fi
+		DOMAIN_ARR+=($DOMAIN)
+	done
+	
+	if [[ ${#DOMAIN_ARR[@]} -eq 0 ]]; then
+		bashio::log.error "Dynu Updater Initialisation - no valid domains found for Certificate"
+		CERT_VALID="false"
+	fi	
+
+	if [[ "$CERT_VALID" == "true" ]]; then
+		mkdir -p "${WORK_DIR}"
+		mkdir -p "${CERT_DIR}"
+
+		touch "${DNS_API_KEY}"
+		chmod 0600 "${DNS_API_KEY}"
+		touch "${DNS_MULTI_CREDS}"
+		chmod 0600 "${DNS_MULTI_CREDS}"
+		
+		# Start building the dns-multi credentials file
+		echo "# generated by letsencrypt app startup script" > "${DNS_MULTI_CREDS}"
+		echo "dns_multi_provider = dynu" >> "${DNS_MULTI_CREDS}"
+		echo "DYNU_API_KEY=$(bashio::config 'dynu_api_key')" >> "${DNS_MULTI_CREDS}"
+		echo "DYNU_PROPAGATION_TIMEOUT=${PROPAGATION_SECONDS}" >> "${DNS_MULTI_CREDS}"
+
+		ACME_ARGUMENTS+=("--authenticator dns-multi" "--dns-multi-credentials \"${DNS_MULTI_CREDS}\"" "--dns-multi-propagation-seconds ${PROPAGATION_SECONDS}")
+
+		# Default Let's Encrypt servers.
+		ACME_ARGUMENTS+=("--preferred-chain \"ISRG Root X1\"")
+
+		if [[ "$FORCE_RENEW" == "true" ]]; then
+			ADDITIONAL_ARGS+=("--force-renewal")
+		fi
+
+		if [[ "$VERBOSE" ==  "true" ]]; then
+			ADDITIONAL_ARGS+=("-vvv")
+		fi
+
+		# Set key-type
+		KEY_ARGUMENTS+=("--key-type ecdsa")
+
+		CERTBOT_CMD_FILE="/run/dynu-run-certbot.sh"
+
+		{
+			echo "#!/bin/bash"
+			echo "certbot certonly \\"
+			echo "  --non-interactive \\"
+			echo "  --keep-until-expiring \\"
+			echo "  --expand \\"
+			echo "  --email \"$EMAIL\" \\"
+			echo "  --agree-tos \\"
+
+			# Key arguments
+			for arg in "${KEY_ARGUMENTS[@]}"; do
+				echo "  $arg \\"
+			done
+
+			# Additional args
+			for arg in "${ADDITIONAL_ARGS[@]}"; do
+				echo "  $arg \\"
+			done
+
+			# Use primary domain as cert-name
+			echo "  --cert-name \"$HOSTNAME\" \\"
+
+			# Domain list
+			for d in "${DOMAIN_ARR[@]}"; do
+				echo "  -d \"$d\" \\"
+			done
+
+			# ACME arguments
+			for arg in "${ACME_ARGUMENTS[@]}"; do
+				echo "  $arg \\"
+			done
+			
+			echo "  --config-dir \"$CERT_DIR\" \\"
+			echo "  --work-dir \"$WORK_DIR\" \\"
+			echo "  --preferred-challenges dns \\"
+
+		} > "$CERTBOT_CMD_FILE"
+
+		chmod +x "$CERTBOT_CMD_FILE"
+	fi
+fi
+
+if [[ "$DNS_VALID" == "false" ]] && [[ "$CERT_VALID" == "false" ]]; then
+	bashio::log.error "Dynu Updater Initialisation - NO Valid configuration for Certificate generation or DNS IP Updates"
+    exit 1
+fi
+
+bashio::log.info "Dynu Updater Initialisation - Complete"

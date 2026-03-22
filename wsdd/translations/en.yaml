@@ -1,0 +1,7 @@
+configuration:
+  workgroup:
+    name: Workgroup
+    description: Change WORKGROUP to reflect your network needs.
+  wsdd_verbose:
+    name: WSDD Logging
+    description: Enable logging of WSDD output

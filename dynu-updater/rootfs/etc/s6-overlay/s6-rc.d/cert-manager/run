@@ -1,0 +1,70 @@
+#!/usr/bin/with-contenv bashio
+# vim: ft=bash
+# shellcheck shell=bash
+# ==============================================================================
+# Start Certificate Manager
+# ==============================================================================
+
+KEYFILE=$(bashio::config 'keyfile' | xargs)
+CERTFILE=$(bashio::config 'certfile' | xargs)
+
+CERT_DIR=/data/letsencrypt
+
+if [[ -f /run/dynu-run-certbot.sh ]]; then
+
+	while [ ! -f /run/dns-update.ready ]; do
+		sleep 1
+	done
+
+	while true; do
+		bashio::log.info "Certificate Manager - Running certificate renewal"
+		
+		# Run certbot and capture output + exit code
+		/run/dynu-run-certbot.sh 2>&1 | tee /tmp/certbot.out || true
+		CERTBOT_EXIT=${PIPESTATUS[0]}
+
+		# If certbot failed
+		if [ "$CERTBOT_EXIT" -ne 0 ]; then
+			bashio::log.error "Certificate Manager - Certbot failed with code $CERTBOT_EXIT"
+		else
+			# If certbot succeeded, check if certificate was updated
+			
+			# Load output into a variable
+			CERTBOT_OUTPUT=$(cat /tmp/certbot.out)
+			
+			if echo "$CERTBOT_OUTPUT" | grep -q "Successfully received certificate"; then
+				bashio::log.info "Certificate Manager - New certificate received"
+				
+				# Get the last modified cert directory and copy the cert and private key to store
+				CERT_DIR_LATEST="$(ls -td $CERT_DIR/live/*/ | head -1)"
+				cp "${CERT_DIR_LATEST}privkey.pem" "/ssl/$KEYFILE"
+				cp "${CERT_DIR_LATEST}fullchain.pem" "/ssl/$CERTFILE"
+				
+				if bashio::config.has_value 'restart_addons'; then
+					for index in $(bashio::config 'restart_addons|keys'); do
+						RAW_ADDON=$(bashio::config "restart_addons[${index}]")
+						ADDON="${RAW_ADDON//-/_}"
+
+						bashio::log.info "Certificate Manager - Restarting add-on: ${ADDON}"
+
+						curl -s -X POST \
+						  -H "Authorization: Bearer $HASSIO_TOKEN" \
+						  -H "Content-Type: application/json" \
+						  http://hassio/addons/${ADDON}/restart
+						  
+						sleep 1
+					done
+				fi
+			fi
+		fi
+
+		now=$(date +%s)
+		next_midnight=$(date -d "tomorrow 00:00" +%s)
+		sleep_seconds=$(( next_midnight - now ))
+
+		bashio::log.info "Certificate Manager - Sleeping until midnight..."
+		sleep "$sleep_seconds"
+	done
+else
+	sleep infinity
+fi

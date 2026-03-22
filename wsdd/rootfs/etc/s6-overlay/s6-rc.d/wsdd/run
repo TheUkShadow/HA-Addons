@@ -1,0 +1,48 @@
+#!/command/with-contenv bashio
+# vim: ft=bash
+# shellcheck shell=bash
+# ==============================================================================
+# Start wsdd service
+# ==============================================================================
+
+declare -a interfaces=()
+
+# Collect enabled interfaces
+for interface in $(bashio::network.interfaces); do
+    interface_enabled=$(bashio::network.enabled "${interface}")
+    if bashio::var.true "${interface_enabled}"; then
+        interfaces+=("${interface}")
+    fi
+done
+
+if [ ${#interfaces[@]} -eq 0 ]; then
+    bashio::exit.nok 'No supported interfaces found to bind on.'
+fi
+
+HOSTNAME=$(bashio::info.hostname)
+if bashio::var.is_empty "${HOSTNAME}"; then
+    HOSTNAME="hassio"
+fi
+
+# Build command
+exec_command=(
+  wsdd
+  --hostname "${HOSTNAME}"
+  --workgroup "$(bashio::config 'workgroup')"
+)
+
+# Add each interface separately
+for iface in "${interfaces[@]}"; do
+    exec_command+=( --interface "$iface" )
+done
+
+if bashio::config.true 'wsdd_verbose'; then
+    exec_command+=( --verbose )
+fi
+
+bashio::log.info "Hostname: ${HOSTNAME}"
+bashio::log.info "Workgroup: $(bashio::config 'workgroup')"
+bashio::log.info "Interfaces: ${interfaces[@]}"
+
+# Execute the command
+exec "${exec_command[@]}"
