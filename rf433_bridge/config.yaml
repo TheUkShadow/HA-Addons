@@ -27,7 +27,7 @@ options:
 
 schema:
   log_level: list(trace|debug|info|notice|warning|error|fatal)?
-  serial_port: str
+  serial_port: device(subsystem=tty, id_bus=usb)
   baud_rate: list(9600|19200|38400|57600|115200)
 
 map:

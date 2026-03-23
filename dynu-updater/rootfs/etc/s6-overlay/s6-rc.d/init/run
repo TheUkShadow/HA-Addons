@@ -34,7 +34,7 @@ if [[ "$CERT_VALID" == "false" && "$DNS_VALID" == "false" ]]; then
     exit 1
 fi
 
-if [[ -z "$HOSTNAME" || ! "$HOSTNAME" =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]; then
+if [[ -z "$HOSTNAME" || ! "$HOSTNAME" =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?:\.[A-Za-z]{2,})*$ ]]; then
     bashio::log.error "Dynu Updater Initialisation - Invalid Dynu Hostname"
     exit 1
 fi

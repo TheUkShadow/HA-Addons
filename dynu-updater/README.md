@@ -1,8 +1,8 @@
 # Dynu Domain Update Tool
 
-This tool allows Dynamic DNS updates and SSL certificates to be generated for domians registered with dynu.com.
+This tool allows Dynamic DNS updates and SSL certificates to be generated for a domian registered with dynu.com.
 
-Uses Let's Encrypt to create and update certificates and Dynu's API to update dynamic DNS records.
+Uses Let's Encrypt to create and update certificates, and Dynu's API to update dynamic DNS records.
 
 The certificate generation/renewal check runs each day at 00:00. The DNS update check runs every 60 seconds.
 
