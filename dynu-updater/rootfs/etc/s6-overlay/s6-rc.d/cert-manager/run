@@ -44,7 +44,7 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 		else
 			# If certbot succeeded, check if certificate was updated
 			
-			if echo "$CERTBOT_OUTPUT" | grep -q "Successfully received certificate"; then
+			if echo "$CERTBOT_OUTPUT" | grep -q "Successfully received certificate" || true; then
 				bashio::log.info "Certificate Manager - New certificate received"
 				
 				# Get the last modified cert directory and copy the cert and private key to store
@@ -95,7 +95,7 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 						fi
 					done
 				fi
-			elif echo "$CERTBOT_OUTPUT" | grep -q "Certificate not yet due for renewal"; then
+			elif echo "$CERTBOT_OUTPUT" | grep -q "Certificate not yet due for renewal" || true; then
 				bashio::log.info "Certificate Manager - Current certificate valid"
 			elif [[ "$VERBOSE" == "false" ]]; then
 				bashio::log.warning "Certificate Manager - Unexpected Certbot output:"
