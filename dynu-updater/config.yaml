@@ -1,5 +1,5 @@
 ---
-version: 1.0.1
+version: 1.0.2
 slug: dynu-updater
 name: Dynu Domain Update Tool
 description: Update dynamic DNS and generate certificates for a domain registerd with dynu.com
@@ -24,6 +24,8 @@ schema:
   dynu_update_password: password
   dynu_api_key: password
   email: email
+  domains: []
+  ip_domains: []
   
   update_ip: bool
   ip_domains:
