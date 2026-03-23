@@ -13,7 +13,7 @@ CERT_DIR=/data/letsencrypt
 
 if [[ -f /run/dynu-run-certbot.sh ]]; then
 
-	while [ ! -f /run/dns-update.ready ]; do
+	while [ ! -f /run/dynu-dns-update.ready ]; do
 		sleep 1
 	done
 
@@ -21,17 +21,20 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 		bashio::log.info "Certificate Manager - Running certificate renewal"
 		
 		# Run certbot and capture output + exit code
-		/run/dynu-run-certbot.sh 2>&1 | tee /tmp/certbot.out || true
-		CERTBOT_EXIT=${PIPESTATUS[0]}
+		/run/dynu-run-certbot.sh > /tmp/certbot.out 2>&1
+		CERTBOT_EXIT=$?
 
+		# Load output into a variable
+		CERTBOT_OUTPUT=$(cat /tmp/certbot.out)
+			
 		# If certbot failed
 		if [ "$CERTBOT_EXIT" -ne 0 ]; then
 			bashio::log.error "Certificate Manager - Certbot failed with code $CERTBOT_EXIT"
+			while IFS= read -r line; do
+				bashio::log.error "  $line"
+			done <<< "$CERTBOT_OUTPUT"
 		else
 			# If certbot succeeded, check if certificate was updated
-			
-			# Load output into a variable
-			CERTBOT_OUTPUT=$(cat /tmp/certbot.out)
 			
 			if echo "$CERTBOT_OUTPUT" | grep -q "Successfully received certificate"; then
 				bashio::log.info "Certificate Manager - New certificate received"
@@ -56,6 +59,13 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 						sleep 1
 					done
 				fi
+			elif echo "$CERTBOT_OUTPUT" | grep -q "Certificate not yet due for renewal"; then
+				bashio::log.info "Certificate Manager - Current certificate valid"
+			else
+				bashio::log.warning "Certificate Manager - Unexpected Certbot output:"
+				while IFS= read -r line; do
+					bashio::log.warning "  $line"
+				done <<< "$CERTBOT_OUTPUT"
 			fi
 		fi
 

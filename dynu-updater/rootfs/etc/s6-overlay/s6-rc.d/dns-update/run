@@ -85,8 +85,8 @@ if [[ -f /run/dynu-dns.conf ]]; then
 
 			done
 			
-			if [[ ! -f /run/dns-update.ready ]]; then
-				touch /run/dns-update.ready
+			if [[ ! -f /run/dynu-dns-update.ready ]]; then
+				touch /run/dynu-dns-update.ready
 			fi
 
 			LAST_IPV4="$IPV4"
