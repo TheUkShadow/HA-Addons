@@ -1,5 +1,5 @@
 name: "RF433 Bridge"
-version: "1.0.0"
+version: "1.0.1"
 slug: "rf433_bridge"
 description: "RF 433MHz bridge. Generate Home Assistant events for 433MHz Devices"
 startup: services
