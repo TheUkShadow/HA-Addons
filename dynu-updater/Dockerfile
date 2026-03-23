@@ -19,14 +19,9 @@ RUN \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
-        ca-certificates \
         cargo \
-        golang \
-        libffi8 \
         libffi-dev \
         libssl-dev \
-        openssl \
-        python3 \
         python3-dev \
         python3-pip \
         rustc \
@@ -38,7 +33,6 @@ RUN \
     && apt-get purge -y --auto-remove \
         build-essential \
         cargo \
-        golang \
         libffi-dev \
         libssl-dev \
         python3-dev \

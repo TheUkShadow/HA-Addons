@@ -119,7 +119,7 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 
 		sleep_seconds=$(( next_run - now ))
 
-		echo "Sleeping until next run at $CERT_TIME ($TM)"
+		bashio::log.info "Certificate Manager - Sleeping until next run at $CERT_TIME ($TM)"
 		sleep "$sleep_seconds"
 	done
 else
