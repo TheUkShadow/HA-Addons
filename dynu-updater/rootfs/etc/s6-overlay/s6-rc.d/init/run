@@ -86,8 +86,6 @@ if [[ "$DNS_VALID" == "true" ]]; then
 	if [[ -z "$IP_FREQ" || ! "$IP_FREQ" =~ ^[0-9]+$ ]] || (( IP_FREQ < 60 || IP_FREQ > 3600 )); then
 		bashio::log.info "Dynu Updater Initialisation - Invalid IP Update Frequency (60 - 3600)"
 		DNS_VALID="false"
-	else
-		
 	fi
 fi
 
