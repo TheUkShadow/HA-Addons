@@ -11,11 +11,11 @@ ENV PIP_BREAK_SYSTEM_PACKAGES=1
 ARG \
     BUILD_ARCH \
     ACME_VERSION \
-    CERTBOT_DNS_AZURE_VERSION \
-    CERTBOT_DNS_EURODNS_VERSION \
-    CERTBOT_DNS_HURRICANE_ELECTRIC_VERSION \
+    # CERTBOT_DNS_AZURE_VERSION \
+    # CERTBOT_DNS_EURODNS_VERSION \
+    # CERTBOT_DNS_HURRICANE_ELECTRIC_VERSION \
     CERTBOT_DNS_MULTI_VERSION \
-    CERTBOT_DNS_NORISNETWORK_VERSION \
+    # CERTBOT_DNS_NORISNETWORK_VERSION \
     CERTBOT_VERSION \
     CRYPTOGRAPHY_VERSION
 
@@ -38,12 +38,12 @@ RUN \
     && pip3 install --no-cache-dir \
         acme==${ACME_VERSION} \
         certbot==${CERTBOT_VERSION} \
-        certbot-dns-azure==${CERTBOT_DNS_AZURE_VERSION} \
-        certbot-dns-eurodns==${CERTBOT_DNS_EURODNS_VERSION} \
+        # ertbot-dns-azure==${CERTBOT_DNS_AZURE_VERSION} \
+        # certbot-dns-eurodns==${CERTBOT_DNS_EURODNS_VERSION} \
         certbot-dns-gehirn==${CERTBOT_VERSION} \
-        certbot-dns-hurricane-electric==${CERTBOT_DNS_HURRICANE_ELECTRIC_VERSION} \
+        # certbot-dns-hurricane-electric==${CERTBOT_DNS_HURRICANE_ELECTRIC_VERSION} \
         certbot-dns-multi==${CERTBOT_DNS_MULTI_VERSION} \
-        certbot-dns-norisnetwork==${CERTBOT_DNS_NORISNETWORK_VERSION} \
+        # certbot-dns-norisnetwork==${CERTBOT_DNS_NORISNETWORK_VERSION} \
         cryptography==${CRYPTOGRAPHY_VERSION} \
     && apt-get purge -y --auto-remove \
         build-essential \
