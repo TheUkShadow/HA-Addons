@@ -19,17 +19,22 @@ options:
   update_cert: true
   keyfile: privkey.pem
   certfile: fullchain.pem
+  update_ip_freq: 60
+  update_cert_time: "00:00"
+  
 schema:
-  dynu_hostname: 'match(^[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?:\.[A-Za-z]{2,})*$)'
+  dynu_hostname: str
   dynu_update_password: password
   dynu_api_key: password
   email: email
   
   update_ip: bool
+  update_ip_freq: int
   ip_domains:
     - str
     
   update_cert: bool
+  update_cert_time: str
   domains:
     - str
     

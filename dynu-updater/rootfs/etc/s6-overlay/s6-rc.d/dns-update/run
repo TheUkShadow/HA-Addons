@@ -7,6 +7,7 @@
 
 HOSTNAME=$(bashio::config 'dynu_hostname' | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
 PASSWORD=$(bashio::config 'dynu_update_password' | xargs)
+IP_FREQ=$(bashio::config 'update_ip_freq')
 
 bashio::log.info "Dynu DDNS updater - starting"
 
@@ -92,7 +93,7 @@ if [[ -f /run/dynu-dns.conf ]]; then
 			LAST_IPV6="$IPV6"
 		fi
 
-		sleep 60
+		sleep "$IP_FREQ"
 	done
 
 else

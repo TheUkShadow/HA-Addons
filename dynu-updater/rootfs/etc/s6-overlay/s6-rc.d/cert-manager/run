@@ -7,6 +7,7 @@
 
 KEYFILE=$(bashio::config 'keyfile' | xargs)
 CERTFILE=$(bashio::config 'certfile' | xargs)
+CERT_TIME=$(bashio::config 'update_cert_time' | xargs)
 
 CERT_DIR=/data/letsencrypt
 
@@ -59,10 +60,20 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 		fi
 
 		now=$(date +%s)
-		next_midnight=$(date -d "tomorrow 00:00" +%s)
-		sleep_seconds=$(( next_midnight - now ))
+		today_target=$(date -d "$(date +%Y-%m-%d) $CERT_TIME" +%s)
+		
+		# If the target time has already passed today, schedule for tomorrow
+		if (( today_target <= now )); then
+			next_run=$(date -d "tomorrow $CERT_TIME" +%s)
+			TM="Tomorrow"
+		else
+			next_run=$today_target
+			TM="Today"
+		fi
 
-		bashio::log.info "Certificate Manager - Sleeping until midnight..."
+		sleep_seconds=$(( next_run - now ))
+
+		echo "Sleeping until next run at $CERT_TIME ($TM)"
 		sleep "$sleep_seconds"
 	done
 else

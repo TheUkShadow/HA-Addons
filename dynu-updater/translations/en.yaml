@@ -1,5 +1,11 @@
 ---
 configuration:
+  update_ip_freq:
+    name: IP Update Frequency
+    description: The number of seconds between each IP address check. (60 - 3600)
+  update_cert_time:
+    name: Certificate Check Time
+    description: The time of day to check the certifcate renewal status (00:00 - 23:59)
   update_ip:
     name: Update IP Addresses
     description: The addon will monitor and update IP addresses for the hostnames listed in DNS Update Hostnames
