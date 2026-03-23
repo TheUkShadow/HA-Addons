@@ -8,6 +8,7 @@
 KEYFILE=$(bashio::config 'keyfile' | xargs)
 CERTFILE=$(bashio::config 'certfile' | xargs)
 CERT_TIME=$(bashio::config 'update_cert_time' | xargs)
+VERBOSE=$(bashio::config 'verbose')
 
 CERT_DIR=/data/letsencrypt
 
@@ -20,9 +21,14 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 	while true; do
 		bashio::log.info "Certificate Manager - Running certificate renewal"
 		
-		# Run certbot and capture output + exit code
-		/run/dynu-run-certbot.sh > /tmp/certbot.out 2>&1
-		CERTBOT_EXIT=$?
+		# Run certbot
+		if [[ "$VERBOSE" == "false" ]]; then
+			/run/dynu-run-certbot.sh > /tmp/certbot.out 2>&1
+			CERTBOT_EXIT=$?
+		else
+			/run/dynu-run-certbot.sh 2>&1 | tee /tmp/certbot.out
+			CERTBOT_EXIT=${PIPESTATUS[0]}
+		fi
 
 		# Load output into a variable
 		CERTBOT_OUTPUT=$(cat /tmp/certbot.out)
@@ -30,9 +36,11 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 		# If certbot failed
 		if [ "$CERTBOT_EXIT" -ne 0 ]; then
 			bashio::log.error "Certificate Manager - Certbot failed with code $CERTBOT_EXIT"
-			while IFS= read -r line; do
-				bashio::log.error "  $line"
-			done <<< "$CERTBOT_OUTPUT"
+			if [[ "$VERBOSE" == "false" ]]; then
+				while IFS= read -r line; do
+					bashio::log.error "  $line"
+				done <<< "$CERTBOT_OUTPUT"
+			fi
 		else
 			# If certbot succeeded, check if certificate was updated
 			
@@ -46,22 +54,50 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 				
 				if bashio::config.has_value 'restart_addons'; then
 					for index in $(bashio::config 'restart_addons|keys'); do
+						sleep 1
 						RAW_ADDON=$(bashio::config "restart_addons[${index}]")
 						ADDON="${RAW_ADDON//-/_}"
 
-						bashio::log.info "Certificate Manager - Restarting add-on: ${ADDON}"
-
-						curl -s -X POST \
+						INFO_OUTPUT=$(curl --fail -s \
 						  -H "Authorization: Bearer $HASSIO_TOKEN" \
-						  -H "Content-Type: application/json" \
-						  http://hassio/addons/${ADDON}/restart
-						  
-						sleep 1
+						  http://hassio/addons/${ADDON}/info 2>&1)
+						CURL_EXIT=$?
+
+						if [ "$CURL_EXIT" -ne 0 ]; then
+							bashio::log.warning "Certificate Manager - Failed to query add-on state: ${ADDON}"
+							bashio::log.warning "  curl exit code: $CURL_EXIT"
+							bashio::log.warning "  response: $INFO_OUTPUT"
+							continue
+						fi
+
+						STATE=$(echo "$INFO_OUTPUT" | jq -r '.data.state')
+
+						if [[ "$STATE" == "started" ]]; then
+
+							bashio::log.info "Certificate Manager - Restarting add-on: ${ADDON}"
+
+							RESTART_OUTPUT=$(curl --fail -s -X POST \
+							  -H "Authorization: Bearer $HASSIO_TOKEN" \
+							  -H "Content-Type: application/json" \
+							  http://hassio/addons/${ADDON}/restart 2>&1)
+							CURL_EXIT=$?
+
+							if [ "$CURL_EXIT" -eq 0 ]; then
+								bashio::log.info "Certificate Manager - Restarted add-on: ${ADDON}"
+							else
+								bashio::log.warning "Certificate Manager - Failed to restart add-on: ${ADDON}"
+								bashio::log.warning "  curl exit code: $CURL_EXIT"
+								bashio::log.warning "  response: $RESTART_OUTPUT"
+							fi
+						
+						else
+							bashio::log.warning "Certificate Manager - ${ADDON} is not running (state: $STATE)"
+						fi
 					done
 				fi
 			elif echo "$CERTBOT_OUTPUT" | grep -q "Certificate not yet due for renewal"; then
 				bashio::log.info "Certificate Manager - Current certificate valid"
-			else
+			elif [[ "$VERBOSE" == "false" ]]; then
 				bashio::log.warning "Certificate Manager - Unexpected Certbot output:"
 				while IFS= read -r line; do
 					bashio::log.warning "  $line"
