@@ -272,6 +272,8 @@ if [[ "$CERT_VALID" == "true" ]]; then
 
 		{
 			echo "#!/bin/bash"
+			echo "set +e"   # prevent certbot failures from killing the parent service
+			echo ""
 			echo "certbot certonly \\"
 			echo "  --non-interactive \\"
 			echo "  --keep-until-expiring \\"
@@ -279,36 +281,33 @@ if [[ "$CERT_VALID" == "true" ]]; then
 			echo "  --email \"$EMAIL\" \\"
 			echo "  --agree-tos \\"
 
-			# Key arguments
 			for arg in "${KEY_ARGUMENTS[@]}"; do
 				echo "  $arg \\"
 			done
 
-			# Additional args
 			for arg in "${ADDITIONAL_ARGS[@]}"; do
 				echo "  $arg \\"
 			done
 
-			# Use primary domain as cert-name
 			echo "  --cert-name \"$HOSTNAME\" \\"
 
-			# Domain list
 			for d in "${DOMAIN_ARR[@]}"; do
 				echo "  -d \"$d\" \\"
 			done
 
-			# ACME arguments
 			for arg in "${ACME_ARGUMENTS[@]}"; do
 				echo "  $arg \\"
 			done
-			
+
 			echo "  --config-dir \"$CERT_DIR\" \\"
 			echo "  --work-dir \"$WORK_DIR\" \\"
-			echo "  --preferred-challenges dns \\"
-
+			echo "  --preferred-challenges dns"
+			echo ""
+			echo "exit \$?"   # return certbot’s exit code to the parent script
 		} > "$CERTBOT_CMD_FILE"
 
 		chmod +x "$CERTBOT_CMD_FILE"
+
 	fi
 fi
 

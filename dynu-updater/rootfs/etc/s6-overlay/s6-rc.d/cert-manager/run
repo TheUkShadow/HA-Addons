@@ -4,6 +4,7 @@
 # ==============================================================================
 # Start Certificate Manager
 # ==============================================================================
+set +e
 
 KEYFILE=$(bashio::config 'keyfile' | xargs)
 CERTFILE=$(bashio::config 'certfile' | xargs)
