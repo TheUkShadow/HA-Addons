@@ -311,7 +311,10 @@ if [[ "$DNS_VALID" == "false" ]] && [[ "$CERT_VALID" == "false" ]]; then
     exit 1
 fi
 
-PORT=$(bashio::addon 'port')
+INFO=$(curl -s -H "Authorization: Bearer $SUPERVISOR_TOKEN" http://supervisor/addons/self/info)
+
+# Extract mapped port
+PORT=$(echo "$INFO" | jq -r '."network"."8855/tcp"')
 
 if [ -z "$PORT" ] || [ "$PORT" = "null" ]; then
     bashio::log.error "Dynu Updater Initialisation - Could not determine port for integration HTTP server"
