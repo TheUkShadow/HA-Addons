@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
+import os
 import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
+
+port = int(os.getenv("PORT", 9999))
 
 STATUS_FILE = Path("/data/status.json")
 
@@ -33,8 +36,18 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+@app.post("/ip-update")
+def ip_update():
+    #run_ip_update_script()
+    return {"status": "ok"}
+
+@app.post("/cert-renew")
+def cert_renew():
+    #run_cert_renewal_script()
+    return {"status": "ok"}
+    
 def main():
-    server = HTTPServer(("0.0.0.0", 8080), Handler)
+    server = HTTPServer(("0.0.0.0", port), Handler)
     server.serve_forever()
 
 if __name__ == "__main__":
