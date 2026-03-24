@@ -31,7 +31,7 @@ DNS_VALID=$(bashio::config 'update_ip')
 PORT=$(bashio::addon.port 8855/tcp)
 export PORT="$PORT"
 
-PROPAGATION_SECONDS=60
+PROPAGATION_SECONDS=180
 
 bashio::log.info "Dynu Updater Initialisation - Generating configuration"
 
