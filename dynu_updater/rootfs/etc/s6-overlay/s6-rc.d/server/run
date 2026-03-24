@@ -1,0 +1,5 @@
+#!/usr/bin/with-contenv bashio
+sleep 1
+cd /usr/app
+bashio::log.info "HTTP Server - Starting"
+exec python3 -u server.py
