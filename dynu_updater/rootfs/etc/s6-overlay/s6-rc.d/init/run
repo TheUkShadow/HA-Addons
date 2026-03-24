@@ -276,7 +276,7 @@ if [[ "$CERT_VALID" == "true" ]]; then
 
 		{
 			echo "#!/usr/bin/with-contenv bashio"
-			echo "set +e"   # prevent certbot failures from killing the parent service
+			echo "set +e"
 			echo ""
 			echo "certbot certonly \\"
 			echo "  --non-interactive \\"
