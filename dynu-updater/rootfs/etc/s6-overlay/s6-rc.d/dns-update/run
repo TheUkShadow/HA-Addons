@@ -151,5 +151,6 @@ if [[ -f /run/dynu-dns.conf ]]; then
 	done
 
 else
+	bashio::log.info "Dynu DDNS updater - Sleeping forever"
 	sleep infinity
 fi

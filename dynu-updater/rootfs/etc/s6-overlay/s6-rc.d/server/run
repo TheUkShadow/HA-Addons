@@ -1,7 +1,4 @@
 #!/usr/bin/with-contenv bash
-
-cd /usr/app
-
 sleep 1
-
+cd /usr/app
 exec python3 -u server.py
