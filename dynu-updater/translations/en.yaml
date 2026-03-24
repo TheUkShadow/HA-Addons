@@ -42,3 +42,6 @@ configuration:
   force_renew:
     name: Force Renew
     description: Force certificate renewal even if it is not close to expiry.
+  dry_run:
+    name: Dry Run
+    description: Do a Certbot dry-run for requesting the certificate from Let's Encrypt.
