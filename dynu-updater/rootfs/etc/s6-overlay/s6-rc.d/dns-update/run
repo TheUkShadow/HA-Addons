@@ -42,8 +42,6 @@ update_status_json() {
 bashio::log.info "Dynu DDNS updater - starting"
 
 if [[ -f /run/dynu-dns.conf ]]; then
-
-	update_status_json "last_dns_check" "$(date -Is)"
 	
 	STATE_FILE="/run/dynu-dns.conf"
 
@@ -64,6 +62,8 @@ if [[ -f /run/dynu-dns.conf ]]; then
 		if [[ "$VERBOSE" == "true" ]]; then
 			bashio::log.info "Dynu DDNS updater - Checking current IP addresses"
 		fi
+		
+		update_status_json "last_dns_check" "$(date -Is)"
 		
 		# --- Detect IPv4 ---
 		IPV4=$(curl -4 -s --fail --max-time 5 https://icanhazip.com | tr -d '[:space:]')
