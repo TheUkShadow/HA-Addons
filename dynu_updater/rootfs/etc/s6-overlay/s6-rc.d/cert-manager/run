@@ -6,6 +6,7 @@
 # ==============================================================================
 set +e
 
+DYNU_HOSTNAME=$(bashio::config 'dynu_hostname' | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
 KEYFILE=$(bashio::config 'keyfile' | xargs)
 CERTFILE=$(bashio::config 'certfile' | xargs)
 CERT_TIME=$(bashio::config 'update_cert_time' | xargs)
@@ -144,7 +145,7 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 					done
 				fi
 			elif echo "$CERTBOT_OUTPUT" | grep -q "Certificate not yet due for renewal"; then
-				CERT_PATH="/data/letsencrypt/live/$HOSTNAME/cert.pem"
+				CERT_PATH="/data/letsencrypt/live/$DYNU_HOSTNAME/cert.pem"
 				if [[ -f "$CERT_PATH" ]]; then
 					CREATED_RAW=$(openssl x509 -in "$CERT_PATH" -noout -startdate 2>/dev/null | cut -d= -f2)
 					CREATED_TS=$(date -d "$CREATED_RAW" +%s 2>/dev/null)
