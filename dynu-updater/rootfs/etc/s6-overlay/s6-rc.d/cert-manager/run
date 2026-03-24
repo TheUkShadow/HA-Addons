@@ -72,7 +72,7 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 					bashio::log.error "  $line"
 				done <<< "$CERTBOT_OUTPUT"
 			fi
-			update_status_json "last_cert_status" "error"
+			update_status_json "last_cert_status" "true"
 		else
 			# If certbot succeeded, check if certificate was updated
 			
@@ -99,7 +99,7 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 				
 				update_status_json "cert_expires" "$CERT_EXPIRES_TS"
 				update_status_json "last_cert_renewal" "$(date -Is)"
-				update_status_json "last_cert_status" "success"
+				update_status_json "last_cert_status" "false"
 				
 				if bashio::config.has_value 'restart_addons'; then
 					for index in $(bashio::config 'restart_addons|keys'); do
@@ -146,9 +146,9 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 				fi
 			elif echo "$CERTBOT_OUTPUT" | grep -q "Certificate not yet due for renewal"; then
 				bashio::log.info "Certificate Manager - Current certificate valid"
-				update_status_json "last_cert_status" "success"
+				update_status_json "last_cert_status" "false"
 			else
-				update_status_json "last_cert_status" "error"
+				update_status_json "last_cert_status" "true"
 				if [[ "$VERBOSE" == "false" ]]; then
 					bashio::log.warning "Certificate Manager - Unexpected Certbot output:"
 					while IFS= read -r line; do
