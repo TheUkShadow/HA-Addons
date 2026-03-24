@@ -174,7 +174,7 @@ DYNU_HOSTNAMES=$(
   ' <<< "$DYNU_RECORDS"
 )
 
-if [[ -z "${HOSTNAMES//[[:space:]]/}" ]]; then
+if [[ -z "${DYNU_HOSTNAMES//[[:space:]]/}" ]]; then
     bashio::log.error "Dynu Updater Initialisation - Dynu API returned no valid hostnames"
 	exit 1
 fi
