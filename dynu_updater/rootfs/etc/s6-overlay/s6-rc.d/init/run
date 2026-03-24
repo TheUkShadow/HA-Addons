@@ -276,9 +276,6 @@ if [[ "$CERT_VALID" == "true" ]]; then
 
 		{
 			echo "#!/usr/bin/with-contenv bashio"
-			if [[ "$VERBOSE" == "false" ]]; then
-				echo "exec > /tmp/certbot.out 2>&1"
-			fi
 			echo "set +e"   # prevent certbot failures from killing the parent service
 			echo ""
 			echo "certbot certonly \\"

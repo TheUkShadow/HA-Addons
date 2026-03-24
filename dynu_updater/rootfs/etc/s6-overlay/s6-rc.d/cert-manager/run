@@ -52,12 +52,12 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 		bashio::log.info "Certificate Manager - Running certificate renewal"
 		update_status_json "last_cert_check" "$(date -Is)"
 		
-		if [[ "$VERBOSE" == "true" ]]; then
+		if [[ "$VERBOSE" == "false" ]]; then
 			/run/dynu-run-certbot.sh > /tmp/certbot.out 2>&1
 			CERTBOT_EXIT=$?
 		else
-			/run/dynu-run-certbot.sh
-			CERTBOT_EXIT=$?
+			/run/dynu-run-certbot.sh 2>&1 | tee /tmp/certbot.out
+			CERTBOT_EXIT=${PIPESTATUS[0]}
 		fi
 
 		# Load output into a variable
