@@ -275,7 +275,7 @@ if [[ "$CERT_VALID" == "true" ]]; then
 		CERTBOT_CMD_FILE="/run/dynu-run-certbot.sh"
 
 		{
-			echo "#!/bin/bash"
+			echo "#!/usr/bin/with-contenv bashio"
 			echo "set +e"   # prevent certbot failures from killing the parent service
 			echo ""
 			echo "certbot certonly \\"
