@@ -7,20 +7,58 @@
 
 HOSTNAME=$(bashio::config 'dynu_hostname' | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
 PASSWORD=$(bashio::config 'dynu_update_password' | xargs)
-IP_FREQ=$(bashio::config 'update_ip_freq')
 VERBOSE=$(bashio::config 'verbose')
+
+update_status_json() {
+    local key="$1"
+    local value="$2"
+
+    local final="/data/status.json"
+
+    # Ensure file exists
+    [ -f "$final" ] || echo "{}" > "$final"
+
+    # Build updated JSON in memory
+    local new_json
+    new_json=$(jq --arg v "$value" --arg k "$key" '.[$k] = $v' "$final")
+
+    # Compare old vs new
+    if diff <(echo "$new_json") "$final" >/dev/null; then
+        # No change → no write → no temp file
+        return
+    fi
+
+    # Only now create a temp file
+    local tmp
+    tmp="$(mktemp /tmp/dynu_status.XXXXXX)"
+
+    # Write new JSON to temp file
+    echo "$new_json" > "$tmp"
+
+    # Atomic replace
+    mv "$tmp" "$final"
+}
 
 bashio::log.info "Dynu DDNS updater - starting"
 
 if [[ -f /run/dynu-dns.conf ]]; then
 
+	update_status_json "last_dns_check" "$(date -Is)"
+	
 	STATE_FILE="/run/dynu-dns.conf"
 
 	DYNU_IPV6_ENABLED=$(jq -r '.ipv6' "$STATE_FILE")
 	readarray -t DOMAIN_ARR < <(jq -r '.domains[]' "$STATE_FILE")
 	
-	LAST_IPV4=""
-	LAST_IPV6=""
+	STATUS_FILE="/data/status.json"
+
+	if [ -f "$STATUS_FILE" ]; then
+		LAST_IPV4=$(jq -r '.current_ipv4 // empty' "$STATUS_FILE")
+		LAST_IPV6=$(jq -r '.current_ipv6 // empty' "$STATUS_FILE")
+	else
+		LAST_IPV4=""
+		LAST_IPV6=""
+	fi
 
 	while true; do
 		
@@ -96,13 +134,17 @@ if [[ -f /run/dynu-dns.conf ]]; then
 
 			LAST_IPV4="$IPV4"
 			LAST_IPV6="$IPV6"
+			update_status_json "last_ip_update" "$(date -Is)"
+			update_status_json "current_ipv4" "$IPV4"
+			update_status_json "current_ipv6" "$IPV6"
+			
 		else
 			if [[ "$VERBOSE" == "true" ]]; then
 				bashio::log.info "Dynu DDNS updater - No update required"
 			fi
 		fi
 
-		sleep "$IP_FREQ"
+		sleep 60
 	done
 
 else

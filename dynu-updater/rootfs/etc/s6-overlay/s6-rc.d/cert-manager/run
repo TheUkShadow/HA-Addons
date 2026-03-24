@@ -10,8 +10,37 @@ KEYFILE=$(bashio::config 'keyfile' | xargs)
 CERTFILE=$(bashio::config 'certfile' | xargs)
 CERT_TIME=$(bashio::config 'update_cert_time' | xargs)
 VERBOSE=$(bashio::config 'verbose')
-
 CERT_DIR=/data/letsencrypt
+
+update_status_json() {
+    local key="$1"
+    local value="$2"
+
+    local final="/data/status.json"
+
+    # Ensure file exists
+    [ -f "$final" ] || echo "{}" > "$final"
+
+    # Build updated JSON in memory
+    local new_json
+    new_json=$(jq --arg v "$value" --arg k "$key" '.[$k] = $v' "$final")
+
+    # Compare old vs new
+    if diff <(echo "$new_json") "$final" >/dev/null; then
+        # No change → no write → no temp file
+        return
+    fi
+
+    # Only now create a temp file
+    local tmp
+    tmp="$(mktemp /tmp/dynu_status.XXXXXX)"
+
+    # Write new JSON to temp file
+    echo "$new_json" > "$tmp"
+
+    # Atomic replace
+    mv "$tmp" "$final"
+}
 
 if [[ -f /run/dynu-run-certbot.sh ]]; then
 
@@ -21,6 +50,7 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 
 	while true; do
 		bashio::log.info "Certificate Manager - Running certificate renewal"
+		update_status_json "last_cert_check" "$(date -Is)"
 		
 		# Run certbot
 		if [[ "$VERBOSE" == "false" ]]; then
@@ -42,6 +72,7 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 					bashio::log.error "  $line"
 				done <<< "$CERTBOT_OUTPUT"
 			fi
+			update_status_json "last_cert_status" "error"
 		else
 			# If certbot succeeded, check if certificate was updated
 			
@@ -52,6 +83,23 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 				CERT_DIR_LATEST="$(ls -td $CERT_DIR/live/*/ | head -1)"
 				cp "${CERT_DIR_LATEST}privkey.pem" "/ssl/$KEYFILE"
 				cp "${CERT_DIR_LATEST}fullchain.pem" "/ssl/$CERTFILE"
+				
+				CERT_EXPIRES=$(echo "$CERTBOT_OUTPUT" \
+					| grep -oE 'This certificate expires on [0-9]{4}-[0-9]{2}-[0-9]{2}' \
+					| grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}')
+				
+				if [ -n "$CERT_EXPIRES" ]; then
+					# Convert to timestamp
+					CERT_EXPIRES_TS=$(date -Is -d "$CERT_EXPIRES")
+				else
+					# Fallback: 3 months from now
+					CERT_EXPIRES_TS=$(date -Is -d "+3 months")
+					bashio::log.warning "Certificate Manager - Unable to extract certificate expiry date from Certbot output"
+				fi
+				
+				update_status_json "cert_expires" "$CERT_EXPIRES_TS"
+				update_status_json "last_cert_renewal" "$(date -Is)"
+				update_status_json "last_cert_status" "success"
 				
 				if bashio::config.has_value 'restart_addons'; then
 					for index in $(bashio::config 'restart_addons|keys'); do
@@ -98,11 +146,15 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 				fi
 			elif echo "$CERTBOT_OUTPUT" | grep -q "Certificate not yet due for renewal"; then
 				bashio::log.info "Certificate Manager - Current certificate valid"
-			elif [[ "$VERBOSE" == "false" ]]; then
-				bashio::log.warning "Certificate Manager - Unexpected Certbot output:"
-				while IFS= read -r line; do
-					bashio::log.warning "  $line"
-				done <<< "$CERTBOT_OUTPUT"
+				update_status_json "last_cert_status" "success"
+			else
+				update_status_json "last_cert_status" "error"
+				if [[ "$VERBOSE" == "false" ]]; then
+					bashio::log.warning "Certificate Manager - Unexpected Certbot output:"
+					while IFS= read -r line; do
+						bashio::log.warning "  $line"
+					done <<< "$CERTBOT_OUTPUT"
+				fi
 			fi
 		fi
 

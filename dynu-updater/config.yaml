@@ -1,5 +1,5 @@
 ---
-version: 1.0.7
+version: 1.0.8
 slug: dynu-updater
 name: Dynu Domain Update Tool
 description: Update dynamic DNS and generate certificates for a domain registerd with dynu.com
@@ -19,7 +19,6 @@ options:
   update_cert: true
   keyfile: privkey.pem
   certfile: fullchain.pem
-  update_ip_freq: 60
   update_cert_time: "00:00"
   
 schema:
@@ -29,7 +28,6 @@ schema:
   email: email
   
   update_ip: bool
-  update_ip_freq: int
   ip_domains:
     - str
     

@@ -23,7 +23,6 @@ PASSWORD=$(bashio::config 'dynu_update_password' | xargs)
 KEYFILE=$(bashio::config 'keyfile' | xargs)
 CERTFILE=$(bashio::config 'certfile' | xargs)
 CERT_TIME=$(bashio::config 'update_cert_time' | xargs)
-IP_FREQ=$(bashio::config 'update_ip_freq')
 CERT_VALID=$(bashio::config 'update_cert')
 DNS_VALID=$(bashio::config 'update_ip')
 
@@ -81,10 +80,6 @@ if [[ "$DNS_VALID" == "true" ]]; then
 
 	if [[ -z "$PASSWORD" ]]; then
 		bashio::log.info "Dynu Updater Initialisation - no Dynu Account Password configured"
-		DNS_VALID="false"
-	fi
-	if [[ -z "$IP_FREQ" || ! "$IP_FREQ" =~ ^[0-9]+$ ]] || (( IP_FREQ < 60 || IP_FREQ > 3600 )); then
-		bashio::log.info "Dynu Updater Initialisation - Invalid IP Update Frequency (60 - 3600)"
 		DNS_VALID="false"
 	fi
 fi
