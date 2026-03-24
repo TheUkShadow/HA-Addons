@@ -1,4 +1,4 @@
-#!/usr/bin/with-contenv bash
+#!/usr/bin/with-contenv bashio
 sleep 1
 cd /usr/app
 bashio::log.info "HTTP Server - Starting"
