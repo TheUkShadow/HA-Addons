@@ -18,6 +18,7 @@ CERT_DOMAINS=$(bashio::config 'domains' | tr '[:upper:]' '[:lower:]' | xargs)
 IP_DOMAINS=$(bashio::config 'ip_domains' | tr '[:upper:]' '[:lower:]' | xargs)
 VERBOSE=$(bashio::config 'verbose')
 FORCE_RENEW=$(bashio::config 'force_renew')
+DRY_RUN=$(bashio::config 'dry_run')
 DYNU_API_KEY=$(bashio::config 'dynu_api_key' | xargs)
 PASSWORD=$(bashio::config 'dynu_update_password' | xargs)
 KEYFILE=$(bashio::config 'keyfile' | xargs)
@@ -263,6 +264,10 @@ if [[ "$CERT_VALID" == "true" ]]; then
 		if [[ "$VERBOSE" ==  "true" ]]; then
 			ADDITIONAL_ARGS+=("-vvv")
 		fi
+		
+		if [ "${DRY_RUN}" = "true" ]; then
+        ADDITIONAL_ARGS+=("--dry-run")
+    fi
 
 		# Set key-type
 		KEY_ARGUMENTS+=("--key-type ecdsa")
