@@ -36,6 +36,12 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def log_message(self, format, *args):
+        message = format % args
+        if "GET /status" in message:
+            return  # silence HA Supervisor health checks
+        super().log_message(format, *args)
+
 def main():
     server = HTTPServer(("0.0.0.0", port), Handler)
     server.serve_forever()
