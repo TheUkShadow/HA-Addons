@@ -148,13 +148,13 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 				CERT_PATH="/data/letsencrypt/live/$DYNU_HOSTNAME/cert.pem"
 				if [[ -f "$CERT_PATH" ]]; then
 					CREATED_RAW=$(openssl x509 -in "$CERT_PATH" -noout -startdate 2>/dev/null | cut -d= -f2)
-					CREATED_TS=$(date -d "$CREATED_RAW" +%s 2>/dev/null)
+					CREATED_ISO=$(date -u -d "$CREATED_RAW" +"%Y-%m-%dT%H:%M:%S+00:00" 2>/dev/null)
 					EXPIRY_RAW=$(openssl x509 -in "$CERT_PATH" -noout -enddate 2>/dev/null | cut -d= -f2)
-					EXPIRY_TS=$(date -d "$EXPIRY_RAW" +%s 2>/dev/null)
-					update_status_json "cert_expires" "$EXPIRY_TS"
-					update_status_json "last_cert_renewal" "$CREATED_TS"
+					EXPIRY_ISO=$(date -u -d "$EXPIRY_RAW" +"%Y-%m-%dT%H:%M:%S+00:00" 2>/dev/null)
+					update_status_json "cert_expires" "$EXPIRY_ISO"
+					update_status_json "last_cert_renewal" "$CREATED_ISO"
 				else
-					bashio::log.warning "Certificate Manager - Unable to retrieve certificate details. Path $CERT_PATH does not exist"
+					bashio::log.warning "Certificate Manager - Unable to retrieve certificate details. $CERT_PATH does not exist"
 				fi
 				bashio::log.info "Certificate Manager - Current certificate valid"
 				update_status_json "last_cert_status" "false"
