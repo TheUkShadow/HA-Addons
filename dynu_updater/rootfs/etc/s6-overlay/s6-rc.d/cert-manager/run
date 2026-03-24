@@ -9,7 +9,7 @@ set +e
 KEYFILE=$(bashio::config 'keyfile' | xargs)
 CERTFILE=$(bashio::config 'certfile' | xargs)
 CERT_TIME=$(bashio::config 'update_cert_time' | xargs)
-VERBOSE=$(bashio::config 'verbose', 'false')
+VERBOSE=$(bashio::config 'verbose' 'false')
 CERT_DIR=/data/letsencrypt
 
 update_status_json() {
