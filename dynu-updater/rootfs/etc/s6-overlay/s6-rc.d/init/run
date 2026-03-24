@@ -311,7 +311,7 @@ if [[ "$DNS_VALID" == "false" ]] && [[ "$CERT_VALID" == "false" ]]; then
     exit 1
 fi
 
-PORT=$(jq -r '."ports"."9999/tcp"' /data/options.json)
+PORT=$(bashio::addon 'port')
 
 if [ -z "$PORT" ] || [ "$PORT" = "null" ]; then
     bashio::log.error "Dynu Updater Initialisation - Could not determine port for integration HTTP server"
