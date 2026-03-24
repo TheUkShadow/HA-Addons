@@ -26,6 +26,10 @@ CERT_TIME=$(bashio::config 'update_cert_time' | xargs)
 CERT_VALID=$(bashio::config 'update_cert')
 DNS_VALID=$(bashio::config 'update_ip')
 
+# Extract mapped port
+PORT=$(bashio::addon.port 8855/tcp)
+export PORT="$PORT"
+
 PROPAGATION_SECONDS=60
 
 bashio::log.info "Dynu Updater Initialisation - Generating configuration"
@@ -310,21 +314,5 @@ if [[ "$DNS_VALID" == "false" ]] && [[ "$CERT_VALID" == "false" ]]; then
 	bashio::log.error "Dynu Updater Initialisation - NO Valid configuration for Certificate generation or DNS IP Updates"
     exit 1
 fi
-
-# Extract mapped port
-PORT=$(bashio::addon.port 8855/tcp)
-
-if [ -z "$PORT" ] || [ "$PORT" = "null" ]; then
-    bashio::log.error "Dynu Updater Initialisation - Could not determine port for integration HTTP server"
-    exit 1
-fi
-
-# Check if port is already in use
-if ss -lnt | grep -q ":$PORT "; then
-    bashio::log.error "Dynu Updater Initialisation - Port $PORT is already in use"
-    exit 1
-fi
-
-export PORT="$PORT"
 
 bashio::log.info "Dynu Updater Initialisation - Complete"
