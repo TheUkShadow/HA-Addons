@@ -4,4 +4,4 @@ cd /usr/app
 
 sleep 1
 
-exec python3 server.py
+exec python3 -u server.py
