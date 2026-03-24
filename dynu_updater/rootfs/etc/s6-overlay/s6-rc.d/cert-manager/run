@@ -66,6 +66,11 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 		# If certbot failed
 		if [ "$CERTBOT_EXIT" -ne 0 ]; then
 			bashio::log.error "Certificate Manager - Certbot failed with code $CERTBOT_EXIT"
+			if [[ "$VERBOSE" == "false" ]]; then
+				while IFS= read -r line; do
+					bashio::log.error "  $line"
+				done <<< "$CERTBOT_OUTPUT"
+			fi
 			update_status_json "last_cert_status" "true"
 		else
 			# If certbot succeeded, check if certificate was updated
@@ -139,11 +144,25 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 					done
 				fi
 			elif echo "$CERTBOT_OUTPUT" | grep -q "Certificate not yet due for renewal"; then
+				CERT_PATH="/data/letsencrypt/live/$HOSTNAME/cert.pem"
+				if [[ -f "$CERT_PATH" ]]; then
+					CREATED_RAW=$(openssl x509 -in "$CERT_PATH" -noout -startdate 2>/dev/null | cut -d= -f2)
+					CREATED_TS=$(date -d "$CREATED_RAW" +%s 2>/dev/null)
+					EXPIRY_RAW=$(openssl x509 -in "$CERT_PATH" -noout -enddate 2>/dev/null | cut -d= -f2)
+					EXPIRY_TS=$(date -d "$EXPIRY_RAW" +%s 2>/dev/null)
+					update_status_json "cert_expires" "$EXPIRY_TS"
+					update_status_json "last_cert_renewal" "$CREATED_TS"
+				else
+					bashio::log.warning "Certificate Manager - Unable to retrieve certificate details. Path $CERT_PATH does not exist"
+				fi
 				bashio::log.info "Certificate Manager - Current certificate valid"
 				update_status_json "last_cert_status" "false"
-			else
+			elif [[ "$VERBOSE" == "false" ]]; then
 				update_status_json "last_cert_status" "true"
 				bashio::log.warning "Certificate Manager - Unexpected Certbot output:"
+				while IFS= read -r line; do
+					bashio::log.warning "  $line"
+				done <<< "$CERTBOT_OUTPUT"
 			fi
 		fi
 
