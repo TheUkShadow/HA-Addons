@@ -95,7 +95,7 @@ if [[ -f /run/dynu-dns.conf ]]; then
 		fi
 		
 		if [[ -n "$IPV4" || -n "$IPV6" ]]; then
-			update_status_json "wan_connection" "false"
+			update_status_json "wan_connection" "true"
 		fi
 
 		if { [[ -n "$IPV4" && "$IPV4" != "$LAST_IPV4" ]]; } \
@@ -138,7 +138,7 @@ if [[ -f /run/dynu-dns.conf ]]; then
 			update_status_json "current_ipv6" "$IPV6"
 			
 		elif [[ -z "$IPV4" && -z "$IPV6" ]]; then
-			update_status_json "wan_connection" "true"
+			update_status_json "wan_connection" "false"
 			bashio::log.error "Dynu DDNS updater - No IP data retrieved"
 		elif [[ "$VERBOSE" == "true" ]]; then
 			bashio::log.info "Dynu DDNS updater - No update required"
