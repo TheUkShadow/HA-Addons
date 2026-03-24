@@ -45,3 +45,5 @@ configuration:
   dry_run:
     name: Dry Run
     description: Do a Certbot dry-run for requesting the certificate from Let's Encrypt.
+network:
+  8855/tcp: Websocket port for Integration connection.
