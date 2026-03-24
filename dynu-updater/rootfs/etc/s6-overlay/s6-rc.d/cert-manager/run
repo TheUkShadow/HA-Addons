@@ -176,6 +176,5 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 		sleep "$sleep_seconds"
 	done
 else
-	bashio::log.info "Certificate Manager - Sleeping forever"
 	sleep infinity
 fi

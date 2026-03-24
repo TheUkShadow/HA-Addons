@@ -52,8 +52,13 @@ if [[ -f /run/dynu-dns.conf ]]; then
 	
 	STATUS_FILE="/data/status.json"
 
-	LAST_IPV4=""
-	LAST_IPV6=""
+	if [ -f "$STATUS_FILE" ]; then
+		LAST_IPV4=$(jq -r '.current_ipv4 // empty' "$STATUS_FILE")
+		LAST_IPV6=$(jq -r '.current_ipv6 // empty' "$STATUS_FILE")
+	else
+		LAST_IPV4=""
+		LAST_IPV6=""
+	fi
 
 	while true; do
 		if [[ "$VERBOSE" == "true" ]]; then
@@ -121,10 +126,6 @@ if [[ -f /run/dynu-dns.conf ]]; then
 				bashio::log.info "Dynu DDNS updater - Server response = $RESPONSE"
 
 			done
-			
-			if [[ ! -f /run/dynu-dns-update.ready ]]; then
-				touch /run/dynu-dns-update.ready
-			fi
 
 			LAST_IPV4="$IPV4"
 			LAST_IPV6="$IPV6"
@@ -137,11 +138,14 @@ if [[ -f /run/dynu-dns.conf ]]; then
 				bashio::log.info "Dynu DDNS updater - No update required"
 			fi
 		fi
+		
+		if [[ ! -f /run/dynu-dns-update.ready ]]; then
+			touch /run/dynu-dns-update.ready
+		fi
 
 		sleep 60
 	done
 
 else
-	bashio::log.info "Dynu DDNS updater - Sleeping forever"
 	sleep infinity
 fi
