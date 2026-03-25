@@ -389,10 +389,10 @@ if [[ "$USE_MQTT" == "true" ]]; then
 	publish_discovery "last_ip_update" "Last IP Update" "timestamp" \
 	  "dynu_updater/last_ip_update" "sensor" ""
 
-	publish_discovery "current_ipv4" "Current IPv4" "ip" \
+	publish_discovery "current_ipv4" "Current IPv4" "" \
 	  "dynu_updater/current_ipv4" "sensor" ""
 
-	publish_discovery "current_ipv6" "Current IPv6" "ip" \
+	publish_discovery "current_ipv6" "Current IPv6" "" \
 	  "dynu_updater/current_ipv6" "sensor" ""
 
 	publish_discovery "last_cert_check" "Last Certificate Check" "timestamp" \
