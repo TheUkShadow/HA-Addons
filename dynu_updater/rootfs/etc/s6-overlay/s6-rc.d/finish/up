@@ -1,3 +1,0 @@
-#!/usr/bin/with-contenv bash
-# no-op
-exit 0
