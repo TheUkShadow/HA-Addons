@@ -1,13 +1,16 @@
 ---
-version: 1.0.0
+version: 1.0.1
 slug: dynu_updater
 name: Dynu Domain Update Tool
 description: Update dynamic DNS and generate certificates for a domain registerd with dynu.com
 url: https://github.com/TheUkShadow/HA-Addons/tree/main/dynu-updater
 
 hassio_api: true
-hassio_role: admin
+hassio_role: manager
 
+services:
+  - mqtt:need
+  
 arch:
   - aarch64
   - amd64
