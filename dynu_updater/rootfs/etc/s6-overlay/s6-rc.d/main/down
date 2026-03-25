@@ -1,0 +1,21 @@
+#!/usr/bin/with-contenv bashio
+# shellcheck shell=bash
+
+USE_MQTT=$(bashio::config 'mqtt' 'false')
+MQTT_HOST=$(bashio::services 'mqtt' 'host')
+MQTT_PORT=$(bashio::services 'mqtt' 'port')
+MQTT_USER=$(bashio::services 'mqtt' 'username')
+MQTT_PASSWORD=$(bashio::services 'mqtt' 'password')
+
+# Publish offline availability
+if [[ "$USE_MQTT" == "true" ]]; then
+	bashio::log.info "Dynu Updater Closing - Sending offline signal to MQTT"
+	mosquitto_pub \
+		-h "$MQTT_HOST" \
+		-u "$MQTT_USER" \
+		-p "$MQTT_PORT" \
+		-P "$MQTT_PASSWORD" \
+		-t "dynu_updater/availability" \
+		-m "offline" \
+		-r
+fi
