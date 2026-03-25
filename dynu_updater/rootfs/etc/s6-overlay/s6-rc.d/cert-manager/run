@@ -15,12 +15,16 @@ CERT_DIR=/data/letsencrypt
 
 mqtt_publish() {
     if [[ "$USE_MQTT" == "true" ]]; then
-        mosquitto_pub \
-            -h "$MQTT_HOST" \
-            -u "$MQTT_USER" \
-            -P "$MQTT_PASSWORD" \
-            -t "dynu_updater/$1" \
-            -m "$2" \
+        local topic="$1"
+		local payload="$2"
+
+		mosquitto_pub \
+			-h "$MQTT_HOST" \
+			-p "$MQTT_PORT" \
+			-u "$MQTT_USER" \
+			-P "$MQTT_PASSWORD" \
+			-t "dynu_updater/$topic" \
+			-m "$payload" \
 			-r
     fi
 }
