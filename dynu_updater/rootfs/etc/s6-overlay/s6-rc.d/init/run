@@ -80,7 +80,7 @@ publish_discovery() {
   local component="$5"
   local extra="$6"
 
-  mosquitto_pub -h "$HOST" -u "$USER" -P "$PASS" -r \
+  mosquitto_pub -h "$MQTT_HOST" -u "$MQTT_USER" -P "$MQTT_PASS" -p "$MQTT_PORT" -r \
     -t "homeassistant/${component}/${entity_id}/config" \
     -m "{
       \"name\": \"${name}\",
