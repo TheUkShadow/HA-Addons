@@ -74,6 +74,12 @@ publish_discovery() {
   local component="$5"
   local extra="$6"
 
+  # Only include device_class if non-empty
+  local device_class_json=""
+  if [[ -n "$device_class" ]]; then
+    device_class_json="\"device_class\": \"${device_class}\","
+  fi
+
   mosquitto_pub -h "$MQTT_HOST" -u "$MQTT_USER" -P "$MQTT_PASSWORD" -p "$MQTT_PORT" -r \
     -t "homeassistant/${component}/${entity_id}/config" \
     -m "{
@@ -83,7 +89,7 @@ publish_discovery() {
       \"availability_topic\": \"${AVAIL_TOPIC}\",
       \"payload_available\": \"online\",
       \"payload_not_available\": \"offline\",
-      \"device_class\": \"${device_class}\",
+      ${device_class_json}
       ${extra}
       \"device\": {
         \"identifiers\": [\"${DEVICE_ID}\"],
@@ -94,6 +100,7 @@ publish_discovery() {
       }
     }"
 }
+
 
 bashio::log.info "Dynu Updater Initialisation - Generating configuration"
 
