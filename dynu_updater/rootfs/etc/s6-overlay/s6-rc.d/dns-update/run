@@ -53,8 +53,15 @@ if [[ -f /run/dynu-dns.conf ]]; then
 	DYNU_IPV6_ENABLED=$(jq -r '.ipv6' "$STATE_FILE")
 	readarray -t DOMAIN_ARR < <(jq -r '.domains[]' "$STATE_FILE")
 	
-	LAST_IPV4=""
-	LAST_IPV6=""
+	DNS_UPDATE_JSON="/data/dns-update.json"
+	
+	if [[ -f "$DNS_UPDATE_JSON" ]]; then
+		LAST_IPV4=$(jq -r '.ipv4' "$DNS_UPDATE_JSON")
+		LAST_IPV6=$(jq -r '.ipv6' "$DNS_UPDATE_JSON")
+	else
+		LAST_IPV4=""
+		LAST_IPV6=""
+	fi
 
 	while true; do
 		if [[ "$VERBOSE" == "true" ]]; then
@@ -128,6 +135,13 @@ if [[ -f /run/dynu-dns.conf ]]; then
 
 				LAST_IPV4="$IPV4"
 				LAST_IPV6="$IPV6"
+				
+				jq -n \
+				  --arg ipv4 "$LAST_IPV4" \
+				  --arg ipv6 "$LAST_IPV6" \
+				  '{ipv4: $ipv4, ipv6: $ipv6}' \
+				  > "$DNS_UPDATE_JSON"
+				  
 				if [[ "$USE_MQTT" == "true" ]]; then
 					mqtt_publish "last_ip_update" "$(date -Is)"
 					mqtt_publish "current_ipv4" "$IPV4"
