@@ -6,11 +6,31 @@
 # ==============================================================================
 set +e
 
-DYNU_HOSTNAME=$(bashio::config 'dynu_hostname' | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
-KEYFILE=$(bashio::config 'keyfile' | xargs)
-CERTFILE=$(bashio::config 'certfile' | xargs)
-CERT_TIME=$(bashio::config 'update_cert_time' | xargs)
-VERBOSE=$(bashio::config 'verbose' 'false')
+if bashio::config.has_value 'dynu_hostname'; then
+	DYNU_HOSTNAME=$(bashio::config 'dynu_hostname' | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
+else
+	DYNU_HOSTNAME=""
+fi
+if bashio::config.has_value 'keyfile'; then
+	KEYFILE=$(bashio::config 'keyfile' | xargs)
+else
+	KEYFILE="privkey.pem"
+fi
+if bashio::config.has_value 'certfile'; then
+	CERTFILE=$(bashio::config 'certfile' | xargs)
+else
+	CERTFILE="fullchain.pem"
+fi
+if bashio::config.has_value 'update_cert_time'; then
+	CERT_TIME=$(bashio::config 'update_cert_time' | xargs)
+else
+	CERT_TIME="00:00"
+fi
+if bashio::config.true 'verbose'; then
+    VERBOSE="true"
+else
+    VERBOSE="false"
+fi
 CERT_DIR=/data/letsencrypt
 
 MQTT_CONF="/run/dynu-mqtt.conf"

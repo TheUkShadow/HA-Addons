@@ -12,51 +12,118 @@ ACME_ARGUMENTS=()
 KEY_ARGUMENTS=()
 ADDITIONAL_ARGS=()
 
-DYNU_HOSTNAME=$(bashio::config 'dynu_hostname' | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
-EMAIL=$(bashio::config 'email' | xargs)
-CERT_DOMAINS=$(bashio::config 'domains' | tr '[:upper:]' '[:lower:]' | xargs)
-IP_DOMAINS=$(bashio::config 'ip_domains' | tr '[:upper:]' '[:lower:]' | xargs)
-VERBOSE=$(bashio::config 'verbose')
-FORCE_RENEW=$(bashio::config 'force_renew' 'false')
-DRY_RUN=$(bashio::config 'dry_run' 'false')
-DYNU_API_KEY=$(bashio::config 'dynu_api_key' | xargs)
-PASSWORD=$(bashio::config 'dynu_update_password' | xargs)
-KEYFILE=$(bashio::config 'keyfile' | xargs)
-CERTFILE=$(bashio::config 'certfile' | xargs)
-CERT_TIME=$(bashio::config 'update_cert_time' | xargs)
-CERT_VALID=$(bashio::config 'update_cert' 'false')
-DNS_VALID=$(bashio::config 'update_ip' 'false')
-
-# Extract mapped port
-PORT=$(bashio::addon.port 8855/tcp)
-export PORT="$PORT"
+if bashio::config.has_value 'dynu_hostname'; then
+	DYNU_HOSTNAME=$(bashio::config 'dynu_hostname' | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
+else
+	DYNU_HOSTNAME=""
+fi
+if bashio::config.has_value 'email'; then
+	EMAIL=$(bashio::config 'email' | xargs)
+else
+	EMAIL=""
+fi
+if bashio::config.has_value 'domains'; then
+	CERT_DOMAINS=$(bashio::config 'domains' | tr '[:upper:]' '[:lower:]' | xargs)
+else
+	CERT_DOMAINS=""
+fi
+if bashio::config.has_value 'ip_domains'; then
+	IP_DOMAINS=$(bashio::config 'ip_domains' | tr '[:upper:]' '[:lower:]' | xargs)
+else
+	IP_DOMAINS=""
+fi
+if bashio::config.true 'verbose'; then
+    VERBOSE="true"
+else
+    VERBOSE="false"
+fi
+if bashio::config.true 'force_renew'; then
+    FORCE_RENEW="true"
+else
+    FORCE_RENEW="false"
+fi
+if bashio::config.true 'dry_run'; then
+    DRY_RUN="true"
+else
+    DRY_RUN="false"
+fi
+if bashio::config.has_value 'dynu_api_key'; then
+	DYNU_API_KEY=$(bashio::config 'dynu_api_key' | xargs)
+else
+	DYNU_API_KEY=""
+fi
+if bashio::config.has_value 'dynu_update_password'; then
+	PASSWORD=$(bashio::config 'dynu_update_password' | xargs)
+else
+	PASSWORD=""
+fi
+if bashio::config.has_value 'keyfile'; then
+	KEYFILE=$(bashio::config 'keyfile' | xargs)
+else
+	KEYFILE="privkey.pem"
+fi
+if bashio::config.has_value 'certfile'; then
+	CERTFILE=$(bashio::config 'certfile' | xargs)
+else
+	CERTFILE="fullchain.pem"
+fi
+if bashio::config.has_value 'update_cert_time'; then
+	CERT_TIME=$(bashio::config 'update_cert_time' | xargs)
+else
+	CERT_TIME="00:00"
+fi
+if bashio::config.true 'update_cert'; then
+    CERT_VALID="true"
+else
+    CERT_VALID="false"
+fi
+if bashio::config.true 'update_ip'; then
+    DNS_VALID="true"
+else
+    DNS_VALID="false"
+fi
 
 PROPAGATION_SECONDS=180
 
 bashio::log.info "Dynu Updater Initialisation - Generating configuration"
-bashio::log.info "Verbose = $VERBOSE"
-# MQTT connection
-USE_MQTT=$(bashio::config 'mqtt' 'false')
-MQTT_HOST=$(bashio::config 'mqtt_host' '')
-MQTT_USER=$(bashio::config 'mqtt_user' '')
-MQTT_PASSWORD=$(bashio::config 'mqtt_password' '')
-MQTT_PORT=$(bashio::config 'mqtt_port' '')
 
-if [[ -z "$MQTT_HOST" ]]; then
-	MQTT_HOST=$(bashio::services mqtt host)
+# MQTT connection
+
+if bashio::services.available 'mqtt'; then
+    MQTT_HOST=$(bashio::services mqtt host)
+    MQTT_USER=$(bashio::services mqtt username)
+    MQTT_PASSWORD=$(bashio::services mqtt password)
+    MQTT_PORT=$(bashio::services mqtt port)
 fi
-if [[ -z "$MQTT_USER" ]]; then
-	MQTT_USER=$(bashio::services mqtt username)
+
+if bashio::config.true 'mqtt_conf.mqtt'; then
+    USE_MQTT="true"
+else
+    USE_MQTT="false"
 fi
-if [[ -z "$MQTT_PASSWORD" ]]; then
-	MQTT_PASSWORD=$(bashio::services mqtt password)
+if bashio::config.has_value 'mqtt_conf.mqtt_host'; then
+	MQTT_HOST=$(bashio::config 'mqtt_conf.mqtt_host')
+else
+	MQTT_HOST=""
 fi
-if [[ -z "$MQTT_PORT" ]]; then
-	MQTT_PORT=$(bashio::services mqtt port)
+if bashio::config.has_value 'mqtt_conf.mqtt_user'; then
+	MQTT_USER=$(bashio::config 'mqtt_conf.mqtt_user')
+else
+	MQTT_USER=""
+fi
+if bashio::config.has_value 'mqtt_conf.mqtt_password'; then
+	MQTT_PASSWORD=$(bashio::config 'mqtt_conf.mqtt_password')
+else
+	MQTT_PASSWORD=""
+fi
+if bashio::config.has_value 'mqtt_conf.mqtt_port'; then
+	MQTT_PORT=$(bashio::config 'mqtt_conf.mqtt_port')
+else
+	MQTT_PORT=""
 fi
 
 if [[ "$USE_MQTT" == "true" && ( -z "$MQTT_HOST" || -z "$MQTT_USER" || -z "$MQTT_PASSWORD" || -z "$MQTT_PORT" ) ]]; then
-	bashio::log.warning "Dynu Updater Initialisation - Invalid MQTT Credentials"
+	bashio::log.warning "Dynu Updater Initialisation - Invalid credentials for MQTT"
 	USE_MQTT="false"
 elif [[ "$USE_MQTT" == "true" ]]; then
 	TEST_TOPIC="dynu_updater/selftest"

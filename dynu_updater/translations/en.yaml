@@ -1,8 +1,23 @@
 ---
 configuration:
-  mqtt:
+  mqtt_conf:
+    name: MQTT Configuration
+    description: Allows custom MQTT configuration. If not set, the system MQTT server will be used, if available.
+  mqtt_conf.mqtt:
     name: MQTT
     description: Creates MQTT Sensors for use in automations, etc.
+  mqtt_conf.mqtt_host:
+    name: MQTT Hostname
+    description: The hostname for the MQTT server.
+  mqtt_conf.mqtt_port:
+    name: MQTT Port
+    description: The port for the custom MQTT server
+  mqtt_conf.mqtt_user:
+    name: MQTT User
+    description: The username for the MQTT server.
+  mqtt_conf.mqtt_password:
+    name: MQTT Password
+    description: The password for the MQTT server.
   update_cert_time:
     name: Certificate Check Time
     description: The time of day to check the certifcate renewal status (00:00 - 23:59)
