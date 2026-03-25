@@ -155,40 +155,6 @@ if [[ "$DNS_VALID" == "false" ]] && [[ "$CERT_VALID" == "false" ]]; then
 	bashio::log.error "Dynu Updater Initialisation - No valid configuration for Certificate generation or DNS IP Updates"
 	exit 1
 fi
-
-if [ -z "$MQTT_HOST" ] || [ -z "$MQTT_USER" ] || [ -z "$MQTT_PASSWORD" ]; then
-	USE_MQTT="false"
-	bashio::log.warning "Dynu Updater Initialisation - No valid MQTT data"
-else
-	publish_discovery "last_ip_check" "Last DNS Check" "timestamp" \
-	  "dynu_updater/last_dns_check" "sensor" ""
-
-	publish_discovery "last_ip_update" "Last IP Update" "timestamp" \
-	  "dynu_updater/last_ip_update" "sensor" ""
-
-	publish_discovery "current_ipv4" "Current IPv4" "ip" \
-	  "dynu_updater/current_ipv4" "sensor" ""
-
-	publish_discovery "current_ipv6" "Current IPv6" "ip" \
-	  "dynu_updater/current_ipv6" "sensor" ""
-
-	publish_discovery "last_cert_check" "Last Certificate Check" "timestamp" \
-	  "dynu_updater/last_cert_check" "sensor" ""
-
-	publish_discovery "last_cert_status" "Certificate Valid" "problem" \
-	  "dynu_updater/last_cert_status" "binary_sensor" \
-	  "\"payload_on\": \"false\", \"payload_off\": \"true\","
-
-	publish_discovery "wan_connection" "WAN Connection" "connectivity" \
-	  "dynu_updater/wan_connection" "binary_sensor" \
-	  "\"payload_on\": \"true\", \"payload_off\": \"false\","
-
-	publish_discovery "cert_expires" "Certificate Expires" "timestamp" \
-	  "dynu_updater/cert_expires" "sensor" ""
-
-	publish_discovery "last_cert_renewal" "Last Certificate Renewal" "timestamp" \
-	  "dynu_updater/last_cert_renewal" "sensor" ""
-fi
 	
 # Call Dynu API: capture JSON body AND HTTP status separately
 DYNU_API_RESPONSE=$(curl -s --fail --max-time 5 \
@@ -414,6 +380,37 @@ fi
 if [[ "$DNS_VALID" == "false" ]] && [[ "$CERT_VALID" == "false" ]]; then
 	bashio::log.error "Dynu Updater Initialisation - NO Valid configuration for Certificate generation or DNS IP Updates"
     exit 1
+fi
+
+if [[ "$USE_MQTT" == "true" ]]; then
+	publish_discovery "last_ip_check" "Last DNS Check" "timestamp" \
+	  "dynu_updater/last_ip_check" "sensor" ""
+
+	publish_discovery "last_ip_update" "Last IP Update" "timestamp" \
+	  "dynu_updater/last_ip_update" "sensor" ""
+
+	publish_discovery "current_ipv4" "Current IPv4" "ip" \
+	  "dynu_updater/current_ipv4" "sensor" ""
+
+	publish_discovery "current_ipv6" "Current IPv6" "ip" \
+	  "dynu_updater/current_ipv6" "sensor" ""
+
+	publish_discovery "last_cert_check" "Last Certificate Check" "timestamp" \
+	  "dynu_updater/last_cert_check" "sensor" ""
+
+	publish_discovery "last_cert_status" "Certificate Valid" "problem" \
+	  "dynu_updater/last_cert_status" "binary_sensor" \
+	  "\"payload_on\": \"false\", \"payload_off\": \"true\","
+
+	publish_discovery "wan_connection" "WAN Connection" "connectivity" \
+	  "dynu_updater/wan_connection" "binary_sensor" \
+	  "\"payload_on\": \"true\", \"payload_off\": \"false\","
+
+	publish_discovery "cert_expires" "Certificate Expires" "timestamp" \
+	  "dynu_updater/cert_expires" "sensor" ""
+
+	publish_discovery "last_cert_renewal" "Last Certificate Renewal" "timestamp" \
+	  "dynu_updater/last_cert_renewal" "sensor" ""
 fi
 
 mqtt_publish "availability" "online"

@@ -1,13 +1,1 @@
-#!/usr/bin/with-contenv bash
-# shellcheck shell=bash
-
-# Publish offline availability
-if [[ "$USE_MQTT" == "true" ]]; then
-	mosquitto_pub \
-		-h "$MQTT_HOST" \
-		-u "$MQTT_USER" \
-		-P "$MQTT_PASSWORD" \
-		-t "dynu_updater/availability" \
-		-m "offline" \
-		-r
-fi
+/etc/s6-overlay/s6-rc.d/finish/run
