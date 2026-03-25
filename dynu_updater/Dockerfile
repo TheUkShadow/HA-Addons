@@ -30,6 +30,7 @@ RUN \
         python3-dev \
         python3-pip \
         rustc \
+		mosquitto-clients \
     && pip3 install --no-cache-dir \
         acme==${ACME_VERSION} \
         certbot==${CERTBOT_VERSION} \

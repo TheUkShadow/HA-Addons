@@ -13,49 +13,189 @@ CERT_TIME=$(bashio::config 'update_cert_time' | xargs)
 VERBOSE=$(bashio::config 'verbose' 'false')
 CERT_DIR=/data/letsencrypt
 
-update_status_json() {
-    local key="$1"
-    local value="$2"
-
-    local final="/data/status.json"
-
-    # Ensure file exists
-    [ -f "$final" ] || echo "{}" > "$final"
-
-    # Build updated JSON in memory
-    local new_json
-    new_json=$(jq --arg v "$value" --arg k "$key" '.[$k] = $v' "$final")
-
-    # Compare old vs new
-    if diff <(echo "$new_json") "$final" >/dev/null; then
-        # No change → no write → no temp file
-        return
+mqtt_publish() {
+    if [[ "$USE_MQTT" == "true" ]]; then
+        mosquitto_pub \
+            -h "$MQTT_HOST" \
+            -u "$MQTT_USER" \
+            -P "$MQTT_PASSWORD" \
+            -t "dynu_updater/$1" \
+            -m "$2" \
+			-r
     fi
-
-    # Only now create a temp file
-    local tmp
-    tmp="$(mktemp /tmp/dynu_status.XXXXXX)"
-
-    # Write new JSON to temp file
-    echo "$new_json" > "$tmp"
-
-    # Atomic replace
-    mv "$tmp" "$final"
 }
 
-update_cert_dates() {
-	CERT_PATH="/data/letsencrypt/live/$DYNU_HOSTNAME/cert.pem"
-	if [[ -f "$CERT_PATH" ]]; then
-		CREATED_RAW=$(openssl x509 -in "$CERT_PATH" -noout -startdate 2>/dev/null | cut -d= -f2)
-		CREATED_ISO=$(date -u -d "$CREATED_RAW" +"%Y-%m-%dT%H:%M:%S+00:00" 2>/dev/null)
-		EXPIRY_RAW=$(openssl x509 -in "$CERT_PATH" -noout -enddate 2>/dev/null | cut -d= -f2)
-		EXPIRY_ISO=$(date -u -d "$EXPIRY_RAW" +"%Y-%m-%dT%H:%M:%S+00:00" 2>/dev/null)
-		update_status_json "cert_expires" "$EXPIRY_ISO"
-		update_status_json "last_cert_renewal" "$CREATED_ISO"
-		update_status_json "last_cert_status" "false"
+renew_cert() {
+	if [[ "$VERBOSE" == "false" ]]; then
+		/run/dynu-run-certbot.sh > /tmp/certbot.out 2>&1
+		CERTBOT_EXIT=$?
 	else
-		bashio::log.warning "Certificate Manager - Unable to retrieve certificate details. $CERT_PATH does not exist"
+		/run/dynu-run-certbot.sh 2>&1 | tee /tmp/certbot.out
+		CERTBOT_EXIT=${PIPESTATUS[0]}
 	fi
+
+	# Load output into a variable
+	CERTBOT_OUTPUT=$(cat /tmp/certbot.out)
+		
+	# If certbot failed
+	if [ "$CERTBOT_EXIT" -ne 0 ]; then
+		bashio::log.error "Certificate Manager - Certbot failed with code $CERTBOT_EXIT"
+		if [[ "$VERBOSE" == "false" ]]; then
+			while IFS= read -r line; do
+				bashio::log.error "  $line"
+			done <<< "$CERTBOT_OUTPUT"
+		fi
+	else
+		# If certbot succeeded, check if certificate was updated
+		
+		if echo "$CERTBOT_OUTPUT" | grep -q "Successfully received certificate"; then
+			bashio::log.info "Certificate Manager - New certificate received"
+			
+			# Get the last modified cert directory and copy the cert and private key to store
+			CERT_DIR_LATEST="$(ls -td $CERT_DIR/live/*/ | head -1)"
+			if [[ -z "$CERT_DIR_LATEST" ]]; then
+				bashio::log.error "Certificate Manager - Unable to locate latest certificate directory"
+				return
+			fi
+			cp "${CERT_DIR_LATEST}privkey.pem" "/ssl/$KEYFILE"
+			cp "${CERT_DIR_LATEST}fullchain.pem" "/ssl/$CERTFILE"
+			
+			if bashio::config.has_value 'restart_addons'; then
+				for index in $(bashio::config 'restart_addons|keys'); do
+					sleep 1
+					RAW_ADDON=$(bashio::config "restart_addons[${index}]")
+					ADDON="${RAW_ADDON//-/_}"
+
+					INFO_OUTPUT=$(curl --fail -s \
+					  -H "Authorization: Bearer $HASSIO_TOKEN" \
+					  http://hassio/addons/${ADDON}/info 2>&1)
+					CURL_EXIT=$?
+
+					if [ "$CURL_EXIT" -ne 0 ]; then
+						bashio::log.warning "Certificate Manager - Failed to query add-on state: ${ADDON}"
+						bashio::log.warning "  curl exit code: $CURL_EXIT"
+						bashio::log.warning "  response: $INFO_OUTPUT"
+						continue
+					fi
+
+					STATE=$(echo "$INFO_OUTPUT" | jq -r '.data.state')
+
+					if [[ "$STATE" == "started" ]]; then
+
+						bashio::log.info "Certificate Manager - Restarting add-on: ${ADDON}"
+
+						RESTART_OUTPUT=$(curl --fail -s -X POST \
+						  -H "Authorization: Bearer $HASSIO_TOKEN" \
+						  -H "Content-Type: application/json" \
+						  http://hassio/addons/${ADDON}/restart 2>&1)
+						CURL_EXIT=$?
+
+						if [ "$CURL_EXIT" -eq 0 ]; then
+							bashio::log.info "Certificate Manager - Restarted add-on: ${ADDON}"
+						else
+							bashio::log.warning "Certificate Manager - Failed to restart add-on: ${ADDON}"
+							bashio::log.warning "  curl exit code: $CURL_EXIT"
+							bashio::log.warning "  response: $RESTART_OUTPUT"
+						fi
+					
+					else
+						bashio::log.warning "Certificate Manager - ${ADDON} is not running (state: $STATE)"
+					fi
+				done
+			fi
+		elif echo "$CERTBOT_OUTPUT" | grep -q "Certificate not yet due for renewal"; then
+			bashio::log.info "Certificate Manager - Current certificate is valid"
+		elif [[ "$VERBOSE" == "false" ]]; then
+			bashio::log.warning "Certificate Manager - Unexpected Certbot output:"
+			while IFS= read -r line; do
+				bashio::log.warning "  $line"
+			done <<< "$CERTBOT_OUTPUT"
+		fi
+	fi
+}
+
+check_cert_dates() {
+    POST_CHECK="false"
+    bashio::log.info "Certificate Manager - Checking certificate dates"
+    mqtt_publish "last_cert_check" "$(date -Is)"
+
+    CERT_PATH="/data/letsencrypt/live/$DYNU_HOSTNAME/cert.pem"
+
+    if [[ -f "$CERT_PATH" ]]; then
+        CREATED_RAW=$(openssl x509 -in "$CERT_PATH" -noout -startdate 2>/dev/null | cut -d= -f2)
+        EXPIRY_RAW=$(openssl x509 -in "$CERT_PATH" -noout -enddate 2>/dev/null | cut -d= -f2)
+
+        # If parsing fails, force renewal
+        if [[ -z "$CREATED_RAW" || -z "$EXPIRY_RAW" ]]; then
+            bashio::log.warning "Certificate Manager - Unable to parse certificate dates"
+            mqtt_publish "last_cert_status" "false"
+            renew_cert
+            POST_CHECK="true"
+        else
+            CREATED_ISO=$(date -u -d "$CREATED_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
+            EXPIRY_ISO=$(date -u -d "$EXPIRY_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
+
+            mqtt_publish "cert_expires" "$EXPIRY_ISO"
+            mqtt_publish "last_cert_renewal" "$CREATED_ISO"
+
+            EXPIRY_EPOCH=$(date -d "$EXPIRY_RAW" +%s)
+            NOW_EPOCH=$(date +%s)
+            SEVEN_DAYS=$(( NOW_EPOCH + 7*24*60*60 ))
+			
+			bashio::log.info "Certificate Manager - Certificate expires $EXPIRY_ISO"
+			
+            if (( EXPIRY_EPOCH < NOW_EPOCH )); then
+                bashio::log.info "Certificate Manager - Certificate expired, renewing"
+				mqtt_publish "last_cert_status" "false"
+                renew_cert
+                POST_CHECK="true"
+            elif (( EXPIRY_EPOCH <= SEVEN_DAYS )); then
+				bashio::log.info "Certificate Manager - Certificate expires in less than 7 days, renewing"
+                mqtt_publish "last_cert_status" "true"
+                renew_cert
+                POST_CHECK="true"
+            else
+				bashio::log.info "Certificate Manager - Certificate does not require renewing"
+                mqtt_publish "last_cert_status" "true"
+            fi
+        fi
+    else
+        bashio::log.warning "Certificate Manager - Certificate missing/not yet created"
+        mqtt_publish "last_cert_status" "false"
+        renew_cert
+        POST_CHECK="true"
+    fi
+
+    # Post-renewal verification
+    if [[ "$POST_CHECK" == "true" ]]; then
+        if [[ -f "$CERT_PATH" ]]; then
+            CREATED_RAW=$(openssl x509 -in "$CERT_PATH" -noout -startdate 2>/dev/null | cut -d= -f2)
+            EXPIRY_RAW=$(openssl x509 -in "$CERT_PATH" -noout -enddate 2>/dev/null | cut -d= -f2)
+
+            if [[ -n "$CREATED_RAW" && -n "$EXPIRY_RAW" ]]; then
+                CREATED_ISO=$(date -u -d "$CREATED_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
+                EXPIRY_ISO=$(date -u -d "$EXPIRY_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
+
+                mqtt_publish "cert_expires" "$EXPIRY_ISO"
+                mqtt_publish "last_cert_renewal" "$CREATED_ISO"
+
+                EXPIRY_EPOCH=$(date -d "$EXPIRY_RAW" +%s)
+                NOW_EPOCH=$(date +%s)
+
+                if (( EXPIRY_EPOCH < NOW_EPOCH )); then
+                    mqtt_publish "last_cert_status" "false"
+                else
+                    mqtt_publish "last_cert_status" "true"
+                fi
+            else
+                bashio::log.warning "Certificate Manager - Unable to parse renewed certificate dates."
+                mqtt_publish "last_cert_status" "false"
+            fi
+        else
+            bashio::log.warning "Certificate Manager - Certificate missing after renewal. Check the logs for more information"
+            mqtt_publish "last_cert_status" "false"
+        fi
+    fi
 }
 
 if [[ -f /run/dynu-run-certbot.sh ]]; then
@@ -65,95 +205,7 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 	done
 
 	while true; do
-		bashio::log.info "Certificate Manager - Running certificate renewal"
-		update_status_json "last_cert_check" "$(date -Is)"
-		
-		if [[ "$VERBOSE" == "false" ]]; then
-			/run/dynu-run-certbot.sh > /tmp/certbot.out 2>&1
-			CERTBOT_EXIT=$?
-		else
-			/run/dynu-run-certbot.sh 2>&1 | tee /tmp/certbot.out
-			CERTBOT_EXIT=${PIPESTATUS[0]}
-		fi
-
-		# Load output into a variable
-		CERTBOT_OUTPUT=$(cat /tmp/certbot.out)
-			
-		# If certbot failed
-		if [ "$CERTBOT_EXIT" -ne 0 ]; then
-			bashio::log.error "Certificate Manager - Certbot failed with code $CERTBOT_EXIT"
-			if [[ "$VERBOSE" == "false" ]]; then
-				while IFS= read -r line; do
-					bashio::log.error "  $line"
-				done <<< "$CERTBOT_OUTPUT"
-			fi
-			update_status_json "last_cert_status" "true"
-		else
-			# If certbot succeeded, check if certificate was updated
-			
-			if echo "$CERTBOT_OUTPUT" | grep -q "Successfully received certificate"; then
-				bashio::log.info "Certificate Manager - New certificate received"
-				
-				# Get the last modified cert directory and copy the cert and private key to store
-				CERT_DIR_LATEST="$(ls -td $CERT_DIR/live/*/ | head -1)"
-				cp "${CERT_DIR_LATEST}privkey.pem" "/ssl/$KEYFILE"
-				cp "${CERT_DIR_LATEST}fullchain.pem" "/ssl/$CERTFILE"
-				
-				update_cert_dates
-				
-				if bashio::config.has_value 'restart_addons'; then
-					for index in $(bashio::config 'restart_addons|keys'); do
-						sleep 1
-						RAW_ADDON=$(bashio::config "restart_addons[${index}]")
-						ADDON="${RAW_ADDON//-/_}"
-
-						INFO_OUTPUT=$(curl --fail -s \
-						  -H "Authorization: Bearer $HASSIO_TOKEN" \
-						  http://hassio/addons/${ADDON}/info 2>&1)
-						CURL_EXIT=$?
-
-						if [ "$CURL_EXIT" -ne 0 ]; then
-							bashio::log.warning "Certificate Manager - Failed to query add-on state: ${ADDON}"
-							bashio::log.warning "  curl exit code: $CURL_EXIT"
-							bashio::log.warning "  response: $INFO_OUTPUT"
-							continue
-						fi
-
-						STATE=$(echo "$INFO_OUTPUT" | jq -r '.data.state')
-
-						if [[ "$STATE" == "started" ]]; then
-
-							bashio::log.info "Certificate Manager - Restarting add-on: ${ADDON}"
-
-							RESTART_OUTPUT=$(curl --fail -s -X POST \
-							  -H "Authorization: Bearer $HASSIO_TOKEN" \
-							  -H "Content-Type: application/json" \
-							  http://hassio/addons/${ADDON}/restart 2>&1)
-							CURL_EXIT=$?
-
-							if [ "$CURL_EXIT" -eq 0 ]; then
-								bashio::log.info "Certificate Manager - Restarted add-on: ${ADDON}"
-							else
-								bashio::log.warning "Certificate Manager - Failed to restart add-on: ${ADDON}"
-								bashio::log.warning "  curl exit code: $CURL_EXIT"
-								bashio::log.warning "  response: $RESTART_OUTPUT"
-							fi
-						
-						else
-							bashio::log.warning "Certificate Manager - ${ADDON} is not running (state: $STATE)"
-						fi
-					done
-				fi
-			elif echo "$CERTBOT_OUTPUT" | grep -q "Certificate not yet due for renewal"; then
-				update_cert_dates
-			elif [[ "$VERBOSE" == "false" ]]; then
-				update_status_json "last_cert_status" "true"
-				bashio::log.warning "Certificate Manager - Unexpected Certbot output:"
-				while IFS= read -r line; do
-					bashio::log.warning "  $line"
-				done <<< "$CERTBOT_OUTPUT"
-			fi
-		fi
+		check_cert_dates
 
 		now=$(date +%s)
 		today_target=$(date -d "$(date +%Y-%m-%d) $CERT_TIME" +%s)
