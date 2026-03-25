@@ -33,12 +33,57 @@ export PORT="$PORT"
 
 PROPAGATION_SECONDS=180
 
+bashio::log.info "Dynu Updater Initialisation - Generating configuration"
+
 # MQTT connection
 USE_MQTT=$(bashio::config 'mqtt' 'false')
-MQTT_HOST=$(bashio::services 'mqtt' 'host')
-MQTT_PORT=$(bashio::services 'mqtt' 'port')
-MQTT_USER=$(bashio::services 'mqtt' 'username')
-MQTT_PASSWORD=$(bashio::services 'mqtt' 'password')
+MQTT_HOST=$(bashio::config 'mqtt_host' '')
+MQTT_USER=$(bashio::config 'mqtt_user' '')
+MQTT_PASSWORD=$(bashio::config 'mqtt_password' '')
+MQTT_PORT=$(bashio::config 'mqtt_port' '')
+
+if [[ -z "$MQTT_HOST" ]]; then
+	MQTT_HOST=$(bashio::services mqtt host)
+fi
+if [[ -z "$MQTT_USER" ]]; then
+	MQTT_USER=$(bashio::services mqtt username)
+fi
+if [[ -z "$MQTT_PASSWORD" ]]; then
+	MQTT_PASSWORD=$(bashio::services mqtt password)
+fi
+if [[ -z "$MQTT_PORT" ]]; then
+	MQTT_PORT=$(bashio::services mqtt port)
+fi
+
+if [[ "$USE_MQTT" == "true" && ( -z "$MQTT_HOST" || -z "$MQTT_USER" || -z "$MQTT_PASSWORD" || -z "$MQTT_PORT" ) ]]; then
+	bashio::log.warning "Dynu Updater Initialisation - Invalid MQTT Credentials"
+	USE_MQTT="false"
+elif [[ "$USE_MQTT" == "true" ]]; then
+	local test_topic="dynu_updater/selftest"
+    local test_payload="selftest_$(date +%s)"
+	if ! mosquitto_pub \
+		-h "$MQTT_HOST" \
+		-u "$MQTT_USER" \
+		-P "$MQTT_PASSWORD" \
+		-p "$MQTT_PORT" \
+		-t "$test_topic" \
+		-m "$test_payload" \
+		-q 1 \
+		>/dev/null 2>&1; then
+		bashio::log.warning "Dynu Updater Initialisation - Unable to connect to MQTT Host"
+		USE_MQTT="false"
+	fi
+fi
+
+jq -n \
+  --arg mqtt "$USE_MQTT" \
+  --arg host "$MQTT_HOST" \
+  --arg port "$MQTT_PORT" \
+  --arg user "$MQTT_USER" \
+  --arg password "$MQTT_PASSWORD" \
+  '{mqtt: $mqtt, host: $host, port: $port, user: $user, password: $password}' \
+  > /run/dynu-mqtt.conf
+
 
 # Device metadata
 DEVICE_ID="dynu_updater_$(hostname)"

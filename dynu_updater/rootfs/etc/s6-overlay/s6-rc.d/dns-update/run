@@ -8,11 +8,13 @@
 DYNU_HOSTNAME=$(bashio::config 'dynu_hostname' | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
 PASSWORD=$(bashio::config 'dynu_update_password' | xargs)
 VERBOSE=$(bashio::config 'verbose' 'false')
-USE_MQTT=$(bashio::config 'mqtt' 'false')
-MQTT_HOST=$(bashio::services 'mqtt' 'host')
-MQTT_PORT=$(bashio::services 'mqtt' 'port')
-MQTT_USER=$(bashio::services 'mqtt' 'username')
-MQTT_PASSWORD=$(bashio::services 'mqtt' 'password')
+
+MQTT_CONF="/run/dynu-mqtt.conf"
+USE_MQTT=$(jq -r '.mqtt' "$MQTT_CONF")
+MQTT_HOST=$(jq -r '.host' "$MQTT_CONF")
+MQTT_PORT=$(jq -r '.port' "$MQTT_CONF")
+MQTT_USER=$(jq -r '.user' "$MQTT_CONF")
+MQTT_PASSWORD=$(jq -r '.password' "$MQTT_CONF")
 
 mqtt_publish() {
     if [[ "$USE_MQTT" == "true" ]]; then

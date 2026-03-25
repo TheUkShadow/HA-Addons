@@ -11,12 +11,14 @@ KEYFILE=$(bashio::config 'keyfile' | xargs)
 CERTFILE=$(bashio::config 'certfile' | xargs)
 CERT_TIME=$(bashio::config 'update_cert_time' | xargs)
 VERBOSE=$(bashio::config 'verbose' 'false')
-USE_MQTT=$(bashio::config 'mqtt' 'false')
-MQTT_HOST=$(bashio::services 'mqtt' 'host')
-MQTT_PORT=$(bashio::services 'mqtt' 'port')
-MQTT_USER=$(bashio::services 'mqtt' 'username')
-MQTT_PASSWORD=$(bashio::services 'mqtt' 'password')
 CERT_DIR=/data/letsencrypt
+
+MQTT_CONF="/run/dynu-mqtt.conf"
+USE_MQTT=$(jq -r '.mqtt' "$MQTT_CONF")
+MQTT_HOST=$(jq -r '.host' "$MQTT_CONF")
+MQTT_PORT=$(jq -r '.port' "$MQTT_CONF")
+MQTT_USER=$(jq -r '.user' "$MQTT_CONF")
+MQTT_PASSWORD=$(jq -r '.password' "$MQTT_CONF")
 
 mqtt_publish() {
     if [[ "$USE_MQTT" == "true" ]]; then
