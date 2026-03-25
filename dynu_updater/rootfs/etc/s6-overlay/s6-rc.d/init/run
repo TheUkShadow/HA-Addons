@@ -163,7 +163,7 @@ DEVICE_ID="dynu_updater_$(hostname)"
 DEVICE_NAME="Dynu Updater"
 MANUFACTURER="Philip"
 MODEL="Dynu Updater Add-on"
-SW_VERSION="1.0.0"
+SW_VERSION=$(bashio::addon.version)
 
 # Shared availability topic
 AVAIL_TOPIC="dynu_updater/availability"
