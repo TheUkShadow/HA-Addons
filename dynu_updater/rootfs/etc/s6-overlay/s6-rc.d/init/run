@@ -59,15 +59,15 @@ if [[ "$USE_MQTT" == "true" && ( -z "$MQTT_HOST" || -z "$MQTT_USER" || -z "$MQTT
 	bashio::log.warning "Dynu Updater Initialisation - Invalid MQTT Credentials"
 	USE_MQTT="false"
 elif [[ "$USE_MQTT" == "true" ]]; then
-	local test_topic="dynu_updater/selftest"
-    local test_payload="selftest_$(date +%s)"
+	TEST_TOPIC="dynu_updater/selftest"
+    TEST_PAYLOAD="selftest_$(date +%s)"
 	if ! mosquitto_pub \
 		-h "$MQTT_HOST" \
 		-u "$MQTT_USER" \
 		-P "$MQTT_PASSWORD" \
 		-p "$MQTT_PORT" \
-		-t "$test_topic" \
-		-m "$test_payload" \
+		-t "$TEST_TOPIC" \
+		-m "$TEST_PAYLOAD" \
 		-q 1 \
 		>/dev/null 2>&1; then
 		bashio::log.warning "Dynu Updater Initialisation - Unable to connect to MQTT Host"
