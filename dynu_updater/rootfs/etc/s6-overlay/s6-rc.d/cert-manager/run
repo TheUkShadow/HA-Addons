@@ -11,6 +11,11 @@ KEYFILE=$(bashio::config 'keyfile' | xargs)
 CERTFILE=$(bashio::config 'certfile' | xargs)
 CERT_TIME=$(bashio::config 'update_cert_time' | xargs)
 VERBOSE=$(bashio::config 'verbose' 'false')
+USE_MQTT=$(bashio::config 'mqtt' 'false')
+MQTT_HOST=$(bashio::services 'mqtt' 'host')
+MQTT_PORT=$(bashio::services 'mqtt' 'port')
+MQTT_USER=$(bashio::services 'mqtt' 'username')
+MQTT_PASSWORD=$(bashio::services 'mqtt' 'password')
 CERT_DIR=/data/letsencrypt
 
 mqtt_publish() {

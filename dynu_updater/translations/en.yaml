@@ -1,5 +1,8 @@
 ---
 configuration:
+  mqtt:
+    name: MQTT
+    description: Creates MQTT Sensors for use in automations, etc.
   update_cert_time:
     name: Certificate Check Time
     description: The time of day to check the certifcate renewal status (00:00 - 23:59)

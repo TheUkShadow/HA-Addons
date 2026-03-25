@@ -34,17 +34,11 @@ export PORT="$PORT"
 PROPAGATION_SECONDS=180
 
 # MQTT connection
-
+USE_MQTT=$(bashio::config 'mqtt' 'false')
 MQTT_HOST=$(bashio::services 'mqtt' 'host')
 MQTT_PORT=$(bashio::services 'mqtt' 'port')
 MQTT_USER=$(bashio::services 'mqtt' 'username')
 MQTT_PASSWORD=$(bashio::services 'mqtt' 'password')
-USE_MQTT="true"
-export USE_MQTT="$USE_MQTT"
-export MQTT_HOST="$MQTT_HOST"
-export MQTT_PORT="$MQTT_PORT"
-export MQTT_USER="$MQTT_USER"
-export MQTT_PASSWORD="$MQTT_PASSWORD"
 
 # Device metadata
 DEVICE_ID="dynu_updater_$(hostname)"
