@@ -257,7 +257,7 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 		check_cert_dates
 		
 		NEXT_RUN_ISO=$(date -Is -d "@$(( $(date +%s) + LOOP_SLEEP ))")
-		bashio::log.info "Certificate Manager - Next renewal check scheduled at $NEXT_RUN_ISO"
+		bashio::log.info "Certificate Manager - Next renewal check: $NEXT_RUN_ISO"
 		mqtt_publish "next_cert_check" "$NEXT_RUN_ISO"
 		
 		sleep "$LOOP_SLEEP"
