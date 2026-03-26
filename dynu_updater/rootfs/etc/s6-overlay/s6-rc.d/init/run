@@ -510,7 +510,7 @@ if [[ "$DNS_VALID" == "false" ]] && [[ "$CERT_VALID" == "false" ]]; then
 fi
 
 if [[ "$USE_MQTT" == "true" ]]; then
-	publish_discovery "last_ip_check" "Last DNS Check" "timestamp" \
+	publish_discovery "last_ip_check" "Last IP Check" "timestamp" \
 	  "dynu_updater/last_ip_check" "sensor" ""
 
 	publish_discovery "last_ip_update" "Last IP Update" "timestamp" \
