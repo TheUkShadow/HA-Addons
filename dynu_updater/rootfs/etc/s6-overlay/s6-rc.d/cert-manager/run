@@ -21,10 +21,10 @@ if bashio::config.has_value 'certfile'; then
 else
 	CERTFILE="fullchain.pem"
 fi
-if bashio::config.has_value 'update_cert_time'; then
-	CERT_TIME=$(bashio::config 'update_cert_time' | xargs)
+if bashio::config.has_value 'update_cert_days'; then
+	CHECK_DAYS=$(bashio::config 'update_cert_days')
 else
-	CERT_TIME="00:00"
+	CHECK_DAYS=30
 fi
 if bashio::config.true 'verbose'; then
     VERBOSE="true"
@@ -32,6 +32,8 @@ else
     VERBOSE="false"
 fi
 CERT_DIR=/data/letsencrypt
+
+LOOP_SLEEP=600
 
 MQTT_CONF="/run/dynu-mqtt.conf"
 USE_MQTT=$(jq -r '.mqtt' "$MQTT_CONF")
@@ -43,16 +45,19 @@ MQTT_PASSWORD=$(jq -r '.password' "$MQTT_CONF")
 mqtt_publish() {
     if [[ "$USE_MQTT" == "true" ]]; then
         local topic="$1"
-		local payload="$2"
+        local payload="$2"
 
-		mosquitto_pub \
-			-h "$MQTT_HOST" \
-			-p "$MQTT_PORT" \
-			-u "$MQTT_USER" \
-			-P "$MQTT_PASSWORD" \
-			-t "dynu_updater/$topic" \
-			-m "$payload" \
-			-r
+        if ! mosquitto_pub \
+            -h "$MQTT_HOST" \
+            -p "$MQTT_PORT" \
+            -u "$MQTT_USER" \
+            -P "$MQTT_PASSWORD" \
+            -t "dynu_updater/$topic" \
+            -m "$payload" \
+            -r; then
+
+            bashio::log.warning "Certificate Manager - MQTT publish failed: Topic=$topic"
+        fi
     fi
 }
 
@@ -83,7 +88,7 @@ renew_cert() {
 			bashio::log.info "Certificate Manager - New certificate received"
 			
 			# Get the last modified cert directory and copy the cert and private key to store
-			CERT_DIR_LATEST="$(ls -td $CERT_DIR/live/*/ | head -1)"
+			CERT_DIR_LATEST=$(ls -td "$CERT_DIR"/live/*/ 2>/dev/null | head -1)
 			if [[ -z "$CERT_DIR_LATEST" ]]; then
 				bashio::log.error "Certificate Manager - Unable to locate latest certificate directory"
 				return
@@ -187,7 +192,12 @@ check_cert_dates() {
                 POST_CHECK="true"
             else
 				bashio::log.info "Certificate Manager - Certificate does not require renewing"
-                mqtt_publish "last_cert_status" "true"
+                RENEW_EPOCH=$(( EXPIRY_EPOCH - (CHECK_DAYS * 86400) ))
+				LOOP_SLEEP=$(( RENEW_EPOCH - NOW_EPOCH ))
+				if (( LOOP_SLEEP < 0 )); then
+					LOOP_SLEEP=600
+				fi
+				mqtt_publish "last_cert_status" "true"
             fi
         fi
     else
@@ -215,16 +225,24 @@ check_cert_dates() {
 
                 if (( EXPIRY_EPOCH < NOW_EPOCH )); then
                     mqtt_publish "last_cert_status" "false"
+					LOOP_SLEEP=600
                 else
+					RENEW_EPOCH=$(( EXPIRY_EPOCH - (CHECK_DAYS * 86400) ))
+					LOOP_SLEEP=$(( RENEW_EPOCH - NOW_EPOCH ))
+					if (( LOOP_SLEEP < 0 )); then
+						LOOP_SLEEP=600
+					fi
                     mqtt_publish "last_cert_status" "true"
                 fi
             else
                 bashio::log.warning "Certificate Manager - Unable to parse renewed certificate dates."
                 mqtt_publish "last_cert_status" "false"
+				LOOP_SLEEP=600
             fi
         else
             bashio::log.warning "Certificate Manager - Certificate missing after renewal. Check the logs for more information"
             mqtt_publish "last_cert_status" "false"
+			LOOP_SLEEP=600
         fi
     fi
 }
@@ -237,23 +255,12 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 
 	while true; do
 		check_cert_dates
-
-		now=$(date +%s)
-		today_target=$(date -d "$(date +%Y-%m-%d) $CERT_TIME" +%s)
 		
-		# If the target time has already passed today, schedule for tomorrow
-		if (( today_target <= now )); then
-			next_run=$(date -d "tomorrow $CERT_TIME" +%s)
-			TM="Tomorrow"
-		else
-			next_run=$today_target
-			TM="Today"
-		fi
-
-		sleep_seconds=$(( next_run - now ))
-
-		bashio::log.info "Certificate Manager - Sleeping until next run at $CERT_TIME ($TM)"
-		sleep "$sleep_seconds"
+		NEXT_RUN_ISO=$(date -Is -d "@$(( $(date +%s) + LOOP_SLEEP ))")
+		bashio::log.info "Certificate Manager - Next renewal check scheduled at $NEXT_RUN_ISO"
+		mqtt_publish "next_cert_check" "$NEXT_RUN_ISO"
+		
+		sleep "$LOOP_SLEEP"
 	done
 else
 	sleep infinity

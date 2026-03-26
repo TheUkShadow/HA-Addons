@@ -31,20 +31,23 @@ MQTT_PASSWORD=$(jq -r '.password' "$MQTT_CONF")
 mqtt_publish() {
     if [[ "$USE_MQTT" == "true" ]]; then
         local topic="$1"
-		local payload="$2"
+        local payload="$2"
 
-		mosquitto_pub \
-			-h "$MQTT_HOST" \
-			-p "$MQTT_PORT" \
-			-u "$MQTT_USER" \
-			-P "$MQTT_PASSWORD" \
-			-t "dynu_updater/$topic" \
-			-m "$payload" \
-			-r
+        if ! mosquitto_pub \
+            -h "$MQTT_HOST" \
+            -p "$MQTT_PORT" \
+            -u "$MQTT_USER" \
+            -P "$MQTT_PASSWORD" \
+            -t "dynu_updater/$topic" \
+            -m "$payload" \
+            -r; then
+
+            bashio::log.warning "Dynu DNS Updater - MQTT publish failed: Topic=$topic"
+        fi
     fi
 }
 
-bashio::log.info "Dynu DDNS updater - starting"
+bashio::log.info "Dynu DNS Updater - Started"
 
 if [[ -f /run/dynu-dns.conf ]]; then
 	
@@ -65,7 +68,7 @@ if [[ -f /run/dynu-dns.conf ]]; then
 
 	while true; do
 		if [[ "$VERBOSE" == "true" ]]; then
-			bashio::log.info "Dynu DDNS updater - Checking current IP addresses"
+			bashio::log.info "Dynu DNS Updater - Checking current IP addresses"
 		fi
 		
 		mqtt_publish "last_ip_check" "$(date -Is)"
@@ -74,11 +77,11 @@ if [[ -f /run/dynu-dns.conf ]]; then
 		IPV4=$(curl -4 -s --fail --max-time 5 https://icanhazip.com | tr -d '[:space:]')
 
 		if [[ -z "$IPV4" ]]; then
-			bashio::log.error "Dynu DDNS updater - unable to confirm IPv4 address"
+			bashio::log.error "Dynu DNS Updater - Unable to confirm current IPv4 address"
 		fi
 		
 		if [[ -n "$IPV4" && ! "$IPV4" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
-			bashio::log.error "Dynu DDNS updater - invalid IPv4 format returned: $IPV4"
+			bashio::log.error "Dynu DNS Updater - Invalid IPv4 format returned: $IPV4"
 			IPV4=""
 		fi
 
@@ -87,11 +90,11 @@ if [[ -f /run/dynu-dns.conf ]]; then
 			IPV6=$(curl -6 -s --fail --max-time 5 https://icanhazip.com | tr -d '[:space:]')
 
 			if [[ -z "$IPV6" ]]; then
-				bashio::log.error "Dynu DDNS updater - unable to confirm IPv6 address"
+				bashio::log.error "Dynu DNS Updater - Unable to confirm current IPv6 address"
 			fi
 			
 			if [[ -n "$IPV6" && ! "$IPV6" =~ ^([0-9a-fA-F:]+)$ ]]; then
-				bashio::log.error "Dynu DDNS updater - invalid IPv6 format returned: $IPV6"
+				bashio::log.error "Dynu DNS Updater - invalid IPv6 format returned: $IPV6"
 				IPV6=""
 			fi
 			
@@ -103,18 +106,18 @@ if [[ -f /run/dynu-dns.conf ]]; then
 			if { [[ -n "$IPV4" && "$IPV4" != "$LAST_IPV4" ]]; } \
 			   || { [[ -n "$IPV6" && "$IPV6" != "$LAST_IPV6" ]]; }; then
 
-				bashio::log.info "Dynu DDNS updater - detected IP change"
-				bashio::log.info "Dynu DDNS updater - New IPv4 = ${IPV4}"
+				bashio::log.info "Dynu DNS Updater - Detected IP change"
+				bashio::log.info "Dynu DNS Updater - New IPv4 address = ${IPV4}"
 				if [[ "$DYNU_IPV6_ENABLED" == "true" ]]; then
-					bashio::log.info "Dynu DDNS updater - New IPv6 = ${IPV6}"
+					bashio::log.info "Dynu DNS Updater - New IPv6 address = ${IPV6}"
 				fi
 
 				for DOMAIN in "${DOMAIN_ARR[@]}"; do
 					if [[ "$DOMAIN" == "$DYNU_HOSTNAME" ]]; then
-						bashio::log.info "Dynu DDNS updater - updating Host ${DOMAIN}"
+						bashio::log.info "Dynu DNS Updater - Updating Host ${DOMAIN}"
 						COMMAND="https://api.dynu.com/nic/update?hostname=${DYNU_HOSTNAME}&password=${PASSWORD}"
 					else
-						bashio::log.info "Dynu DDNS updater - updating Alias ${DOMAIN}"
+						bashio::log.info "Dynu DNS Updater - Updating Alias ${DOMAIN}"
 						ALIAS="${DOMAIN%.$DYNU_HOSTNAME}"
 						COMMAND="https://api.dynu.com/nic/update?hostname=${DYNU_HOSTNAME}&alias=${ALIAS}&password=${PASSWORD}"
 					fi
@@ -129,7 +132,7 @@ if [[ -f /run/dynu-dns.conf ]]; then
 
 					RESPONSE="$(curl -s "${COMMAND}" || echo "No response")"
 
-					bashio::log.info "Dynu DDNS updater - Server response = $RESPONSE"
+					bashio::log.info "Dynu DNS Updater - Server responded: $RESPONSE"
 
 				done
 
@@ -149,12 +152,12 @@ if [[ -f /run/dynu-dns.conf ]]; then
 				fi
 				
 			elif [[ "$VERBOSE" == "true" ]]; then
-				bashio::log.info "Dynu DDNS updater - No update required"
+				bashio::log.info "Dynu DNS Updater - No update required"
 			fi
 			mqtt_publish "wan_connection" "true"
 		else
 			mqtt_publish "wan_connection" "false"
-			bashio::log.error "Dynu DDNS updater - No IP data retrieved"
+			bashio::log.error "Dynu DNS Updater - Unable to retrieve current IP address data"
 		fi
 		
 		if [[ ! -f /run/dynu-dns-update.ready ]]; then

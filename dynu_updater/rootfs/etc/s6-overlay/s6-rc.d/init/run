@@ -12,6 +12,8 @@ ACME_ARGUMENTS=()
 KEY_ARGUMENTS=()
 ADDITIONAL_ARGS=()
 
+bashio::log.info "Dynu Updater Initialisation - Generating service configuration"
+
 if bashio::config.has_value 'dynu_hostname'; then
 	DYNU_HOSTNAME=$(bashio::config 'dynu_hostname' | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
 else
@@ -84,8 +86,6 @@ else
 fi
 
 PROPAGATION_SECONDS=180
-
-bashio::log.info "Dynu Updater Initialisation - Generating configuration"
 
 # MQTT connection
 
@@ -171,18 +171,22 @@ AVAIL_TOPIC="dynu_updater/availability"
 mqtt_publish() {
     if [[ "$USE_MQTT" == "true" ]]; then
         local topic="$1"
-		local payload="$2"
+        local payload="$2"
 
-		mosquitto_pub \
-			-h "$MQTT_HOST" \
-			-p "$MQTT_PORT" \
-			-u "$MQTT_USER" \
-			-P "$MQTT_PASSWORD" \
-			-t "dynu_updater/$topic" \
-			-m "$payload" \
-			-r
+        if ! mosquitto_pub \
+            -h "$MQTT_HOST" \
+            -p "$MQTT_PORT" \
+            -u "$MQTT_USER" \
+            -P "$MQTT_PASSWORD" \
+            -t "dynu_updater/$topic" \
+            -m "$payload" \
+            -r; then
+
+            bashio::log.warning "Dynu Updater Initialisation - MQTT publish failed: Topic=$topic"
+        fi
     fi
 }
+
 
 publish_discovery() {
   local entity_id="$1"
@@ -518,6 +522,9 @@ if [[ "$USE_MQTT" == "true" ]]; then
 	publish_discovery "current_ipv6" "Current IPv6" "" \
 	  "dynu_updater/current_ipv6" "sensor" ""
 
+	publish_discovery "next_cert_check" "Next Certificate Check" "timestamp" \
+	  "dynu_updater/next_cert_check" "sensor" ""
+	  
 	publish_discovery "last_cert_check" "Last Certificate Check" "timestamp" \
 	  "dynu_updater/last_cert_check" "sensor" ""
 

@@ -15,9 +15,9 @@ configuration:
   mqtt_password:
     name: MQTT Password
     description: The password for the custom MQTT server.
-  update_cert_time:
+  update_cert_days:
     name: Certificate Check Time
-    description: The time of day to check the certifcate renewal status (00:00 - 23:59)
+    description: This is the number of days before the certificate expires to generate a new certificate (1 - 30)
   update_ip:
     name: Update IP Addresses
     description: The addon will monitor and update IP addresses for the hostnames listed in DNS Update Hostnames
