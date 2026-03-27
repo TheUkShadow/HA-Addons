@@ -443,16 +443,17 @@ if [[ "$DNS_VALID" == "false" && "$CERT_VALID" == "false" ]]; then
 fi
 
 ENTITIES=(
-  "last_ip_check|Last IP Check|timestamp|dynu_updater/last_ip_check|sensor||mdi:clock-check|dns"
-  "last_ip_update|Last IP Update|timestamp|dynu_updater/last_ip_update|sensor||mdi:update|dns"
-  "current_ipv4|Current IPv4||dynu_updater/current_ipv4|sensor||mdi:ip-network|dns"
-  "current_ipv6|Current IPv6||dynu_updater/current_ipv6|sensor||mdi:ip-network-outline|dns"
-  "next_cert_check|Next Certificate Check|timestamp|dynu_updater/next_cert_check|sensor||mdi:calendar-clock|cert"
-  "last_cert_check|Last Certificate Check|timestamp|dynu_updater/last_cert_check|sensor||mdi:certificate-outline|cert"
-  "last_cert_status|Certificate Valid|problem|dynu_updater/last_cert_status|binary_sensor|\"payload_on\": \"false\", \"payload_off\": \"true\",|mdi:shield-check|dns"
-  "wan_connection|WAN Connection|connectivity|dynu_updater/wan_connection|binary_sensor|\"payload_on\": \"true\", \"payload_off\": \"false\",|mdi:wan|dns"
-  "cert_expires|Certificate Expires|timestamp|dynu_updater/cert_expires|sensor||mdi:calendar-alert|dns"
-  "last_cert_renewal|Last Certificate Renewal|timestamp|dynu_updater/last_cert_renewal|sensor||mdi:certificate|dns"
+  "force_cert_renew|Force Certificate Renewal||dynu_updater/force_cert_renew|button||mdi:refresh|cert|dynu_updater/service/force_cert_renew"
+  "last_ip_check|Last IP Check|timestamp|dynu_updater/last_ip_check|sensor||mdi:clock-check|dns|"
+  "last_ip_update|Last IP Update|timestamp|dynu_updater/last_ip_update|sensor||mdi:update|dns|"
+  "current_ipv4|Current IPv4||dynu_updater/current_ipv4|sensor||mdi:ip-network|dns|"
+  "current_ipv6|Current IPv6||dynu_updater/current_ipv6|sensor||mdi:ip-network-outline|dns|"
+  "next_cert_check|Next Certificate Check|timestamp|dynu_updater/next_cert_check|sensor||mdi:calendar-clock|cert|"
+  "last_cert_check|Last Certificate Check|timestamp|dynu_updater/last_cert_check|sensor||mdi:certificate-outline|cert|"
+  "last_cert_status|Certificate Valid|problem|dynu_updater/last_cert_status|binary_sensor|\"payload_on\": \"false\", \"payload_off\": \"true\",|mdi:shield-check|dns|"
+  "wan_connection|WAN Connection|connectivity|dynu_updater/wan_connection|binary_sensor|\"payload_on\": \"true\", \"payload_off\": \"false\",|mdi:wan|dns|"
+  "cert_expires|Certificate Expires|timestamp|dynu_updater/cert_expires|sensor||mdi:calendar-alert|dns|"
+  "last_cert_renewal|Last Certificate Renewal|timestamp|dynu_updater/last_cert_renewal|sensor||mdi:certificate|dns|"
 )
 
 
@@ -475,6 +476,7 @@ publish_discovery() {
 		local component="$5"
 		local extra="$6"
 		local icon="$7"
+		local command_topic="$8"
 
 		# Only include device_class if non-empty
 		local device_class_json=""
@@ -482,12 +484,17 @@ publish_discovery() {
 			device_class_json="\"device_class\": \"${device_class}\","
 		fi
 		
+		local icon_json=""
 		if [[ -n "$icon" ]]; then
 			icon_json="\"icon\": \"${icon}\","
-		else
-			icon_json=""
 		fi
-
+		
+		# Only include command_topic if non-empty
+        local command_topic_json=""
+        if [[ -n "$command_topic" ]]; then
+            command_topic_json="\"command_topic\": \"${command_topic}\","
+        fi
+		
 		# Per‑entity availability topic
 		local entity_avail_topic="dynu_updater/${entity_id}/availability"
 
@@ -505,6 +512,7 @@ publish_discovery() {
 			    \"payload_not_available\": \"offline\",
 			    ${device_class_json}
 				${icon_json}
+				${command_topic_json}
 			    ${extra}
 			    \"device\": {
 				  \"identifiers\": [\"${DEVICE_ID}\"],
@@ -542,7 +550,7 @@ mqtt_publish() {
 ENTITY_JSON="["
 
 for entry in "${ENTITIES[@]}"; do
-	IFS="|" read -r entity_id name device_class state_topic component extra icon service <<< "$entry"
+	IFS="|" read -r entity_id name device_class state_topic component extra icon service command <<< "$entry"
 
 	publish_discovery \
 		"$entity_id" \
@@ -551,7 +559,8 @@ for entry in "${ENTITIES[@]}"; do
 		"$state_topic" \
 		"$component" \
 		"$extra" \
-		"$icon"
+		"$icon" \
+		"$command"
 
 	# Publish initial per‑entity availability
 	STATE="online"

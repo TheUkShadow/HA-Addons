@@ -41,6 +41,7 @@ CERT_DIR="/data/letsencrypt"
 
 LOOP_SLEEP=600
 POST_CHECK="false"
+MANUAL_FORCE="false"
 
 MQTT_CONF="/run/dynu-mqtt.conf"
 
@@ -74,6 +75,20 @@ mqtt_publish() {
     fi
 }
 
+if [[ "$USE_MQTT" == "true" ]]; then
+    mosquitto_sub -h "$MQTT_HOST" -u "$MQTT_USER" -P "$MQTT_PASSWORD" \
+      -t "dynu_updater/service/#" | while read -r payload; do
+		bashio::log.warning "Certificate Manager - MQTT payload received: $payload"
+        
+		case "$payload" in
+            "force_cert_renew")
+                MANUAL_FORCE="true"
+				check_cert_dates
+                ;;
+        esac
+    done &
+fi
+
 check_connectivity() {
     # Try Dynu (IPv4 or IPv6)
     if curl -4 -s --fail --max-time 5 https://checkip.dynu.com >/dev/null \
@@ -86,6 +101,7 @@ check_connectivity() {
 
 renew_cert() {
 	POST_CHECK="true"
+	MANUAL_FORCE="false"
 	until check_connectivity; do
         bashio::log.warning "Certificate Manager - Dynu not reachable, delaying certificate renewal"
         sleep 60
@@ -183,7 +199,7 @@ check_cert_dates() {
     POST_CHECK="false"
     CERT_PATH="/data/letsencrypt/live/$DYNU_HOSTNAME/cert.pem"
 
-	if [[ "$FORCE_RENEW" == "true" ]]; then
+	if [[ "$FORCE_RENEW" == "true" || "$MANUAL_FORCE" == "true" ]]; then
 		bashio::log.info "Certificate Manager - Skipping certificate check: Force Renew"
         mqtt_publish "last_cert_status" "false"
         renew_cert
