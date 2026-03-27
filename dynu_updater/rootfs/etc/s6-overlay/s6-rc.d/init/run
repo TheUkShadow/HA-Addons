@@ -148,82 +148,6 @@ elif [[ "$USE_MQTT" == "true" ]]; then
 	fi
 fi
 
-jq -n \
-  --arg mqtt "$USE_MQTT" \
-  --arg host "$MQTT_HOST" \
-  --arg port "$MQTT_PORT" \
-  --arg user "$MQTT_USER" \
-  --arg password "$MQTT_PASSWORD" \
-  '{mqtt: $mqtt, host: $host, port: $port, user: $user, password: $password}' \
-  > /run/dynu-mqtt.conf
-
-
-# Device metadata
-DEVICE_ID="dynu_updater_$(hostname)"
-DEVICE_NAME="Dynu Updater"
-MANUFACTURER="Philip"
-MODEL="Dynu Updater Add-on"
-SW_VERSION=$(bashio::addon.version)
-
-# Shared availability topic
-AVAIL_TOPIC="dynu_updater/availability"
-
-mqtt_publish() {
-    if [[ "$USE_MQTT" == "true" ]]; then
-        local topic="$1"
-        local payload="$2"
-
-        if ! mosquitto_pub \
-            -h "$MQTT_HOST" \
-            -p "$MQTT_PORT" \
-            -u "$MQTT_USER" \
-            -P "$MQTT_PASSWORD" \
-            -t "dynu_updater/$topic" \
-            -m "$payload" \
-            -r; then
-
-            bashio::log.warning "Dynu Updater Initialisation - MQTT publish failed: Topic=$topic"
-        fi
-    fi
-}
-
-
-publish_discovery() {
-  local entity_id="$1"
-  local name="$2"
-  local device_class="$3"
-  local state_topic="$4"
-  local component="$5"
-  local extra="$6"
-
-  # Only include device_class if non-empty
-  local device_class_json=""
-  if [[ -n "$device_class" ]]; then
-    device_class_json="\"device_class\": \"${device_class}\","
-  fi
-
-  mosquitto_pub -h "$MQTT_HOST" -u "$MQTT_USER" -P "$MQTT_PASSWORD" -p "$MQTT_PORT" -r \
-    -t "homeassistant/${component}/${entity_id}/config" \
-    -m "{
-      \"name\": \"${name}\",
-      \"unique_id\": \"${DEVICE_ID}_${entity_id}\",
-      \"state_topic\": \"${state_topic}\",
-      \"availability_topic\": \"${AVAIL_TOPIC}\",
-      \"payload_available\": \"online\",
-      \"payload_not_available\": \"offline\",
-      ${device_class_json}
-      ${extra}
-      \"device\": {
-        \"identifiers\": [\"${DEVICE_ID}\"],
-        \"name\": \"${DEVICE_NAME}\",
-        \"manufacturer\": \"${MANUFACTURER}\",
-        \"model\": \"${MODEL}\",
-        \"sw_version\": \"${SW_VERSION}\"
-      }
-    }"
-}
-
-
 if [[ "$CERT_VALID" == "false" && "$DNS_VALID" == "false" ]]; then
 	bashio::log.error "Dynu Updater Initialisation - Options to Update IP Addresses and Generate Certificate are both disabled - Nothing to do"
     exit 1
@@ -509,40 +433,143 @@ if [[ "$DNS_VALID" == "false" ]] && [[ "$CERT_VALID" == "false" ]]; then
     exit 1
 fi
 
+ENTITIES=(
+  "last_ip_check|Last IP Check|timestamp|dynu_updater/last_ip_check|sensor||dns"
+  "last_ip_update|Last IP Update|timestamp|dynu_updater/last_ip_update|sensor||dns"
+  "current_ipv4|Current IPv4||dynu_updater/current_ipv4|sensor||dns"
+  "current_ipv6|Current IPv6||dynu_updater/current_ipv6|sensor||dns"
+  "next_cert_check|Next Certificate Check|timestamp|dynu_updater/next_cert_check|sensor||cert"
+  "last_cert_check|Last Certificate Check|timestamp|dynu_updater/last_cert_check|sensor||cert"
+  "last_cert_status|Certificate Valid|problem|dynu_updater/last_cert_status|binary_sensor|\"payload_on\": \"false\", \"payload_off\": \"true\",|dns"
+  "wan_connection|WAN Connection|connectivity|dynu_updater/wan_connection|binary_sensor|\"payload_on\": \"true\", \"payload_off\": \"false\",|dns"
+  "cert_expires|Certificate Expires|timestamp|dynu_updater/cert_expires|sensor||dns"
+  "last_cert_renewal|Last Certificate Renewal|timestamp|dynu_updater/last_cert_renewal|sensor||dns"
+)
+
+# MQTT Device metadata
+DEVICE_ID="dynu_updater_$(hostname)"
+DEVICE_NAME="Dynu Updater"
+MANUFACTURER="TheUkShadow"
+MODEL="Dynu Updater Companion Integration"
+SW_VERSION=$(bashio::addon.version)
+
+# Shared availability topic
+AVAIL_TOPIC="dynu_updater/availability"
+
+publish_discovery() {
+  local entity_id="$1"
+  local name="$2"
+  local device_class="$3"
+  local state_topic="$4"
+  local component="$5"
+  local extra="$6"
+
+  # Only include device_class if non-empty
+  local device_class_json=""
+  if [[ -n "$device_class" ]]; then
+    device_class_json="\"device_class\": \"${device_class}\","
+  fi
+  
+  # Per‑entity availability topic
+  local entity_avail_topic="dynu_updater/${entity_id}/availability"
+  
+  mosquitto_pub -h "$MQTT_HOST" -u "$MQTT_USER" -P "$MQTT_PASSWORD" -p "$MQTT_PORT" -r \
+    -t "homeassistant/${component}/${entity_id}/config" \
+    -m "{
+      \"name\": \"${name}\",
+      \"unique_id\": \"${DEVICE_ID}_${entity_id}\",
+      \"state_topic\": \"${state_topic}\",
+       \"availability\": [
+        { \"topic\": \"${AVAIL_TOPIC}\" },
+        { \"topic\": \"${entity_avail_topic}\" }
+      ],
+      \"payload_available\": \"online\",
+      \"payload_not_available\": \"offline\",
+      ${device_class_json}
+      ${extra}
+      \"device\": {
+        \"identifiers\": [\"${DEVICE_ID}\"],
+        \"name\": \"${DEVICE_NAME}\",
+        \"manufacturer\": \"${MANUFACTURER}\",
+        \"model\": \"${MODEL}\",
+        \"sw_version\": \"${SW_VERSION}\"
+      }
+    }"
+}
+
+mqtt_publish() {
+	local topic="$1"
+	local payload="$2"
+
+	if ! mosquitto_pub \
+		-h "$MQTT_HOST" \
+		-p "$MQTT_PORT" \
+		-u "$MQTT_USER" \
+		-P "$MQTT_PASSWORD" \
+		-t "dynu_updater/$topic" \
+		-m "$payload" \
+		-r; then
+
+		bashio::log.warning "Dynu Updater Initialisation - MQTT publish failed: Topic=$topic"
+	fi
+}
+
 if [[ "$USE_MQTT" == "true" ]]; then
-	publish_discovery "last_ip_check" "Last IP Check" "timestamp" \
-	  "dynu_updater/last_ip_check" "sensor" ""
+	ENTITY_JSON="["
+	
+    for entry in "${ENTITIES[@]}"; do
+        IFS="|" read -r entity_id name device_class state_topic component extra service <<< "$entry"
 
-	publish_discovery "last_ip_update" "Last IP Update" "timestamp" \
-	  "dynu_updater/last_ip_update" "sensor" ""
+        publish_discovery \
+            "$entity_id" \
+            "$name" \
+            "$device_class" \
+            "$state_topic" \
+            "$component" \
+            "$extra"
 
-	publish_discovery "current_ipv4" "Current IPv4" "" \
-	  "dynu_updater/current_ipv4" "sensor" ""
-
-	publish_discovery "current_ipv6" "Current IPv6" "" \
-	  "dynu_updater/current_ipv6" "sensor" ""
-
-	publish_discovery "next_cert_check" "Next Certificate Check" "timestamp" \
-	  "dynu_updater/next_cert_check" "sensor" ""
+        # Publish initial per‑entity availability
+		STATE="online"
+		if [[ "$service" == "dns"  && "$DNS_VALID"  == "false" ]] ||
+		   [[ "$service" == "cert" && "$CERT_VALID" == "false" ]]; then
+			STATE="offline"
+		fi
+		
+		entity_avail="${entity_id}/availability"
+		
+		mqtt_publish "${entity_avail}" "$STATE"
+		
+		ENTITY_JSON+="
+		  {
+			\"entity_id\": \"${entity_id}\",
+			\"state_topic\": \"${state_topic}\",
+			\"availability_topic\": \"${entity_avail}\",
+			\"component\": \"${component}\",
+			\"service\": \"${service}\"
+		  },"
+    done
+	
+	ENTITY_JSON="${ENTITY_JSON%,}"
+	ENTITY_JSON+="]"
+	
+	jq -n \
+	  --arg mqtt "$USE_MQTT" \
+	  --arg host "$MQTT_HOST" \
+	  --arg port "$MQTT_PORT" \
+	  --arg user "$MQTT_USER" \
+	  --arg password "$MQTT_PASSWORD" \
+	  --argjson entities "$ENTITY_JSON" \
+	  '{
+		  mqtt: $mqtt,
+		  host: $host,
+		  port: $port,
+		  user: $user,
+		  password: $password,
+		  entities: $entities
+	   }' \
+	  > /run/dynu-mqtt.conf
 	  
-	publish_discovery "last_cert_check" "Last Certificate Check" "timestamp" \
-	  "dynu_updater/last_cert_check" "sensor" ""
-
-	publish_discovery "last_cert_status" "Certificate Valid" "problem" \
-	  "dynu_updater/last_cert_status" "binary_sensor" \
-	  "\"payload_on\": \"false\", \"payload_off\": \"true\","
-
-	publish_discovery "wan_connection" "WAN Connection" "connectivity" \
-	  "dynu_updater/wan_connection" "binary_sensor" \
-	  "\"payload_on\": \"true\", \"payload_off\": \"false\","
-
-	publish_discovery "cert_expires" "Certificate Expires" "timestamp" \
-	  "dynu_updater/cert_expires" "sensor" ""
-
-	publish_discovery "last_cert_renewal" "Last Certificate Renewal" "timestamp" \
-	  "dynu_updater/last_cert_renewal" "sensor" ""
+	mqtt_publish "availability" "online"
 fi
-
-mqtt_publish "availability" "online"
 
 bashio::log.info "Dynu Updater Initialisation - Complete"
