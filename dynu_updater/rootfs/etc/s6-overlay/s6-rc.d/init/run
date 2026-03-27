@@ -492,17 +492,14 @@ publish_discovery() {
 		
 		# Only include command_topic if non-empty
         local command_topic_json=""
-		local retain_flag="-r"
         if [[ -n "$command_topic" ]]; then
             command_topic_json="\"command_topic\": \"${command_topic}\","
-			retain_flag=""
         fi
 		
 		# Per‑entity availability topic
 		local entity_avail_topic="dynu_updater/${entity_id}/availability"
 
-		if ! mosquitto_pub -h "$MQTT_HOST" -u "$MQTT_USER" -P "$MQTT_PASSWORD" -p "$MQTT_PORT" \
-			  ${retain_flag:+$retain_flag} \
+		if ! mosquitto_pub -h "$MQTT_HOST" -u "$MQTT_USER" -P "$MQTT_PASSWORD" -p "$MQTT_PORT" -r \
 			  -t "homeassistant/${component}/${entity_id}/config" \
 			  -m "{
 			    \"name\": \"${name}\",
