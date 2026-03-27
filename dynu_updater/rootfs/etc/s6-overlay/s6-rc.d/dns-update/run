@@ -65,10 +65,15 @@ if [[ -f "$STATE_FILE" ]]; then
 	
 	LAST_IPV4=""
 	LAST_IPV6=""
+	LAST_UPDATE=""
 
 	if [[ -f "$DNS_UPDATE_JSON" ]]; then
 		LAST_IPV4=$(jq -r '.ipv4' "$DNS_UPDATE_JSON")
 		LAST_IPV6=$(jq -r '.ipv6' "$DNS_UPDATE_JSON")
+		LAST_UPDATE=$(jq -r '.update' "$DNS_UPDATE_JSON")
+		mqtt_publish "last_ip_update" "$LAST_UPDATE"
+		mqtt_publish "current_ipv4" "$LAST_IPV4"
+		mqtt_publish "current_ipv6" "$LAST_IPV6"
 	fi
 
 	while true; do
@@ -160,17 +165,20 @@ if [[ -f "$STATE_FILE" ]]; then
 					bashio::log.info "Dynu DNS Updater - All Hosts/Aliases updated"
 				fi
 				
-				mqtt_publish "last_ip_update" "$(date -Is)"
-				mqtt_publish "current_ipv4" "$IPV4"
-				mqtt_publish "current_ipv6" "$IPV6"
-						
 				LAST_IPV4="$IPV4"
 				LAST_IPV6="$IPV6"
+				LAST_UPDATE="$(date -Is)"
+				
+				mqtt_publish "last_ip_update" "$LAST_UPDATE"
+				mqtt_publish "current_ipv4" "$LAST_IPV4"
+				mqtt_publish "current_ipv6" "$LAST_IPV6"
+						
 				
 				jq -n \
 				  --arg ipv4 "$IPV4" \
 				  --arg ipv6 "$IPV6" \
-				  '{ipv4: $ipv4, ipv6: $ipv6}' \
+				  --arg update "$LAST_UPDATE" \
+				  '{ipv4: $ipv4, ipv6: $ipv6, update: $update}' \
 				  > "$DNS_UPDATE_JSON"
 				  
 			elif [[ "$VERBOSE" == "true" ]]; then
