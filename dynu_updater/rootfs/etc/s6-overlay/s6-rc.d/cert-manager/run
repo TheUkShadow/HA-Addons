@@ -284,7 +284,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
         if [[ "$payload" == "PRESS" ]]; then
 			bashio::log.warning "Certificate Manager - MQTT payload received. Topic: $topic, Payload: $payload"
             case "$topic" in
-                dynu_updater/service/force_cert_check)
+                dynu_updater/service/dns/force_cert_check)
 					MANUAL_CHECK="true"
                     check_cert_dates
                     ;;

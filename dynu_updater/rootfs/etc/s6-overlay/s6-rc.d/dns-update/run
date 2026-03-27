@@ -192,7 +192,7 @@ if [[ -f "$STATE_FILE" ]]; then
 			if [[ "$payload" == "PRESS" ]]; then
 				bashio::log.warning "Certificate Manager - MQTT payload received. Topic: $topic, Payload: $payload"
 				case "$topic" in
-					dynu_updater/service/force_ip_update)
+					dynu_updater/service/dns/force_ip_update)
 						update_ip "true"
 						;;
 				esac
