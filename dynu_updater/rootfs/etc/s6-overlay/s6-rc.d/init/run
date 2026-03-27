@@ -457,119 +457,124 @@ SW_VERSION=$(bashio::addon.version)
 AVAIL_TOPIC="dynu_updater/availability"
 
 publish_discovery() {
-  local entity_id="$1"
-  local name="$2"
-  local device_class="$3"
-  local state_topic="$4"
-  local component="$5"
-  local extra="$6"
+	if [[ "$USE_MQTT" == "true" ]]; then
+		local entity_id="$1"
+		local name="$2"
+		local device_class="$3"
+		local state_topic="$4"
+		local component="$5"
+		local extra="$6"
 
-  # Only include device_class if non-empty
-  local device_class_json=""
-  if [[ -n "$device_class" ]]; then
-    device_class_json="\"device_class\": \"${device_class}\","
-  fi
-  
-  # Per‑entity availability topic
-  local entity_avail_topic="dynu_updater/${entity_id}/availability"
-  
-  mosquitto_pub -h "$MQTT_HOST" -u "$MQTT_USER" -P "$MQTT_PASSWORD" -p "$MQTT_PORT" -r \
-    -t "homeassistant/${component}/${entity_id}/config" \
-    -m "{
-      \"name\": \"${name}\",
-      \"unique_id\": \"${DEVICE_ID}_${entity_id}\",
-      \"state_topic\": \"${state_topic}\",
-       \"availability\": [
-        { \"topic\": \"${AVAIL_TOPIC}\" },
-        { \"topic\": \"${entity_avail_topic}\" }
-      ],
-      \"payload_available\": \"online\",
-      \"payload_not_available\": \"offline\",
-      ${device_class_json}
-      ${extra}
-      \"device\": {
-        \"identifiers\": [\"${DEVICE_ID}\"],
-        \"name\": \"${DEVICE_NAME}\",
-        \"manufacturer\": \"${MANUFACTURER}\",
-        \"model\": \"${MODEL}\",
-        \"sw_version\": \"${SW_VERSION}\"
-      }
-    }"
-}
+		# Only include device_class if non-empty
+		local device_class_json=""
+		if [[ -n "$device_class" ]]; then
+			device_class_json="\"device_class\": \"${device_class}\","
+		fi
 
-mqtt_publish() {
-	local topic="$1"
-	local payload="$2"
+		# Per‑entity availability topic
+		local entity_avail_topic="dynu_updater/${entity_id}/availability"
 
-	if ! mosquitto_pub \
-		-h "$MQTT_HOST" \
-		-p "$MQTT_PORT" \
-		-u "$MQTT_USER" \
-		-P "$MQTT_PASSWORD" \
-		-t "dynu_updater/$topic" \
-		-m "$payload" \
-		-r; then
-
-		bashio::log.warning "Dynu Updater Initialisation - MQTT publish failed: Topic=$topic"
+		if ! mosquitto_pub -h "$MQTT_HOST" -u "$MQTT_USER" -P "$MQTT_PASSWORD" -p "$MQTT_PORT" -r \
+			  -t "homeassistant/${component}/${entity_id}/config" \
+			  -m "{
+			    \"name\": \"${name}\",
+			    \"unique_id\": \"${DEVICE_ID}_${entity_id}\",
+			    \"state_topic\": \"${state_topic}\",
+			    \"availability\": [
+				  { \"topic\": \"${AVAIL_TOPIC}\" },
+				  { \"topic\": \"${entity_avail_topic}\" }
+			    ],
+			    \"payload_available\": \"online\",
+			    \"payload_not_available\": \"offline\",
+			    ${device_class_json}
+			    ${extra}
+			    \"device\": {
+				  \"identifiers\": [\"${DEVICE_ID}\"],
+				  \"name\": \"${DEVICE_NAME}\",
+				  \"manufacturer\": \"${MANUFACTURER}\",
+				  \"model\": \"${MODEL}\",
+				  \"sw_version\": \"${SW_VERSION}\"
+			    }
+			  }"; then
+			
+			bashio::log.warning "Dynu Updater Initialisation - MQTT discovery failed for entity $entity_id"
+		fi	
 	fi
 }
 
-if [[ "$USE_MQTT" == "true" ]]; then
-	ENTITY_JSON="["
-	
-    for entry in "${ENTITIES[@]}"; do
-        IFS="|" read -r entity_id name device_class state_topic component extra service <<< "$entry"
+mqtt_publish() {
+	if [[ "$USE_MQTT" == "true" ]]; then
+		local topic="$1"
+		local payload="$2"
 
-        publish_discovery \
-            "$entity_id" \
-            "$name" \
-            "$device_class" \
-            "$state_topic" \
-            "$component" \
-            "$extra"
+		if ! mosquitto_pub \
+			-h "$MQTT_HOST" \
+			-p "$MQTT_PORT" \
+			-u "$MQTT_USER" \
+			-P "$MQTT_PASSWORD" \
+			-t "dynu_updater/$topic" \
+			-m "$payload" \
+			-r; then
 
-        # Publish initial per‑entity availability
-		STATE="online"
-		if [[ "$service" == "dns"  && "$DNS_VALID"  == "false" ]] ||
-		   [[ "$service" == "cert" && "$CERT_VALID" == "false" ]]; then
-			STATE="offline"
+			bashio::log.warning "Dynu Updater Initialisation - MQTT publish failed for topic $topic"
 		fi
-		
-		entity_avail="${entity_id}/availability"
-		
-		mqtt_publish "${entity_avail}" "$STATE"
-		
-		ENTITY_JSON+="
-		  {
-			\"entity_id\": \"${entity_id}\",
-			\"state_topic\": \"${state_topic}\",
-			\"availability_topic\": \"${entity_avail}\",
-			\"component\": \"${component}\",
-			\"service\": \"${service}\"
-		  },"
-    done
+	fi
+}
+
+ENTITY_JSON="["
+
+for entry in "${ENTITIES[@]}"; do
+	IFS="|" read -r entity_id name device_class state_topic component extra service <<< "$entry"
+
+	publish_discovery \
+		"$entity_id" \
+		"$name" \
+		"$device_class" \
+		"$state_topic" \
+		"$component" \
+		"$extra"
+
+	# Publish initial per‑entity availability
+	STATE="online"
+	if [[ "$service" == "dns"  && "$DNS_VALID"  == "false" ]] ||
+	   [[ "$service" == "cert" && "$CERT_VALID" == "false" ]]; then
+		STATE="offline"
+	fi
 	
-	ENTITY_JSON="${ENTITY_JSON%,}"
-	ENTITY_JSON+="]"
+	entity_avail="${entity_id}/availability"
 	
-	jq -n \
-	  --arg mqtt "$USE_MQTT" \
-	  --arg host "$MQTT_HOST" \
-	  --arg port "$MQTT_PORT" \
-	  --arg user "$MQTT_USER" \
-	  --arg password "$MQTT_PASSWORD" \
-	  --argjson entities "$ENTITY_JSON" \
-	  '{
-		  mqtt: $mqtt,
-		  host: $host,
-		  port: $port,
-		  user: $user,
-		  password: $password,
-		  entities: $entities
-	   }' \
-	  > /run/dynu-mqtt.conf
-	  
-	mqtt_publish "availability" "online"
-fi
+	mqtt_publish "${entity_avail}" "$STATE"
+	
+	ENTITY_JSON+="
+	  {
+		\"entity_id\": \"${entity_id}\",
+		\"state_topic\": \"${state_topic}\",
+		\"availability_topic\": \"${entity_avail}\",
+		\"component\": \"${component}\",
+		\"service\": \"${service}\"
+	  },"
+done
+
+ENTITY_JSON="${ENTITY_JSON%,}"
+ENTITY_JSON+="]"
+
+jq -n \
+  --arg mqtt "$USE_MQTT" \
+  --arg host "$MQTT_HOST" \
+  --arg port "$MQTT_PORT" \
+  --arg user "$MQTT_USER" \
+  --arg password "$MQTT_PASSWORD" \
+  --argjson entities "$ENTITY_JSON" \
+  '{
+	  mqtt: $mqtt,
+	  host: $host,
+	  port: $port,
+	  user: $user,
+	  password: $password,
+	  entities: $entities
+   }' \
+  > /run/dynu-mqtt.conf
+  
+mqtt_publish "availability" "online"
 
 bashio::log.info "Dynu Updater Initialisation - Complete"

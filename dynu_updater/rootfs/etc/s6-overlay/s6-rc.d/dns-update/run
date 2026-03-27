@@ -22,12 +22,18 @@ else
 fi
 
 MQTT_CONF="/run/dynu-mqtt.conf"
-USE_MQTT=$(jq -r '.mqtt' "$MQTT_CONF")
-MQTT_HOST=$(jq -r '.host' "$MQTT_CONF")
-MQTT_PORT=$(jq -r '.port' "$MQTT_CONF")
-MQTT_USER=$(jq -r '.user' "$MQTT_CONF")
-MQTT_PASSWORD=$(jq -r '.password' "$MQTT_CONF")
 
+if [[ -f "$MQTT_CONF" ]]; then
+	USE_MQTT=$(jq -r '.mqtt' "$MQTT_CONF")
+	MQTT_HOST=$(jq -r '.host' "$MQTT_CONF")
+	MQTT_PORT=$(jq -r '.port' "$MQTT_CONF")
+	MQTT_USER=$(jq -r '.user' "$MQTT_CONF")
+	MQTT_PASSWORD=$(jq -r '.password' "$MQTT_CONF")
+else
+	bashio::log.error "Dynu DNS Updater - MQTT config not found"
+	USE_MQTT="false"
+fi
+	
 mqtt_publish() {
     if [[ "$USE_MQTT" == "true" ]]; then
         local topic="$1"
@@ -47,12 +53,11 @@ mqtt_publish() {
     fi
 }
 
-bashio::log.info "Dynu DNS Updater - Started"
+STATE_FILE="/run/dynu-dns.conf"
 
-if [[ -f /run/dynu-dns.conf ]]; then
+if [[ -f "$STATE_FILE" ]]; then
+	bashio::log.info "Dynu DNS Updater - Started"
 	
-	STATE_FILE="/run/dynu-dns.conf"
-
 	DYNU_IPV6_ENABLED=$(jq -r '.ipv6' "$STATE_FILE")
 	readarray -t DOMAIN_ARR < <(jq -r '.domains[]' "$STATE_FILE")
 	
@@ -93,7 +98,7 @@ if [[ -f /run/dynu-dns.conf ]]; then
 				bashio::log.error "Dynu DNS Updater - Unable to confirm current IPv6 address"
 			fi
 			
-			if [[ -n "$IPV6" && ! "$IPV6" =~ ^([0-9a-fA-F:]+)$ ]]; then
+			if [[ -n "$IPV6" && ! "$IPV6" =~ ^([0-9A-Fa-f]{0,4}:){1,7}[0-9A-Fa-f]{0,4}$ ]]; then
 				bashio::log.error "Dynu DNS Updater - invalid IPv6 format returned: $IPV6"
 				IPV6=""
 			fi
@@ -168,5 +173,7 @@ if [[ -f /run/dynu-dns.conf ]]; then
 	done
 
 else
+	bashio::log.info "Dynu DNS Updater - Not required"
+	touch /run/dynu-dns-update.ready
 	sleep infinity
 fi

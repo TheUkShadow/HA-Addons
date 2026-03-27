@@ -31,16 +31,28 @@ if bashio::config.true 'verbose'; then
 else
     VERBOSE="false"
 fi
-CERT_DIR=/data/letsencrypt
+if bashio::config.true 'force_renew'; then
+    FORCE_RENEW="true"
+else
+    FORCE_RENEW="false"
+fi
+
+CERT_DIR="/data/letsencrypt"
 
 LOOP_SLEEP=600
 
 MQTT_CONF="/run/dynu-mqtt.conf"
-USE_MQTT=$(jq -r '.mqtt' "$MQTT_CONF")
-MQTT_HOST=$(jq -r '.host' "$MQTT_CONF")
-MQTT_PORT=$(jq -r '.port' "$MQTT_CONF")
-MQTT_USER=$(jq -r '.user' "$MQTT_CONF")
-MQTT_PASSWORD=$(jq -r '.password' "$MQTT_CONF")
+
+if [[ -f $MQTT_CONF ]]; then
+	USE_MQTT=$(jq -r '.mqtt' "$MQTT_CONF")
+	MQTT_HOST=$(jq -r '.host' "$MQTT_CONF")
+	MQTT_PORT=$(jq -r '.port' "$MQTT_CONF")
+	MQTT_USER=$(jq -r '.user' "$MQTT_CONF")
+	MQTT_PASSWORD=$(jq -r '.password' "$MQTT_CONF")
+else
+	bashio::log.error "Certificate Manager - MQTT config not found"
+	USE_MQTT="false"
+fi
 
 mqtt_publish() {
     if [[ "$USE_MQTT" == "true" ]]; then
@@ -157,7 +169,14 @@ check_cert_dates() {
 
     CERT_PATH="/data/letsencrypt/live/$DYNU_HOSTNAME/cert.pem"
 
-    if [[ -f "$CERT_PATH" ]]; then
+	if [[ "$FORCE_RENEW" == "true" ]]; then
+		bashio::log.warning "Certificate Manager - Skipping certificate check due to force renew option"
+        mqtt_publish "last_cert_status" "false"
+        renew_cert
+        POST_CHECK="true"
+    elif [[ -f "$CERT_PATH" ]]; then
+		bashio::log.info "Certificate Manager - Checking certificate dates"
+		mqtt_publish "last_cert_check" "$(date -Is)"
         CREATED_RAW=$(openssl x509 -in "$CERT_PATH" -noout -startdate 2>/dev/null | cut -d= -f2)
         EXPIRY_RAW=$(openssl x509 -in "$CERT_PATH" -noout -enddate 2>/dev/null | cut -d= -f2)
 
@@ -240,7 +259,7 @@ check_cert_dates() {
 				LOOP_SLEEP=600
             fi
         else
-            bashio::log.warning "Certificate Manager - Certificate missing after renewal. Check the logs for more information"
+            bashio::log.warning "Certificate Manager - Certificate missing/not created after renewal. Check the logs for more information"
             mqtt_publish "last_cert_status" "false"
 			LOOP_SLEEP=600
         fi
@@ -253,6 +272,8 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 		sleep 1
 	done
 
+	bashio::log.info "Certificate Manager - Started"
+	
 	while true; do
 		check_cert_dates
 		
@@ -263,5 +284,6 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 		sleep "$LOOP_SLEEP"
 	done
 else
+	bashio::log.info "Certificate Manager - Not required"
 	sleep infinity
 fi
