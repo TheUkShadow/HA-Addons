@@ -76,16 +76,18 @@ mqtt_publish() {
 }
 
 if [[ "$USE_MQTT" == "true" ]]; then
-    mosquitto_sub -h "$MQTT_HOST" -u "$MQTT_USER" -P "$MQTT_PASSWORD" \
-      -t "dynu_updater/service/#" | while read -r payload; do
-		bashio::log.warning "Certificate Manager - MQTT payload received: $payload"
+    mosquitto_sub -h "$MQTT_HOST" -p "$MQTT_PORT" -u "$MQTT_USER" -P "$MQTT_PASSWORD" -v \
+      -t "dynu_updater/service/#" | while IFS=' ' read -r topic payload; do
+		bashio::log.warning "Certificate Manager - MQTT payload received. Topic: $topic, Payload: $payload"
         
-		case "$payload" in
-            "force_cert_renew")
-                MANUAL_FORCE="true"
-				check_cert_dates
-                ;;
-        esac
+		if [[ "$payload" == "PRESS" ]]; then
+			case "$topic" in
+				dynu_updater/service/force_cert_renew)
+					MANUAL_FORCE="true"
+					check_cert_dates
+					;;
+			esac
+		fi
     done &
 fi
 
