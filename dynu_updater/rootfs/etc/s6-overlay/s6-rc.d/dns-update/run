@@ -176,5 +176,6 @@ else
 	bashio::log.info "Dynu DNS Updater - Not required"
 	touch /run/dynu-dns-update.ready
 	# sleep infinity
+	s6-svc -d /run/service/dns-update
 	exit 0
 fi
