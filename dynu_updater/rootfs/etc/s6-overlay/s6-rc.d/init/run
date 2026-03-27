@@ -503,7 +503,7 @@ publish_discovery() {
 			    ],
 			    \"payload_available\": \"online\",
 			    \"payload_not_available\": \"offline\",
-			    ${device_class_json},
+			    ${device_class_json}
 				${icon_json}
 			    ${extra}
 			    \"device\": {
