@@ -175,5 +175,6 @@ if [[ -f "$STATE_FILE" ]]; then
 else
 	bashio::log.info "Dynu DNS Updater - Not required"
 	touch /run/dynu-dns-update.ready
-	sleep infinity
+	# sleep infinity
+	exit 0
 fi

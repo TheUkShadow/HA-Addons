@@ -43,7 +43,7 @@ LOOP_SLEEP=600
 
 MQTT_CONF="/run/dynu-mqtt.conf"
 
-if [[ -f $MQTT_CONF ]]; then
+if [[ -f "$MQTT_CONF" ]]; then
 	USE_MQTT=$(jq -r '.mqtt' "$MQTT_CONF")
 	MQTT_HOST=$(jq -r '.host' "$MQTT_CONF")
 	MQTT_PORT=$(jq -r '.port' "$MQTT_CONF")
@@ -164,13 +164,10 @@ renew_cert() {
 
 check_cert_dates() {
     POST_CHECK="false"
-    bashio::log.info "Certificate Manager - Checking certificate dates"
-    mqtt_publish "last_cert_check" "$(date -Is)"
-
     CERT_PATH="/data/letsencrypt/live/$DYNU_HOSTNAME/cert.pem"
 
 	if [[ "$FORCE_RENEW" == "true" ]]; then
-		bashio::log.warning "Certificate Manager - Skipping certificate check due to force renew option"
+		bashio::log.info "Certificate Manager - Skipping certificate check: Force Renew"
         mqtt_publish "last_cert_status" "false"
         renew_cert
         POST_CHECK="true"
@@ -195,22 +192,20 @@ check_cert_dates() {
 
             EXPIRY_EPOCH=$(date -d "$EXPIRY_RAW" +%s)
             NOW_EPOCH=$(date +%s)
-            SEVEN_DAYS=$(( NOW_EPOCH + 7*24*60*60 ))
-			
-			bashio::log.info "Certificate Manager - Certificate expires $EXPIRY_ISO"
+            MAX_DAYS=$(( NOW_EPOCH + (CHECK_DAYS * 86400) + 60 ))
 			
             if (( EXPIRY_EPOCH < NOW_EPOCH )); then
                 bashio::log.info "Certificate Manager - Certificate expired, renewing"
 				mqtt_publish "last_cert_status" "false"
                 renew_cert
                 POST_CHECK="true"
-            elif (( EXPIRY_EPOCH <= SEVEN_DAYS )); then
-				bashio::log.info "Certificate Manager - Certificate expires in less than 7 days, renewing"
+            elif (( EXPIRY_EPOCH <= MAX_DAYS )); then
+				bashio::log.info "Certificate Manager - Certificate expires in less than $CHECK_DAYS days, renewing"
                 mqtt_publish "last_cert_status" "true"
                 renew_cert
                 POST_CHECK="true"
             else
-				bashio::log.info "Certificate Manager - Certificate does not require renewing"
+				bashio::log.info "Certificate Manager - Certificate expires $EXPIRY_ISO"
                 RENEW_EPOCH=$(( EXPIRY_EPOCH - (CHECK_DAYS * 86400) ))
 				LOOP_SLEEP=$(( RENEW_EPOCH - NOW_EPOCH ))
 				if (( LOOP_SLEEP < 0 )); then
