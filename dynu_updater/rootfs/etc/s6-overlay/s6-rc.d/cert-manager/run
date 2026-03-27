@@ -41,7 +41,7 @@ CERT_DIR="/data/letsencrypt"
 
 LOOP_SLEEP=600
 POST_CHECK="false"
-MANUAL_FORCE="false"
+MANUAL_CHECK="false"
 
 MQTT_CONF="/run/dynu-mqtt.conf"
 
@@ -75,23 +75,6 @@ mqtt_publish() {
     fi
 }
 
-if [[ "$USE_MQTT" == "true" ]]; then
-    while IFS=' ' read -r topic payload; do
-        bashio::log.warning "Certificate Manager - MQTT payload received. Topic: $topic, Payload: $payload"
-
-        if [[ "$payload" == "PRESS" ]]; then
-            case "$topic" in
-                dynu_updater/service/force_cert_renew)
-                    MANUAL_FORCE="true"
-                    check_cert_dates
-                    ;;
-            esac
-        fi
-
-    done < <(mosquitto_sub -h "$MQTT_HOST" -p "$MQTT_PORT" -u "$MQTT_USER" -P "$MQTT_PASSWORD" -v \
-              -t "dynu_updater/service/#") &
-fi
-
 check_connectivity() {
     # Try Dynu (IPv4 or IPv6)
     if curl -4 -s --fail --max-time 5 https://checkip.dynu.com >/dev/null \
@@ -104,7 +87,7 @@ check_connectivity() {
 
 renew_cert() {
 	POST_CHECK="true"
-	MANUAL_FORCE="false"
+	MANUAL_CHECK="false"
 	until check_connectivity; do
         bashio::log.warning "Certificate Manager - Dynu not reachable, delaying certificate renewal"
         sleep 60
@@ -202,8 +185,12 @@ check_cert_dates() {
     POST_CHECK="false"
     CERT_PATH="/data/letsencrypt/live/$DYNU_HOSTNAME/cert.pem"
 
-	if [[ "$FORCE_RENEW" == "true" || "$MANUAL_FORCE" == "true" ]]; then
+	if [[ "$FORCE_RENEW" == "true" ]]; then
 		bashio::log.info "Certificate Manager - Skipping certificate check: Force Renew"
+        mqtt_publish "last_cert_status" "false"
+        renew_cert
+	elif [[ "$MANUAL_CHECK" == "true" ]]; then
+		bashio::log.info "Certificate Manager - Skipping certificate check: Manual Check"
         mqtt_publish "last_cert_status" "false"
         renew_cert
     elif [[ -f "$CERT_PATH" ]]; then
@@ -298,8 +285,8 @@ if [[ "$USE_MQTT" == "true" ]]; then
 
         if [[ "$payload" == "PRESS" ]]; then
             case "$topic" in
-                dynu_updater/service/force_cert_renew)
-                    MANUAL_FORCE="true"
+                dynu_updater/service/force_cert_check)
+                    MANUAL_CHECK="true"
                     check_cert_dates
                     ;;
             esac
