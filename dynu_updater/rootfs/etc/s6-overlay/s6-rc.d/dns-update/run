@@ -2,7 +2,7 @@
 # vim: ft=bash
 # shellcheck shell=bash
 # ==============================================================================
-# Dynamic DNS Updater
+# DNS Updater
 # ==============================================================================
 
 if bashio::config.has_value 'dynu_hostname'; then
@@ -77,14 +77,14 @@ if [[ -f "$STATE_FILE" ]]; then
 		fi
 		
 		# --- Detect IPv4 ---
-		IPV4=$(curl -4 -s --fail --max-time 5 https://checkip.dynu.com \
-		  | awk -F': ' '{print $2}' \
-		  | tr -d '[:space:]')
-
+		if RAW=$(curl -4 -s --fail --max-time 5 https://checkip.dynu.com); then
+			IPV4=$(echo "$RAW" | awk -F': ' '{print $2}' | tr -d '[:space:]')
+		fi
 		if [[ ! "$IPV4" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
 			bashio::log.warning "Dynu DNS Updater - Dynu.com returned an invalid IPv4: $IPV4. Trying icanhazip.com"
-			IPV4=$(curl -4 -s --fail --max-time 5 https://icanhazip.com | tr -d '[:space:]')
-			
+			if RAW=$(curl -4 -s --fail --max-time 5 https://icanhazip.com); then
+				IPV4=$(echo "$RAW" | tr -d '[:space:]')
+			fi
 			if [[ ! "$IPV4" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
 				bashio::log.warning "Dynu DNS Updater - Icanhazip.com returned an invalid IPv4: $IPV4"
 				IPV4=""
@@ -93,14 +93,14 @@ if [[ -f "$STATE_FILE" ]]; then
 
 		# --- Detect IPv6 only if domain supports it ---
 		if [[ "$DYNU_IPV6_ENABLED" == "true" ]]; then
-			IPV6=$(curl -6 -s --fail --max-time 5 https://checkipv6.dynu.com \
-			  | awk -F': ' '{print $2}' \
-			  | tr -d '[:space:]')
-
+			if RAW=$(curl -6 -s --fail --max-time 5 https://checkipv6.dynu.com); then
+				IPV6=$(echo "$RAW" | awk -F': ' '{print $2}' | tr -d '[:space:]')
+			fi
 			if [[ ! "$IPV6" =~ ^([0-9A-Fa-f]{0,4}:){1,7}[0-9A-Fa-f]{0,4}$ ]]; then
 				bashio::log.warning "Dynu DNS Updater - Dynu.com returned an invalid IPv6: $IPV6. Trying icanhazip.com"
-				IPV6=$(curl -6 -s --fail --max-time 5 https://icanhazip.com | tr -d '[:space:]')
-				
+				if RAW=$(curl -6 -s --fail --max-time 5 https://icanhazip.com); then
+					IPV6=$(echo "$RAW" | tr -d '[:space:]')
+				fi
 				if [[ ! "$IPV6" =~ ^([0-9A-Fa-f]{0,4}:){1,7}[0-9A-Fa-f]{0,4}$ ]]; then
 					bashio::log.warning "Dynu DNS Updater - Icanhazip.com returned an invalid IPv6: $IPV6"
 					IPV6=""
@@ -111,8 +111,8 @@ if [[ -f "$STATE_FILE" ]]; then
 		fi
 
 		if [[ -n "$IPV4" || -n "$IPV6" ]]; then
-			mqtt_publish "last_ip_check" "$(date -Is)"
 			mqtt_publish "wan_connection" "true"
+			mqtt_publish "last_ip_check" "$(date -Is)"
 			if { [[ -n "$IPV4" && "$IPV4" != "$LAST_IPV4" ]]; } \
 			   || { [[ -n "$IPV6" && "$IPV6" != "$LAST_IPV6" ]]; }; then
 
@@ -121,7 +121,9 @@ if [[ -f "$STATE_FILE" ]]; then
 				if [[ "$DYNU_IPV6_ENABLED" == "true" ]]; then
 					bashio::log.info "Dynu DNS Updater - New IPv6 address = ${IPV6}"
 				fi
-
+				
+				UPDATED=${#DOMAIN_ARR[@]}
+				
 				for DOMAIN in "${DOMAIN_ARR[@]}"; do
 					if [[ "$DOMAIN" == "$DYNU_HOSTNAME" ]]; then
 						bashio::log.info "Dynu DNS Updater - Updating Host ${DOMAIN}"
@@ -140,33 +142,43 @@ if [[ -f "$STATE_FILE" ]]; then
 						COMMAND="${COMMAND}&myipv6=${IPV6}"
 					fi
 
-					RESPONSE="$(curl -s "${COMMAND}" || echo "No response")"
+					RESPONSE=$(curl -s --fail --max-time 5 "$COMMAND" 2>/dev/null)
+					CURL_EXIT=$?
 
-					bashio::log.info "Dynu DNS Updater - Server responded: $RESPONSE"
+					if [[ $CURL_EXIT -ne 0 ]]; then
+						bashio::log.error "Dynu DNS Updater - Update request failed (exit code $CURL_EXIT)"
+					else
+						bashio::log.info "Dynu DNS Updater - Server responded: $RESPONSE"
+						UPDATED=$((UPDATED - 1))
+					fi
 
 				done
-
+				
+				if (( UPDATED > 0 )); then
+					bashio::log.warning "Dynu DNS Updater - $UPDATED Hosts couldn't be updated"
+				else
+					bashio::log.info "Dynu DNS Updater - All Hosts/Aliases updated"
+				fi
+				
+				mqtt_publish "last_ip_update" "$(date -Is)"
+				mqtt_publish "current_ipv4" "$IPV4"
+				mqtt_publish "current_ipv6" "$IPV6"
+						
 				LAST_IPV4="$IPV4"
 				LAST_IPV6="$IPV6"
 				
 				jq -n \
-				  --arg ipv4 "$LAST_IPV4" \
-				  --arg ipv6 "$LAST_IPV6" \
+				  --arg ipv4 "$IPV4" \
+				  --arg ipv6 "$IPV6" \
 				  '{ipv4: $ipv4, ipv6: $ipv6}' \
 				  > "$DNS_UPDATE_JSON"
 				  
-				if [[ "$USE_MQTT" == "true" ]]; then
-					mqtt_publish "last_ip_update" "$(date -Is)"
-					mqtt_publish "current_ipv4" "$IPV4"
-					mqtt_publish "current_ipv6" "$IPV6"
-				fi
-				
 			elif [[ "$VERBOSE" == "true" ]]; then
 				bashio::log.info "Dynu DNS Updater - No update required"
 			fi
 		else
 			mqtt_publish "wan_connection" "false"
-			bashio::log.error "Dynu DNS Updater - Unable to retrieve current IP address data)"
+			bashio::log.error "Dynu DNS Updater - Unable to retrieve current IP address data (WAN Down)"
 		fi
 		
 		if [[ ! -f /run/dynu-dns-update.ready ]]; then

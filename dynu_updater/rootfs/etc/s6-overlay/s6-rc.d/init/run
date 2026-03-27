@@ -2,7 +2,7 @@
 # vim: ft=bash
 # shellcheck shell=bash
 # ==============================================================================
-# Build Config and run script
+# Init
 # ==============================================================================
 CERT_DIR=/data/letsencrypt
 WORK_DIR=/data/workdir
@@ -202,7 +202,7 @@ if [[ "$DNS_VALID" == "true" ]]; then
 	fi
 fi
 
-if [[ "$DNS_VALID" == "false" ]] && [[ "$CERT_VALID" == "false" ]]; then
+if [[ "$DNS_VALID" == "false" && "$CERT_VALID" == "false" ]]; then
 	bashio::log.error "Dynu Updater Initialisation - No valid configuration for Certificate generation or DNS IP Updates"
 	exit 1
 fi
@@ -350,7 +350,7 @@ if [[ "$CERT_VALID" == "true" ]]; then
 			bashio::log.error "Dynu Updater Initialisation - Invalid Certificate Hostname: $DOMAIN"
 			continue
 		fi
-		DOMAIN_ARR+=($DOMAIN)
+		DOMAIN_ARR+=("$DOMAIN")
 	done
 	
 	if [[ ${#DOMAIN_ARR[@]} -eq 0 ]]; then
@@ -386,7 +386,7 @@ if [[ "$CERT_VALID" == "true" ]]; then
 			ADDITIONAL_ARGS+=("-vvv")
 		fi
 		
-		if [ "${DRY_RUN}" = "true" ]; then
+		if [[ "${DRY_RUN}" = "true" ]]; then
 			ADDITIONAL_ARGS+=("--dry-run")
 		fi
 
@@ -436,7 +436,7 @@ if [[ "$CERT_VALID" == "true" ]]; then
 	fi
 fi
 
-if [[ "$DNS_VALID" == "false" ]] && [[ "$CERT_VALID" == "false" ]]; then
+if [[ "$DNS_VALID" == "false" && "$CERT_VALID" == "false" ]]; then
 	bashio::log.error "Dynu Updater Initialisation - NO Valid configuration for Certificate generation or DNS IP Updates"
     sleep 10
 	exit 1

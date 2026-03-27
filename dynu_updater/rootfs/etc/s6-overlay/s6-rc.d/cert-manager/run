@@ -2,7 +2,7 @@
 # vim: ft=bash
 # shellcheck shell=bash
 # ==============================================================================
-# Start Certificate Manager
+# Certificate Manager
 # ==============================================================================
 set +e
 
@@ -40,6 +40,7 @@ fi
 CERT_DIR="/data/letsencrypt"
 
 LOOP_SLEEP=600
+POST_CHECK="false"
 
 MQTT_CONF="/run/dynu-mqtt.conf"
 
@@ -73,7 +74,23 @@ mqtt_publish() {
     fi
 }
 
+check_connectivity() {
+    # Try Dynu (IPv4 or IPv6)
+    if curl -4 -s --fail --max-time 5 https://checkip.dynu.com >/dev/null \
+	  || curl -6 -s --fail --max-time 5 https://checkip.dynu.com >/dev/null; then
+        return 0
+    fi
+
+    return 1
+}
+
 renew_cert() {
+	POST_CHECK="true"
+	until check_connectivity; do
+        bashio::log.warning "Certificate Manager - Dynu not reachable, delaying certificate renewal"
+        sleep 60
+    done
+	
 	if [[ "$VERBOSE" == "false" ]]; then
 		/run/dynu-run-certbot.sh > /tmp/certbot.out 2>&1
 		CERTBOT_EXIT=$?
@@ -83,10 +100,10 @@ renew_cert() {
 	fi
 
 	# Load output into a variable
-	CERTBOT_OUTPUT=$(cat /tmp/certbot.out)
+	CERTBOT_OUTPUT=$(< /tmp/certbot.out)
 		
 	# If certbot failed
-	if [ "$CERTBOT_EXIT" -ne 0 ]; then
+	if [[ "$CERTBOT_EXIT" -ne 0 ]]; then
 		bashio::log.error "Certificate Manager - Certbot failed with code $CERTBOT_EXIT"
 		if [[ "$VERBOSE" == "false" ]]; then
 			while IFS= read -r line; do
@@ -119,7 +136,7 @@ renew_cert() {
 					  http://hassio/addons/${ADDON}/info 2>&1)
 					CURL_EXIT=$?
 
-					if [ "$CURL_EXIT" -ne 0 ]; then
+					if [[ "$CURL_EXIT" -ne 0 ]]; then
 						bashio::log.warning "Certificate Manager - Failed to query add-on state: ${ADDON}"
 						bashio::log.warning "  curl exit code: $CURL_EXIT"
 						bashio::log.warning "  response: $INFO_OUTPUT"
@@ -138,7 +155,7 @@ renew_cert() {
 						  http://hassio/addons/${ADDON}/restart 2>&1)
 						CURL_EXIT=$?
 
-						if [ "$CURL_EXIT" -eq 0 ]; then
+						if [[ "$CURL_EXIT" -eq 0 ]]; then
 							bashio::log.info "Certificate Manager - Restarted add-on: ${ADDON}"
 						else
 							bashio::log.warning "Certificate Manager - Failed to restart add-on: ${ADDON}"
@@ -170,7 +187,6 @@ check_cert_dates() {
 		bashio::log.info "Certificate Manager - Skipping certificate check: Force Renew"
         mqtt_publish "last_cert_status" "false"
         renew_cert
-        POST_CHECK="true"
     elif [[ -f "$CERT_PATH" ]]; then
 		bashio::log.info "Certificate Manager - Checking certificate dates"
 		mqtt_publish "last_cert_check" "$(date -Is)"
@@ -182,7 +198,6 @@ check_cert_dates() {
             bashio::log.warning "Certificate Manager - Unable to parse certificate dates"
             mqtt_publish "last_cert_status" "false"
             renew_cert
-            POST_CHECK="true"
         else
             CREATED_ISO=$(date -u -d "$CREATED_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
             EXPIRY_ISO=$(date -u -d "$EXPIRY_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
@@ -198,12 +213,10 @@ check_cert_dates() {
                 bashio::log.info "Certificate Manager - Certificate expired, renewing"
 				mqtt_publish "last_cert_status" "false"
                 renew_cert
-                POST_CHECK="true"
             elif (( EXPIRY_EPOCH <= MAX_DAYS )); then
 				bashio::log.info "Certificate Manager - Certificate expires in less than $CHECK_DAYS days, renewing"
                 mqtt_publish "last_cert_status" "true"
                 renew_cert
-                POST_CHECK="true"
             else
 				bashio::log.info "Certificate Manager - Certificate expires $EXPIRY_ISO"
                 RENEW_EPOCH=$(( EXPIRY_EPOCH - (CHECK_DAYS * 86400) ))
@@ -218,7 +231,6 @@ check_cert_dates() {
         bashio::log.warning "Certificate Manager - Certificate missing/not yet created"
         mqtt_publish "last_cert_status" "false"
         renew_cert
-        POST_CHECK="true"
     fi
 
     # Post-renewal verification
@@ -261,49 +273,16 @@ check_cert_dates() {
     fi
 }
 
-check_connectivity() {
-    # Try Dynu (IPv4 or IPv6)
-    if curl -s --fail --max-time 5 https://checkip.dynu.com >/dev/null; then
-        return 0
-    fi
-
-    # WAN check (IPv4 or IPv6)
-    if curl -s --fail --max-time 5 https://icanhazip.com >/dev/null; then
-        return 1   # WAN up, Dynu down
-    fi
-
-    return 2       # WAN down
-}
-
 if [[ -f /run/dynu-run-certbot.sh ]]; then
 
-	while [ ! -f /run/dynu-dns-update.ready ]; do
+	while [[ ! -f /run/dynu-dns-update.ready ]]; do
 		sleep 1
 	done
 
 	bashio::log.info "Certificate Manager - Started"
 	
 	while true; do
-		check_connectivity
-		case $? in
-			0)
-				# Dynu reachable → safe to run certificate check
-				mqtt_publish "wan_connection" "true"
-				check_cert_dates
-				;;
-			1)
-				# WAN up but Dynu down → avoid false updates
-				bashio::log.warning "Certificate Manager - Dynu appears to be down. Rechecking in 60 seconds"
-				mqtt_publish "wan_connection" "true"
-				LOOP_SLEEP=60
-				;;
-			2)
-				# WAN down → wait and retry
-				bashio::log.warning "Certificate Manager - WAN appears to be down. Rechecking in 60 seconds"
-				mqtt_publish "wan_connection" "false"
-				LOOP_SLEEP=60
-				;;
-		esac
+		check_cert_dates
 		
 		NEXT_RUN_ISO=$(date -Is -d "@$(( $(date +%s) + LOOP_SLEEP ))")
 		bashio::log.info "Certificate Manager - Next renewal check: $NEXT_RUN_ISO"
