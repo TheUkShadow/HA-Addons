@@ -447,8 +447,6 @@ if [[ "$DNS_VALID" == "false" && "$CERT_VALID" == "false" ]]; then
 fi
 
 ENTITIES=(
-  "force_cert_check|Force Certificate Check||dynu_updater/force_cert_check|button||mdi:refresh|cert"
-  "force_ip_update|Force IP Update||dynu_updater/force_ip_update|button||mdi:refresh|dns"
   "last_ip_check|Last IP Check|timestamp|dynu_updater/last_ip_check|sensor||mdi:clock-check|dns"
   "last_ip_update|Last IP Update|timestamp|dynu_updater/last_ip_update|sensor||mdi:update|dns"
   "current_ipv4|Current IPv4||dynu_updater/current_ipv4|sensor||mdi:ip-network|dns"
