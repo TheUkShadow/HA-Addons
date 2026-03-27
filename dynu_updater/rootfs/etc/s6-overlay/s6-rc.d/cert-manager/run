@@ -262,18 +262,17 @@ check_cert_dates() {
 }
 
 check_connectivity() {
-    # First: check Dynu API directly
-    if curl -s --fail --max-time 5 https://api.dynu.com/v2/ip >/dev/null; then
-        return 0    # Dynu reachable → all good
+    # Try Dynu (IPv4 or IPv6)
+    if curl -s --fail --max-time 5 https://checkip.dynu.com >/dev/null; then
+        return 0
     fi
 
-    # If Dynu failed, check general WAN connectivity using HTTPS
+    # WAN check (IPv4 or IPv6)
     if curl -s --fail --max-time 5 https://icanhazip.com >/dev/null; then
-        return 1    # WAN up, Dynu down
+        return 1   # WAN up, Dynu down
     fi
 
-    # WAN is down entirely
-    return 2
+    return 2       # WAN down
 }
 
 if [[ -f /run/dynu-run-certbot.sh ]]; then

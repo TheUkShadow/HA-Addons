@@ -54,18 +54,17 @@ mqtt_publish() {
 }
 
 check_connectivity() {
-    # First: check Dynu API directly
-    if curl -s --fail --max-time 5 https://api.dynu.com/v2/ip >/dev/null; then
-        return 0    # Dynu reachable → all good
+    # Try Dynu (IPv4 or IPv6)
+    if curl -s --fail --max-time 5 https://checkip.dynu.com >/dev/null; then
+        return 0
     fi
 
-    # If Dynu failed, check general WAN connectivity
-    if ping -c 1 -W 2 1.1.1.1 >/dev/null 2>&1; then
-        return 1    # WAN up, Dynu down
+    # WAN check (IPv4 or IPv6)
+    if curl -s --fail --max-time 5 https://icanhazip.com >/dev/null; then
+        return 1   # WAN up, Dynu down
     fi
 
-    # WAN is down entirely
-    return 2
+    return 2       # WAN down
 }
 
 STATE_FILE="/run/dynu-dns.conf"
@@ -114,7 +113,10 @@ if [[ -f "$STATE_FILE" ]]; then
 		esac
 		
 		# --- Detect IPv4 ---
-		IPV4=$(curl -4 -s --fail --max-time 5 https://icanhazip.com | tr -d '[:space:]')
+		IPV4=$(curl -4 -s --fail --max-time 5 https://checkip.dynu.com \
+		  | awk -F': ' '{print $2}' \
+		  | tr -d '[:space:]')
+		#IPV4=$(curl -4 -s --fail --max-time 5 https://icanhazip.com | tr -d '[:space:]')
 
 		if [[ -z "$IPV4" ]]; then
 			bashio::log.error "Dynu DNS Updater - Unable to confirm current IPv4 address"
@@ -127,7 +129,10 @@ if [[ -f "$STATE_FILE" ]]; then
 
 		# --- Detect IPv6 only if domain supports it ---
 		if [[ "$DYNU_IPV6_ENABLED" == "true" ]]; then
-			IPV6=$(curl -6 -s --fail --max-time 5 https://icanhazip.com | tr -d '[:space:]')
+			IPV6=$(curl -6 -s --fail --max-time 5 https://checkipv6.dynu.com \
+			  | awk -F': ' '{print $2}' \
+			  | tr -d '[:space:]')
+			#IPV6=$(curl -6 -s --fail --max-time 5 https://icanhazip.com | tr -d '[:space:]')
 
 			if [[ -z "$IPV6" ]]; then
 				bashio::log.error "Dynu DNS Updater - Unable to confirm current IPv6 address"
