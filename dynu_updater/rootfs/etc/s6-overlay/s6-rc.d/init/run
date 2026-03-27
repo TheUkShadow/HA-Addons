@@ -501,7 +501,8 @@ publish_discovery() {
 		# Per‑entity availability topic
 		local entity_avail_topic="dynu_updater/${entity_id}/availability"
 
-		if ! mosquitto_pub -h "$MQTT_HOST" -u "$MQTT_USER" -P "$MQTT_PASSWORD" -p "$MQTT_PORT" "$retain_flag" \
+		if ! mosquitto_pub -h "$MQTT_HOST" -u "$MQTT_USER" -P "$MQTT_PASSWORD" -p "$MQTT_PORT" \
+			  ${retain_flag:+$retain_flag} \
 			  -t "homeassistant/${component}/${entity_id}/config" \
 			  -m "{
 			    \"name\": \"${name}\",
