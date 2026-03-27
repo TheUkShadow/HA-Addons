@@ -288,16 +288,19 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 		case $? in
 			0)
 				# Dynu reachable → safe to run certificate check
+				mqtt_publish "wan_connection" "true"
 				check_cert_dates
 				;;
 			1)
 				# WAN up but Dynu down → avoid false updates
 				bashio::log.warning "Certificate Manager - Dynu appears to be down. Rechecking in 60 seconds"
+				mqtt_publish "wan_connection" "true"
 				LOOP_SLEEP=60
 				;;
 			2)
 				# WAN down → wait and retry
 				bashio::log.warning "Certificate Manager - WAN appears to be down. Rechecking in 60 seconds"
+				mqtt_publish "wan_connection" "false"
 				LOOP_SLEEP=60
 				;;
 		esac
