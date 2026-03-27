@@ -150,19 +150,19 @@ fi
 
 if [[ "$CERT_VALID" == "false" && "$DNS_VALID" == "false" ]]; then
 	bashio::log.error "Dynu Updater Initialisation - Options to Update IP Addresses and Generate Certificate are both disabled - Nothing to do"
-    sleep 10
+    sleep 1
 	exit 1
 fi
 
 if [[ -z "$DYNU_HOSTNAME" || ! "$DYNU_HOSTNAME" =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}(\.[A-Za-z]{2,})*$ ]]; then
     bashio::log.error "Dynu Updater Initialisation - Invalid Dynu Hostname"
-    sleep 10
+    sleep 1
 	exit 1
 fi
 
 if [[ -z "$DYNU_API_KEY" ]]; then
     bashio::log.error "Dynu Updater Initialisation - Invalid Dynu API Key"
-    sleep 10
+    sleep 1
 	exit 1
 fi
 
@@ -207,7 +207,7 @@ fi
 
 if [[ "$DNS_VALID" == "false" && "$CERT_VALID" == "false" ]]; then
 	bashio::log.error "Dynu Updater Initialisation - No valid configuration for Certificate generation or DNS IP Updates"
-	sleep 10
+	sleep 1
 	exit 1
 fi
 
@@ -222,7 +222,7 @@ CURL_EXIT="$?"
 # Did curl itself fail?
 if [[ "$CURL_EXIT" -ne 0 ]]; then
     bashio::log.error "Dynu Updater Initialisation - unable to contact Dynu API (network or HTTP error)"
-    sleep 10
+    sleep 1
 	exit 1
 fi
 
@@ -237,17 +237,17 @@ case "$HTTP_STATUS" in
         ;;
     401)
         bashio::log.error "Dynu Updater Initialisation - Invalid Dynu API key"
-        sleep 10
+        sleep 1
 		exit 1
         ;;
     403)
         bashio::log.error "Dynu Updater Initialisation - Dynu API key does not have permission to access DNS records"
-        sleep 10
+        sleep 1
 		exit 1
         ;;
     *)
         bashio::log.error "Dynu Updater Initialisation - Dynu API returned HTTP $HTTP_STATUS"
-		sleep 10
+		sleep 1
         exit 1
         ;;
 esac
@@ -256,7 +256,7 @@ DYNU_DOMAINS_JSON=$(jq '.' <<< "$JSON_BODY" 2>/dev/null)
 
 if [[ $? -ne 0 ]]; then
     bashio::log.error "Dynu Updater Initialisation - invalid JSON returned for DNS Domains"
-    sleep 10
+    sleep 1
 	exit 1
 fi
 
@@ -267,7 +267,7 @@ DYNU_DOMAIN_ID=$(echo "$DYNU_DOMAINS_JSON" \
 
 if [[ -z "$DYNU_DOMAIN_ID" ]]; then
 	bashio::log.error "Dynu Updater Initialisation - '$DYNU_HOSTNAME' not found in Dynu domain list"
-	sleep 10
+	sleep 1
 	exit 1
 fi
 
@@ -276,7 +276,7 @@ DYNU_RECORDS=$(curl -s --fail --max-time 5 -H "API-Key: $DYNU_API_KEY" \
 
 if ! echo "$DYNU_RECORDS" | jq empty 2>/dev/null; then
 	bashio::log.error "Dynu Updater Initialisation - failed to retrieve valid DNS records from Dynu API"
-	sleep 10
+	sleep 1
 	exit 1
 fi
 
@@ -300,7 +300,7 @@ DYNU_HOSTNAMES=$(
 
 if [[ -z "${DYNU_HOSTNAMES//[[:space:]]/}" ]]; then
     bashio::log.error "Dynu Updater Initialisation - Dynu API returned no valid hostnames"
-	sleep 10
+	sleep 1
 	exit 1
 fi
 
@@ -442,7 +442,7 @@ fi
 
 if [[ "$DNS_VALID" == "false" && "$CERT_VALID" == "false" ]]; then
 	bashio::log.error "Dynu Updater Initialisation - NO Valid configuration for Certificate generation or DNS IP Updates"
-    sleep 10
+    sleep 1
 	exit 1
 fi
 
@@ -529,7 +529,6 @@ publish_discovery() {
 			  }"; then
 			
 			bashio::log.warning "Dynu Updater Initialisation - MQTT discovery failed for entity $entity_id"
-			sleep 1
 		fi	
 	fi
 }
@@ -549,7 +548,6 @@ mqtt_publish() {
 			-r; then
 
 			bashio::log.warning "Dynu Updater Initialisation - MQTT publish failed for topic $topic"
-			sleep 1
 		fi
 	fi
 }
@@ -613,6 +611,3 @@ jq -n \
 mqtt_publish "availability" "online"
 
 bashio::log.info "Dynu Updater Initialisation - Complete"
-
-sleep 1
-exit 0
