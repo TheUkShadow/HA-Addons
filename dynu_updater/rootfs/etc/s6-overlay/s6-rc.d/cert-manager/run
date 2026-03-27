@@ -282,9 +282,9 @@ check_cert_dates() {
 if [[ "$USE_MQTT" == "true" ]]; then
     while IFS=' ' read -r topic payload; do
         if [[ "$payload" == "PRESS" ]]; then
+			bashio::log.warning "Certificate Manager - MQTT payload received. Topic: $topic, Payload: $payload"
             case "$topic" in
                 dynu_updater/service/force_cert_check)
-                    bashio::log.warning "Certificate Manager - MQTT payload received. Topic: $topic, Payload: $payload"
 					MANUAL_CHECK="true"
                     check_cert_dates
                     ;;
@@ -292,7 +292,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
         fi
 
     done < <(mosquitto_sub -h "$MQTT_HOST" -p "$MQTT_PORT" -u "$MQTT_USER" -P "$MQTT_PASSWORD" -v \
-              -t "dynu_updater/service/#") &
+              -t "dynu_updater/service/cert/#") &
 fi
 
 if [[ -f /run/dynu-run-certbot.sh ]]; then

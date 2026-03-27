@@ -190,16 +190,16 @@ if [[ -f "$STATE_FILE" ]]; then
 	if [[ "$USE_MQTT" == "true" ]]; then
 		while IFS=' ' read -r topic payload; do
 			if [[ "$payload" == "PRESS" ]]; then
+				bashio::log.warning "Certificate Manager - MQTT payload received. Topic: $topic, Payload: $payload"
 				case "$topic" in
 					dynu_updater/service/force_ip_update)
-						bashio::log.warning "Certificate Manager - MQTT payload received. Topic: $topic, Payload: $payload"
 						update_ip "true"
 						;;
 				esac
 			fi
 
 		done < <(mosquitto_sub -h "$MQTT_HOST" -p "$MQTT_PORT" -u "$MQTT_USER" -P "$MQTT_PASSWORD" -v \
-				  -t "dynu_updater/service/#") &
+				  -t "dynu_updater/service/dns/#") &
 	fi
 	while true; do
 		update_ip "false"
