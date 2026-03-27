@@ -267,8 +267,8 @@ check_connectivity() {
         return 0    # Dynu reachable → all good
     fi
 
-    # If Dynu failed, check general WAN connectivity
-    if ping -c 1 -W 2 1.1.1.1 >/dev/null 2>&1; then
+    # If Dynu failed, check general WAN connectivity using HTTPS
+    if curl -s --fail --max-time 5 https://icanhazip.com >/dev/null; then
         return 1    # WAN up, Dynu down
     fi
 
