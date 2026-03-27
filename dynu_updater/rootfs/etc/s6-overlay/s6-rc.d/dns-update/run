@@ -21,6 +21,9 @@ else
     VERBOSE="false"
 fi
 
+PIPE=/run/dynu-ip-events
+[[ -p "$PIPE" ]] || mkfifo "$PIPE"
+
 MQTT_CONF="/run/dynu-mqtt.conf"
 
 if [[ -f "$MQTT_CONF" ]]; then
@@ -188,27 +191,40 @@ if [[ -f "$STATE_FILE" ]]; then
 	fi
 
 	if [[ "$USE_MQTT" == "true" ]]; then
-		while IFS=' ' read -r topic payload; do
+		mosquitto_sub -h "$MQTT_HOST" -p "$MQTT_PORT" \
+		  -u "$MQTT_USER" -P "$MQTT_PASSWORD" -v \
+		  -t "dynu_updater/service/dns/#" > "$PIPE" &
+	fi
+	
+	READY_WRITTEN="false"
+	LAST_MANUAL=0
+	
+	while true; do
+		# Check for MQTT events (non-blocking)
+		if read -t 0.1 topic payload < "$PIPE"; then
 			if [[ "$payload" == "PRESS" ]]; then
-				bashio::log.warning "Certificate Manager - MQTT payload received. Topic: $topic, Payload: $payload"
+				bashio::log.warning "DNS Updater - MQTT payload received. Topic: $topic, Payload: $payload"
 				case "$topic" in
 					dynu_updater/service/dns/force_ip_update)
 						update_ip "true"
+						LAST_MANUAL=$(date +%s)
 						;;
 				esac
 			fi
-
-		done < <(mosquitto_sub -h "$MQTT_HOST" -p "$MQTT_PORT" -u "$MQTT_USER" -P "$MQTT_PASSWORD" -v \
-				  -t "dynu_updater/service/dns/#") &
-	fi
-	while true; do
-		update_ip "false"
-			
-		if [[ ! -f /run/dynu-dns-update.ready ]]; then
-			touch /run/dynu-dns-update.ready
 		fi
 
-		sleep 60
+		# Timer-based update (synchronous)
+		now=$(date +%s)
+		if (( now - LAST_MANUAL >= 60 )); then
+			update_ip "false"
+			LAST_MANUAL=$now
+		fi
+
+		sleep 1
+		if [[ "$READY_WRITTEN" == "false" ]]; then
+			READY_WRITTEN="true"
+			touch /run/dynu-dns-update.ready
+		fi
 	done
 
 else
