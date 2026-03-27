@@ -261,6 +261,21 @@ check_cert_dates() {
     fi
 }
 
+check_connectivity() {
+    # First: check Dynu API directly
+    if curl -s --fail --max-time 5 https://api.dynu.com/v2/ip >/dev/null; then
+        return 0    # Dynu reachable → all good
+    fi
+
+    # If Dynu failed, check general WAN connectivity
+    if ping -c 1 -W 2 1.1.1.1 >/dev/null 2>&1; then
+        return 1    # WAN up, Dynu down
+    fi
+
+    # WAN is down entirely
+    return 2
+}
+
 if [[ -f /run/dynu-run-certbot.sh ]]; then
 
 	while [ ! -f /run/dynu-dns-update.ready ]; do
@@ -270,7 +285,23 @@ if [[ -f /run/dynu-run-certbot.sh ]]; then
 	bashio::log.info "Certificate Manager - Started"
 	
 	while true; do
-		check_cert_dates
+		check_connectivity
+		case $? in
+			0)
+				# Dynu reachable → safe to run certificate check
+				check_cert_dates
+				;;
+			1)
+				# WAN up but Dynu down → avoid false updates
+				bashio::log.warning "Certificate Manager - Dynu appears to be down. Rechecking in 60 seconds"
+				LOOP_SLEEP=60
+				;;
+			2)
+				# WAN down → wait and retry
+				bashio::log.warning "Certificate Manager - WAN appears to be down. Rechecking in 60 seconds"
+				LOOP_SLEEP=60
+				;;
+		esac
 		
 		NEXT_RUN_ISO=$(date -Is -d "@$(( $(date +%s) + LOOP_SLEEP ))")
 		bashio::log.info "Certificate Manager - Next renewal check: $NEXT_RUN_ISO"

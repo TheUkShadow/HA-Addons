@@ -53,6 +53,21 @@ mqtt_publish() {
     fi
 }
 
+check_connectivity() {
+    # First: check Dynu API directly
+    if curl -s --fail --max-time 5 https://api.dynu.com/v2/ip >/dev/null; then
+        return 0    # Dynu reachable → all good
+    fi
+
+    # If Dynu failed, check general WAN connectivity
+    if ping -c 1 -W 2 1.1.1.1 >/dev/null 2>&1; then
+        return 1    # WAN up, Dynu down
+    fi
+
+    # WAN is down entirely
+    return 2
+}
+
 STATE_FILE="/run/dynu-dns.conf"
 
 if [[ -f "$STATE_FILE" ]]; then
@@ -76,7 +91,27 @@ if [[ -f "$STATE_FILE" ]]; then
 			bashio::log.info "Dynu DNS Updater - Checking current IP addresses"
 		fi
 		
-		mqtt_publish "last_ip_check" "$(date -Is)"
+		check_connectivity
+		case $? in
+			0)
+				# Dynu reachable → safe to run updater
+				mqtt_publish "wan_connection" "true"
+				;;
+			1)
+				# WAN up but Dynu down → avoid false updates
+				mqtt_publish "wan_connection" "true"
+				bashio::log.warning "Dynu DNS Updater - Dynu appears to be down. Skipping this check"
+				sleep 60
+				continue
+				;;
+			2)
+				# WAN down → wait and retry
+				mqtt_publish "wan_connection" "false"
+				bashio::log.warning "Dynu DNS Updater - WAN appears to be down. Skipping this check"
+				sleep 60
+				continue
+				;;
+		esac
 		
 		# --- Detect IPv4 ---
 		IPV4=$(curl -4 -s --fail --max-time 5 https://icanhazip.com | tr -d '[:space:]')
@@ -108,6 +143,7 @@ if [[ -f "$STATE_FILE" ]]; then
 		fi
 
 		if [[ -n "$IPV4" || -n "$IPV6" ]]; then
+			mqtt_publish "last_ip_check" "$(date -Is)"
 			if { [[ -n "$IPV4" && "$IPV4" != "$LAST_IPV4" ]]; } \
 			   || { [[ -n "$IPV6" && "$IPV6" != "$LAST_IPV6" ]]; }; then
 
@@ -159,10 +195,8 @@ if [[ -f "$STATE_FILE" ]]; then
 			elif [[ "$VERBOSE" == "true" ]]; then
 				bashio::log.info "Dynu DNS Updater - No update required"
 			fi
-			mqtt_publish "wan_connection" "true"
 		else
-			mqtt_publish "wan_connection" "false"
-			bashio::log.error "Dynu DNS Updater - Unable to retrieve current IP address data"
+			bashio::log.error "Dynu DNS Updater - Unable to retrieve current IP address data (icanhazip error)"
 		fi
 		
 		if [[ ! -f /run/dynu-dns-update.ready ]]; then
@@ -175,7 +209,5 @@ if [[ -f "$STATE_FILE" ]]; then
 else
 	bashio::log.info "Dynu DNS Updater - Not required"
 	touch /run/dynu-dns-update.ready
-	# sleep infinity
-	s6-svc -d /run/service/dns-update
-	exit 0
+	sleep infinity
 fi
