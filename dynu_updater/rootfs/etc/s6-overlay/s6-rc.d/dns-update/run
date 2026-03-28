@@ -81,6 +81,9 @@ if [[ -f "$STATE_FILE" ]]; then
 			bashio::log.info "Dynu DNS Updater - Checking current IP addresses"
 		fi
 		
+		IPV4=""
+		IPV6=""
+		
 		# --- Detect IPv4 ---
 		if RAW=$(curl -4 -s --fail --max-time 5 https://checkip.dynu.com); then
 			IPV4=$(echo "$RAW" | awk -F': ' '{print $2}' | tr -d '[:space:]')
