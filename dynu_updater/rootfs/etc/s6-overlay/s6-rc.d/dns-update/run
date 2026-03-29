@@ -168,8 +168,10 @@ for HOST in "${DOMAIN_ARR[@]}"; do
 	fi
 done
 
-declare -p IP4_MAP | bashio::log.info
-declare -p IP6_MAP | bashio::log.info
+bashio::log.info "Dumping resolved IP mappings:"
+for HOST in "${!IP4_MAP[@]}"; do
+    bashio::log.info "Host: $HOST | IPv4: ${IP4_MAP[$HOST]} | IPv6: ${IP6_MAP[$HOST]}"
+done
 
 DNS_UPDATE_JSON="/data/dns-update.json"
 
