@@ -222,7 +222,7 @@ while true; do
 				fi
 
 				if ! RESPONSE=$(curl -s --fail --max-time 5 "$COMMAND" 2>/dev/null); then
-					bashio::log.error "Dynu DNS Updater - Update request failed"
+					bashio::log.error "Dynu DNS Updater - Update request failed: $RESPONSE"
 				else
 					bashio::log.info "Dynu DNS Updater - Server responded: $RESPONSE"
 					UPDATED=$((UPDATED - 1))
