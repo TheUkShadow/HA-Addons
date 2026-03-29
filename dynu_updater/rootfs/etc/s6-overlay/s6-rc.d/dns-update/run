@@ -27,6 +27,11 @@ else
     USE_MQTT="false"
 fi
 
+LAST_IPV4=""
+LAST_IPV6=""
+LAST_UPDATE=""
+LAST_CHECK="ok"
+FIRST_RUN="true"
 MQTT_CONF="/run/dynu-mqtt.conf"
 
 if [[ "$USE_MQTT" == "true" && -f "$MQTT_CONF" ]]; then
@@ -67,10 +72,12 @@ if ! DYNU_API_RESPONSE=$(curl -s --fail --max-time 5 -H "API-Key: $DYNU_API_KEY"
 fi
 
 # Retrieve Domain ID
-DYNU_DOMAIN_ID=$(echo "$DYNU_API_RESPONSE" \
-	| jq -r --arg HOST "$DYNU_HOSTNAME" '
-		.domains[] | select(.name == $HOST) | .id // empty
-	')
+DYNU_DOMAIN_ID=$(
+    jq -r --arg HOST "$DYNU_HOSTNAME" '
+        .domains[]
+        | select(.name == $HOST)
+        | .id // empty
+    ' <<< "$DYNU_API_RESPONSE")
 
 if [[ -z "$DYNU_DOMAIN_ID" ]]; then
 	bashio::log.error "Dynu DNS Updater - '$DYNU_HOSTNAME' not found in Dynu domain list"
@@ -85,14 +92,13 @@ if ! DYNU_RECORDS=$(curl -s --fail --max-time 5 -H "API-Key: $DYNU_API_KEY" "htt
 	exit 1
 fi
 
-DYNU_IPV6_ENABLED=$(
-	echo "$DYNU_API_RESPONSE" \
-	| jq -r --arg HOST "$DYNU_HOSTNAME" '
-		.domains[]
-		| select(.name == $HOST)
-		| .ipv6
-	'
-)
+bashio::log.info $DYNU_RECORDS
+
+DYNU_IPV6_ENABLED=$(jq -r --arg HOST "$DYNU_HOSTNAME" '
+    .domains[]
+    | select(.name == $HOST)
+    | .ipv6
+' <<<"$DYNU_API_RESPONSE")
 
 DYNU_HOSTNAMES=$(
   jq -r '
@@ -123,12 +129,6 @@ if [[ ${#DOMAIN_ARR[@]} -eq 0 ]]; then
 	sleep 1
 	exit 1
 fi
-
-LAST_IPV4=""
-LAST_IPV6=""
-LAST_UPDATE=""
-LAST_CHECK="ok"
-FIRST_RUN="true"
 
 DNS_UPDATE_JSON="/data/dns-update.json"
 
