@@ -85,8 +85,6 @@ if ! DYNU_RECORDS=$(curl -s --fail --max-time 5 -H "API-Key: $DYNU_API_KEY" "htt
 	exit 1
 fi
 
-bashio::log.info "DNS REcords = $DYNU_RECORDS"
-
 DYNU_IPV6_ENABLED=$(
 	echo "$DYNU_API_RESPONSE" \
 	| jq -r --arg HOST "$DYNU_HOSTNAME" '
