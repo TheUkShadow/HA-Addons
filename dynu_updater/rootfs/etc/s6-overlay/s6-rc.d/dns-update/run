@@ -71,6 +71,8 @@ if ! DYNU_API_RESPONSE=$(curl -s --fail --max-time 5 -H "API-Key: $DYNU_API_KEY"
 	exit 1
 fi
 
+bashio::log.info $DYNU_API_RESPONSE
+
 # Retrieve Domain ID
 DYNU_DOMAIN_ID=$(
     jq -r --arg HOST "$DYNU_HOSTNAME" '
