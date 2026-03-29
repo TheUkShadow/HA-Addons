@@ -45,7 +45,7 @@ fi
 
 CERT_DIR=/data/letsencrypt
 WORK_DIR=/data/workdir
-DNS_API_KEY=/data/dnsapikey
+# DNS_API_KEY=/data/dnsapikey
 DNS_MULTI_CREDS=/data/dns-multi.ini
 ACME_ARGUMENTS=()
 KEY_ARGUMENTS=()
@@ -124,7 +124,7 @@ DYNU_HOSTNAMES=$(
 DOMAIN_ARR=()
 for DOMAIN in $CERT_DOMAINS; do
 	if [[ "$DOMAIN" == "*.$DYNU_HOSTNAME" ]]; then
-		if [[ $(wc -w <<< "$IP_DOMAINS") -ne 1 ]]; then
+		if [[ $(wc -w <<< "$CERT_DOMAINS") -ne 1 ]]; then
 			bashio::log.warning "Certificate Manager - Wildcard found, ignoring other DNS Update Hostnames"
 		fi
 		DOMAIN_ARR=(-d "$DOMAIN")
@@ -145,8 +145,8 @@ fi
 mkdir -p "${WORK_DIR}"
 mkdir -p "${CERT_DIR}"
 
-touch "${DNS_API_KEY}"
-chmod 0600 "${DNS_API_KEY}"
+# touch "${DNS_API_KEY}"
+# chmod 0600 "${DNS_API_KEY}"
 touch "${DNS_MULTI_CREDS}"
 chmod 0600 "${DNS_MULTI_CREDS}"
 
@@ -210,15 +210,14 @@ renew_cert() {
 	else
 		CERTBOT_EXIT=$?
 	fi
-
-	# Load output into a variable
-	CERTBOT_OUTPUT=$(< "$TMP_OUTPUT")
 	
 	# If certbot failed
 	if [[ "$CERTBOT_EXIT" -ne 0 ]]; then
 		bashio::log.error "Certificate Manager - Certbot failed with code $CERTBOT_EXIT"
 	else
 		# If certbot succeeded, check if certificate was updated
+		# Load output into a variable
+		CERTBOT_OUTPUT=$(< "$TMP_OUTPUT")
 		
 		if echo "$CERTBOT_OUTPUT" | grep -q "Successfully received certificate"; then
 			bashio::log.info "Certificate Manager - New certificate received"
@@ -267,6 +266,8 @@ renew_cert() {
 			fi
 		elif echo "$CERTBOT_OUTPUT" | grep -q "Certificate not yet due for renewal"; then
 			bashio::log.info "Certificate Manager - Current certificate is valid"
+		elif [[ "$DRY_RUN" == "true" ]] && echo "$CERTBOT_OUTPUT" | grep -q "The dry run was successful"; then	
+			bashio::log.info "Certificate Manager - The dry-run was successful"
 		else
 			bashio::log.warning "Certificate Manager - Unexpected Certbot output:"
 		fi
@@ -277,15 +278,19 @@ check_cert_dates() {
     POST_CHECK="false"
     CERT_PATH="/data/letsencrypt/live/$DYNU_HOSTNAME/cert.pem"
 
-	if [[ "$FORCE_RENEW" == "true" ]]; then
-		bashio::log.info "Certificate Manager - Skipping certificate date check: Force Renew"
+	if [[ "$FORCE_RENEW" == "true" || "$DRY_RUN" == "true" ]]; then
+		bashio::log.info "Certificate Manager - Skipping certificate date check: Force Renew/Dry Run"
         mqtt_publish "last_cert_status" "false"
         renew_cert
     elif [[ -f "$CERT_PATH" ]]; then
 		bashio::log.info "Certificate Manager - Checking certificate dates"
 		mqtt_publish "last_cert_check" "$(date -Is)"
-        CREATED_RAW=$(openssl x509 -in "$CERT_PATH" -noout -startdate 2>/dev/null | cut -d= -f2)
-        EXPIRY_RAW=$(openssl x509 -in "$CERT_PATH" -noout -enddate 2>/dev/null | cut -d= -f2)
+        if ! CREATED_RAW=$(openssl x509 -in "$CERT_PATH" -noout -startdate 2>/dev/null | cut -d= -f2); then
+			CREATED_RAW=""
+		fi
+		if ! EXPIRY_RAW=$(openssl x509 -in "$CERT_PATH" -noout -enddate 2>/dev/null | cut -d= -f2); then
+			EXPIRY_RAW=""
+		fi
 
         # If parsing fails, force renewal
         if [[ -z "$CREATED_RAW" || -z "$EXPIRY_RAW" ]]; then
@@ -330,8 +335,12 @@ check_cert_dates() {
     # Post-renewal verification
     if [[ "$POST_CHECK" == "true" ]]; then
         if [[ -f "$CERT_PATH" ]]; then
-            CREATED_RAW=$(openssl x509 -in "$CERT_PATH" -noout -startdate 2>/dev/null | cut -d= -f2)
-            EXPIRY_RAW=$(openssl x509 -in "$CERT_PATH" -noout -enddate 2>/dev/null | cut -d= -f2)
+			if ! CREATED_RAW=$(openssl x509 -in "$CERT_PATH" -noout -startdate 2>/dev/null | cut -d= -f2); then
+				CREATED_RAW=""
+			fi
+			if ! EXPIRY_RAW=$(openssl x509 -in "$CERT_PATH" -noout -enddate 2>/dev/null | cut -d= -f2); then
+				EXPIRY_RAW=""
+			fi
 
             if [[ -n "$CREATED_RAW" && -n "$EXPIRY_RAW" ]]; then
                 CREATED_ISO=$(date -u -d "$CREATED_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
