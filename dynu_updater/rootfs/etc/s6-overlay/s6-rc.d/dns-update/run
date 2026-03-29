@@ -60,8 +60,8 @@ mqtt_publish() {
 }
 
 # Call Dynu API
-if ! DYNU_API_RESPONSE=$(curl -s --fail --max-time 5 -w "\n%{http_code}" -H "API-Key: $DYNU_API_KEY" "https://api.dynu.com/v2/dns" 2>/dev/null); then
-	bashio::log.error "Dynu DNS Updater - unable to contact Dynu API (network error or invalid API key) $DYNU_API_RESPONSE"
+if ! DYNU_API_RESPONSE=$(curl -s --fail --max-time 5 -H "API-Key: $DYNU_API_KEY" "https://api.dynu.com/v2/dns" 2>/dev/null); then
+	bashio::log.error "Dynu DNS Updater - unable to contact Dynu API (network error or invalid API key)"
     sleep 1
 	exit 1
 fi
