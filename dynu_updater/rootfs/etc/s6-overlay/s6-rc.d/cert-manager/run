@@ -52,7 +52,8 @@ KEY_ARGUMENTS=()
 ADDITIONAL_ARGS=()
 LOOP_SLEEP=600
 POST_CHECK="false"
-PROPAGATION_SECONDS=240
+LAST_CHECK="ok"
+PROPAGATION_SECONDS=300
 
 MQTT_CONF="/run/dynu-mqtt.conf"
 
@@ -214,6 +215,7 @@ renew_cert() {
 	# If certbot failed
 	if [[ "$CERTBOT_EXIT" -ne 0 ]]; then
 		bashio::log.error "Certificate Manager - Certbot failed with code $CERTBOT_EXIT"
+		LAST_CHECK="error"
 	else
 		# If certbot succeeded, check if certificate was updated
 		# Load output into a variable
@@ -276,6 +278,7 @@ renew_cert() {
 
 check_cert_dates() {
     POST_CHECK="false"
+	LAST_CHECK="ok"
     CERT_PATH="/data/letsencrypt/live/$DYNU_HOSTNAME/cert.pem"
 
 	if [[ "$FORCE_RENEW" == "true" || "$DRY_RUN" == "true" ]]; then
@@ -334,7 +337,10 @@ check_cert_dates() {
 
     # Post-renewal verification
     if [[ "$POST_CHECK" == "true" ]]; then
-        if [[ -f "$CERT_PATH" ]]; then
+        if [[ "$LAST_CHECK" == "error" ]]; then
+			bashio::log.warning "Certificate Manager - Last renewal failed. Retrying in 10 minutes"
+			LOOP_SLEEP=600
+		elif [[ -f "$CERT_PATH" ]]; then
 			if ! CREATED_RAW=$(openssl x509 -in "$CERT_PATH" -noout -startdate 2>/dev/null | cut -d= -f2); then
 				CREATED_RAW=""
 			fi
