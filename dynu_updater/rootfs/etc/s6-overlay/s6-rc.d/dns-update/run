@@ -184,6 +184,11 @@ while true; do
 		IPV6=""
 	fi
 
+	if [[ "$VERBOSE" == "true" ]]; then
+		bashio::log.info "Dynu DNS Updater - Current IPv4 address: $IPV4"
+		bashio::log.info "Dynu DNS Updater - Current IPv6 address: $IPV6"
+	fi
+	
 	if [[ -n "$IPV4" || -n "$IPV6" ]]; then
 		mqtt_publish "wan_connection" "true"
 		mqtt_publish "last_ip_check" "$(date -Is)"
