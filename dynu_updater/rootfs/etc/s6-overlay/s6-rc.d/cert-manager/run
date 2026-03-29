@@ -193,6 +193,8 @@ renew_cert() {
         sleep 60
     done
 	
+	set -o pipefail
+	
 	TMP_OUTPUT=$(mktemp)
 
 	certbot certonly --non-interactive --keep-until-expiring --expand \
@@ -203,27 +205,16 @@ renew_cert() {
 		--config-dir "$CERT_DIR" --work-dir "$WORK_DIR" \
 		--preferred-challenges dns \
 		"${ACME_ARGUMENTS[@]}" \
-		>"$TMP_OUTPUT" 2>&1
+		2>&1 | tee "$TMP_OUTPUT"
 
 	CERTBOT_EXIT=$?
 
 	# Load output into a variable
 	CERTBOT_OUTPUT=$(< "$TMP_OUTPUT")
 	
-	if [[ "$VERBOSE" == "true" ]]; then
-		while IFS= read -r line; do
-			bashio::log.info "  $line"
-		done <<< "$CERTBOT_OUTPUT"
-	fi
-	
 	# If certbot failed
 	if [[ "$CERTBOT_EXIT" -ne 0 ]]; then
 		bashio::log.error "Certificate Manager - Certbot failed with code $CERTBOT_EXIT"
-		if [[ "$VERBOSE" == "false" ]]; then
-			while IFS= read -r line; do
-				bashio::log.error "  $line"
-			done <<< "$CERTBOT_OUTPUT"
-		fi
 	else
 		# If certbot succeeded, check if certificate was updated
 		
@@ -274,11 +265,8 @@ renew_cert() {
 			fi
 		elif echo "$CERTBOT_OUTPUT" | grep -q "Certificate not yet due for renewal"; then
 			bashio::log.info "Certificate Manager - Current certificate is valid"
-		elif [[ "$VERBOSE" == "false" ]]; then
+		else
 			bashio::log.warning "Certificate Manager - Unexpected Certbot output:"
-			while IFS= read -r line; do
-				bashio::log.warning "  $line"
-			done <<< "$CERTBOT_OUTPUT"
 		fi
 	fi
 }
@@ -318,7 +306,7 @@ check_cert_dates() {
 				mqtt_publish "last_cert_status" "false"
                 renew_cert
             elif (( EXPIRY_EPOCH <= MAX_DAYS )); then
-				bashio::log.info "Certificate Manager - Certificate expires in less than $CHECK_DAYS days, renewing"
+				bashio::log.info "Certificate Manager - Certificate expires in less than $CHECK_DAYS days"
                 mqtt_publish "last_cert_status" "true"
                 renew_cert
             else

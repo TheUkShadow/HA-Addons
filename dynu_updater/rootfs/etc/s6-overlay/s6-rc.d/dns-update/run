@@ -140,6 +140,8 @@ if [[ -f "$DNS_UPDATE_JSON" ]]; then
 	mqtt_publish "current_ipv6" "$LAST_IPV6"
 fi
 
+bashio::log.info "Dynu DNS Updater - Started"
+
 while true; do
 	if [[ "$VERBOSE" == "true" ]]; then
 		bashio::log.info "Dynu DNS Updater - Checking current IP addresses"
