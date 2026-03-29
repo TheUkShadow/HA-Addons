@@ -117,7 +117,10 @@ fi
 
 DYNU_HOSTNAMES=$(
   jq -r '
-    [.dnsRecords[].hostname]
+    [.dnsRecords[]
+      | select(.recordType | IN("SOA","A","AAAA"))
+      | .hostname
+    ]
     | unique
     | sort_by( (split(".") | length), . )
     | .[]
