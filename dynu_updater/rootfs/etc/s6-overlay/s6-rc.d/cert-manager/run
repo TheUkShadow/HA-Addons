@@ -156,10 +156,10 @@ echo "dns_multi_provider = dynu" >> "${DNS_MULTI_CREDS}"
 echo "DYNU_API_KEY=$(bashio::config 'dynu_api_key')" >> "${DNS_MULTI_CREDS}"
 echo "DYNU_PROPAGATION_TIMEOUT=${PROPAGATION_SECONDS}" >> "${DNS_MULTI_CREDS}"
 
-ACME_ARGUMENTS+=("--authenticator dns-multi" "--dns-multi-credentials \"${DNS_MULTI_CREDS}\"" "--dns-multi-propagation-seconds ${PROPAGATION_SECONDS}")
+ACME_ARGUMENTS+=("--authenticator" "dns-multi" "--dns-multi-credentials" "${DNS_MULTI_CREDS}" "--dns-multi-propagation-seconds" "${PROPAGATION_SECONDS}")
 
 # Default Let's Encrypt servers.
-ACME_ARGUMENTS+=("--preferred-chain \"ISRG Root X1\"")
+ACME_ARGUMENTS+=("--preferred-chain" "ISRG Root X1")
 
 if [[ "$FORCE_RENEW" == "true" ]]; then
 	ADDITIONAL_ARGS+=("--force-renewal")
@@ -174,7 +174,7 @@ if [[ "$DRY_RUN" = "true" ]]; then
 fi
 
 # Set key-type
-KEY_ARGUMENTS+=("--key-type ecdsa")
+KEY_ARGUMENTS+=("--key-type" "ecdsa")
 
 check_connectivity() {
     # Try Dynu (IPv4 or IPv6)
@@ -197,17 +197,19 @@ renew_cert() {
 	
 	TMP_OUTPUT=$(mktemp)
 
-	certbot certonly --non-interactive --keep-until-expiring --expand \
-		--email "$EMAIL" --agree-tos \
-		"${KEY_ARGUMENTS[@]}" \
-		"${ADDITIONAL_ARGS[@]}" \
-		--cert-name "$DYNU_HOSTNAME" "${DOMAIN_ARR[@]}" \
-		--config-dir "$CERT_DIR" --work-dir "$WORK_DIR" \
-		--preferred-challenges dns \
-		"${ACME_ARGUMENTS[@]}" \
-		2>&1 | tee "$TMP_OUTPUT"
-
-	CERTBOT_EXIT=$?
+	if certbot certonly --non-interactive --keep-until-expiring --expand \
+		  --email "$EMAIL" --agree-tos \
+		  "${KEY_ARGUMENTS[@]}" \
+		  "${ADDITIONAL_ARGS[@]}" \
+		  --cert-name "$DYNU_HOSTNAME" "${DOMAIN_ARR[@]}" \
+		  --config-dir "$CERT_DIR" --work-dir "$WORK_DIR" \
+		  --preferred-challenges dns \
+		  "${ACME_ARGUMENTS[@]}" \
+		  2>&1 | tee "$TMP_OUTPUT"; then
+		CERTBOT_EXIT=0
+	else
+		CERTBOT_EXIT=$?
+	fi
 
 	# Load output into a variable
 	CERTBOT_OUTPUT=$(< "$TMP_OUTPUT")
