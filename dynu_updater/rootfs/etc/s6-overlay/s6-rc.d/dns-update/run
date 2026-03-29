@@ -194,9 +194,9 @@ while true; do
 	if [[ -n "$IPV4" || -n "$IPV6" ]]; then
 		mqtt_publish "wan_connection" "true"
 		mqtt_publish "last_ip_check" "$(date -Is)"
-		if { [[ -n "$IPV4" && "$IPV4" != "$LAST_IPV4" ]]; } \
-		   || { [[ -n "$IPV6" && "$IPV6" != "$LAST_IPV6" ]]; } \
-		   || { [[ "$LAST_CHECK" == "error"]]; }; then
+		if [[ -n "$IPV4" && "$IPV4" != "$LAST_IPV4" ]] \
+		   || [[ -n "$IPV6" && "$IPV6" != "$LAST_IPV6" ]] \
+		   || [[ "$LAST_CHECK" == "error" ]]; then
 
 			bashio::log.info "Dynu DNS Updater - Detected IP change"
 			bashio::log.info "Dynu DNS Updater - New IPv4 address = ${IPV4}"
