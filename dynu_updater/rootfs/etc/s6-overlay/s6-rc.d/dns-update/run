@@ -11,6 +11,9 @@ if ! bashio::config.true 'update_ip'; then
 	sleep infinity
 fi
 
+IPV6_REGEX='^((([0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){1,7}:)|(([0-9A-Fa-f]{1,4}:){1,6}:[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){1,5}(:[0-9A-Fa-f]{1,4}){1,2})|(([0-9A-Fa-f]{1,4}:){1,4}(:[0-9A-Fa-f]{1,4}){1,3})|(([0-9A-Fa-f]{1,4}:){1,3}(:[0-9A-Fa-f]{1,4}){1,4})|(([0-9A-Fa-f]{1,4}:){1,2}(:[0-9A-Fa-f]{1,4}){1,5})|([0-9A-Fa-f]{1,4}(:([0-9A-Fa-f]{1,4}:){1,6}))|(:((:[0-9A-Fa-f]{1,4}){1,7}|:))|(([0-9A-Fa-f]{1,4}:){1,4}((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])))$'
+IPV4_REGEX='^([0-9]{1,3}\.){3}[0-9]{1,3}$'
+
 DYNU_HOSTNAME=$(bashio::config 'dynu_hostname' | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
 PASSWORD=$(bashio::config 'dynu_update_password' | xargs)
 IP_DOMAINS=$(bashio::config 'ip_domains' | tr '[:upper:]' '[:lower:]' | xargs)
@@ -185,12 +188,12 @@ while true; do
 	if RAW=$(curl -4 -s --fail --max-time 5 https://checkip.dynu.com 2>/dev/null); then
 		IPV4=$(echo "$RAW" | awk -F': ' '{print $2}' | tr -d '[:space:]')
 	fi
-	if [[ -z "$IPV4" || ! "$IPV4" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+	if [[ -z "$IPV4" || ! "$IPV4" =~ $IPV4_REGEX ]]; then
 		bashio::log.warning "Dynu DNS Updater - Dynu.com returned an invalid IPv4: $IPV4. Trying icanhazip.com"
 		if RAW=$(curl -4 -s --fail --max-time 5 https://icanhazip.com 2>/dev/null); then
 			IPV4=$(echo "$RAW" | tr -d '[:space:]')
 		fi
-		if [[ -z "$IPV4" || ! "$IPV4" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+		if [[ -z "$IPV4" || ! "$IPV4" =~ $IPV4_REGEX ]]; then
 			bashio::log.warning "Dynu DNS Updater - Icanhazip.com returned an invalid IPv4: $IPV4"
 			IPV4=""
 		fi
@@ -201,12 +204,12 @@ while true; do
 		if RAW=$(curl -6 -s --fail --max-time 5 https://checkipv6.dynu.com 2>/dev/null); then
 			IPV6=$(echo "$RAW" | awk -F': ' '{print $2}' | tr -d '[:space:]')
 		fi
-		if [[ -z "$IPV6" || ! "$IPV6" =~ ^([0-9A-Fa-f]{0,4}:){1,7}[0-9A-Fa-f]{0,4}$ ]]; then
+		if [[ -z "$IPV6" || ! "$IPV6" =~ $IPV6_REGEX ]]; then
 			bashio::log.warning "Dynu DNS Updater - Dynu.com returned an invalid IPv6: $IPV6. Trying icanhazip.com"
 			if RAW=$(curl -6 -s --fail --max-time 5 https://icanhazip.com 2>/dev/null); then
 				IPV6=$(echo "$RAW" | tr -d '[:space:]')
 			fi
-			if [[ -z "$IPV6" || ! "$IPV6" =~ ^([0-9A-Fa-f]{0,4}:){1,7}[0-9A-Fa-f]{0,4}$ ]]; then
+			if [[ -z "$IPV6" || ! "$IPV6" =~ $IPV6_REGEX ]]; then
 				bashio::log.warning "Dynu DNS Updater - Icanhazip.com returned an invalid IPv6: $IPV6"
 				IPV6=""
 			fi
@@ -217,10 +220,12 @@ while true; do
 
 	if [[ "$VERBOSE" == "true" ]]; then
 		bashio::log.info "Dynu DNS Updater - Current IPv4 address: $IPV4"
-		bashio::log.info "Dynu DNS Updater - Current IPv6 address: $IPV6"
+		if [[ "$DYNU_IPV6_ENABLED" == "true" ]]; then
+			bashio::log.info "Dynu DNS Updater - Current IPv6 address: $IPV6"
+		fi
 	fi
 	
-	if [[ -n "$IPV4" ]]; then
+	if [[ -n "$IPV4" ]] && [[ "$DYNU_IPV6_ENABLED" == "false" || -n "$IPV6" ]]; then
 		mqtt_publish "wan_connection" "true"
 		mqtt_publish "last_ip_check" "$(date -Is)"
 		
@@ -228,6 +233,10 @@ while true; do
 		
 		for HOST in "${!IP_MAP[@]}"; do
 			IFS="|" read -r last_ipv4 last_ipv6 type id <<< "${IP_MAP[$HOST]}"
+			
+			if [[ "$VERBOSE" == "true" ]]; then
+				bashio::log.info "Dynu DNS Updater - Checking $type $HOST"
+			fi
 			
 			if [[ "$IPV4" != "$last_ipv4" ]] || [[ "$DYNU_IPV6_ENABLED" == "true" && -n "$IPV6" && "$IPV6" != "$last_ipv6" ]]; then
 				bashio::log.info "Dynu DNS Updater - Updating $type $HOST"
@@ -242,14 +251,38 @@ while true; do
 					COMMAND="${COMMAND}&myipv6=$IPV6"
 				fi
 			
-				if ! RESPONSE=$(curl -s --fail --max-time 5 "$COMMAND" 2>/dev/null); then
-					bashio::log.error "Dynu DNS Updater - Update request failed"
-				else
-					bashio::log.info "Dynu DNS Updater - Server responded: $RESPONSE"
-					UPDATED=$((UPDATED + 1))
-					IP_MAP["$HOST"]="$IPV4|$IPV6|$type|$id"
-				fi
-			fi	
+				case "$RESPONSE" in
+					good*|nochg*)
+						bashio::log.info "Dynu DNS Updater - Success: $RESPONSE"
+						UPDATED=$((UPDATED + 1))
+						IP_MAP["$HOST"]="$IPV4|$IPV6|$type|$id"
+						;;
+					badauth)
+						bashio::log.error "Dynu DNS Updater - Authentication failed (badauth)"
+						;;
+					notfqdn)
+						bashio::log.error "Dynu DNS Updater - Invalid hostname (notfqdn)"
+						;;
+					nohost)
+						bashio::log.error "Dynu DNS Updater - Host not found (nohost)"
+						;;
+					numhost)
+						bashio::log.error "Dynu DNS Updater - Too many hosts (numhost)"
+						;;
+					abuse)
+						bashio::log.error "Dynu DNS Updater - Account blocked (abuse)"
+						;;
+					911)
+						bashio::log.error "Dynu DNS Updater - Dynu server error (911)"
+						;;
+					*)
+						bashio::log.error "Dynu DNS Updater - Updating failed"
+						;;
+				esac
+				
+			elif [[ "$VERBOSE" == "true" ]]; then
+				bashio::log.info "Dynu DNS Updater - $type $HOST does not require updating"
+			fi
 		done
 		
 		if (( UPDATED > 0 )); then
