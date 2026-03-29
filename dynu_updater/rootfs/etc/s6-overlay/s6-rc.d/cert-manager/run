@@ -130,7 +130,8 @@ DYNU_HOSTNAMES=$(
 DOMAIN_ARR=()
 for DOMAIN in $CERT_DOMAINS; do
 	if [[ "$DOMAIN" == "*.$DYNU_HOSTNAME" ]]; then
-		if [[ $(wc -w <<< "$CERT_DOMAINS") -ne 1 ]]; then
+		read -r -a _tmp <<< "$IP_DOMAINS"
+		if (( ${#_tmp[@]} != 1 )); then
 			bashio::log.warning "Certificate Manager - Wildcard found, ignoring other DNS Update Hostnames"
 		fi
 		DOMAIN_ARR=(-d "$DOMAIN")

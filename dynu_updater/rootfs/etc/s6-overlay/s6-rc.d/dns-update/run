@@ -27,10 +27,6 @@ else
     USE_MQTT="false"
 fi
 
-LAST_IPV4=""
-LAST_IPV6=""
-LAST_UPDATE=""
-LAST_CHECK="ok"
 FIRST_RUN="true"
 MQTT_CONF="/run/dynu-mqtt.conf"
 
@@ -113,7 +109,8 @@ DYNU_HOSTNAMES=$(
 DOMAIN_ARR=()
 for DOMAIN in $IP_DOMAINS; do
 	if [[ "$DOMAIN" == "*.$DYNU_HOSTNAME" ]]; then
-		if [[ $(wc -w <<< "$IP_DOMAINS") -ne 1 ]]; then
+		read -r -a _tmp <<< "$IP_DOMAINS"
+		if (( ${#_tmp[@]} != 1 )); then
 			bashio::log.warning "Dynu DNS updater - Wildcard found, ignoring other DNS Update Hostnames"
 		fi
 		readarray -t DOMAIN_ARR <<< "$DYNU_HOSTNAMES"
@@ -131,59 +128,48 @@ if [[ ${#DOMAIN_ARR[@]} -eq 0 ]]; then
 	exit 1
 fi
 
-declare -A IP4_MAP
-declare -A IP6_MAP
+declare -A IP_MAP
 
 for HOST in "${DOMAIN_ARR[@]}"; do
-	if [[ "$HOST" == "$DYNU_HOSTNAME" ]]; then
-		IP4_MAP["$HOST"]=$(
-			jq -r --arg HOST "$HOST" '
-				.domains[]
-				| select(.name == $HOST)
-				| .ipv4Address // empty
-			' <<< "$DYNU_API_RESPONSE"
-		)
-		IP6_MAP["$HOST"]=$(
-			jq -r --arg HOST "$HOST" '
-				.domains[]
-				| select(.name == $HOST)
-				| .ipv6Address // empty
-			' <<< "$DYNU_API_RESPONSE"
-		)
-	else
-		IP4_MAP["$HOST"]=$(
-			jq -r --arg HOST "$HOST" '
-				.dnsRecords[]
-				| select(.hostname == $HOST and .recordType == "A")
-				| .ipv4Address // empty
-			' <<< "$DYNU_RECORDS"
-		)
-		IP6_MAP["$HOST"]=$(
-			jq -r --arg HOST "$HOST" '
-				.dnsRecords[]
-				| select(.hostname == $HOST and .recordType == "AAAA")
-				| .ipv6Address // empty
-			' <<< "$DYNU_RECORDS"
-		)
-	fi
+    if [[ "$HOST" == "$DYNU_HOSTNAME" ]]; then
+        ipv4=$(
+            jq -r --arg HOST "$HOST" '
+                .domains[]
+                | select(.name == $HOST)
+                | .ipv4Address // empty
+            ' <<< "$DYNU_API_RESPONSE"
+        )
+        ipv6=$(
+            jq -r --arg HOST "$HOST" '
+                .domains[]
+                | select(.name == $HOST)
+                | .ipv6Address // empty
+            ' <<< "$DYNU_API_RESPONSE"
+        )
+		type="Host"
+		id=""
+    else
+        ipv4=$(
+            jq -r --arg HOST "$HOST" '
+                .dnsRecords[]
+                | select(.hostname == $HOST and .recordType == "A")
+                | .ipv4Address // empty
+            ' <<< "$DYNU_RECORDS"
+        )
+        ipv6=$(
+            jq -r --arg HOST "$HOST" '
+                .dnsRecords[]
+                | select(.hostname == $HOST and .recordType == "AAAA")
+                | .ipv6Address // empty
+            ' <<< "$DYNU_RECORDS"
+        )
+		type="Alias"
+		id="${HOST%.$DYNU_HOSTNAME}"
+    fi
+
+    # Merge into one entry
+    IP_MAP["$HOST"]="$ipv4|$ipv6|$type|$id"
 done
-
-bashio::log.info "Dumping resolved IP mappings:"
-for HOST in "${!IP4_MAP[@]}"; do
-    bashio::log.info "Host: $HOST | IPv4: ${IP4_MAP[$HOST]} | IPv6: ${IP6_MAP[$HOST]}"
-done
-
-DNS_UPDATE_JSON="/data/dns-update.json"
-
-if [[ -f "$DNS_UPDATE_JSON" ]]; then
-	DNS_UPDATE_DATA=$(< "$DNS_UPDATE_JSON")
-	LAST_IPV4=$(jq -r '.ipv4' <<< "$DNS_UPDATE_DATA")
-	LAST_IPV6=$(jq -r '.ipv6' <<< "$DNS_UPDATE_DATA")
-	LAST_UPDATE=$(jq -r '.update' <<< "$DNS_UPDATE_DATA")
-	mqtt_publish "last_ip_update" "$LAST_UPDATE"
-	mqtt_publish "current_ipv4" "$LAST_IPV4"
-	mqtt_publish "current_ipv6" "$LAST_IPV6"
-fi
 
 bashio::log.info "Dynu DNS Updater - Started"
 
@@ -234,72 +220,41 @@ while true; do
 		bashio::log.info "Dynu DNS Updater - Current IPv6 address: $IPV6"
 	fi
 	
-	if [[ -n "$IPV4" || -n "$IPV6" ]]; then
+	if [[ -n "$IPV4" ]]; then
 		mqtt_publish "wan_connection" "true"
 		mqtt_publish "last_ip_check" "$(date -Is)"
-		if [[ -n "$IPV4" && "$IPV4" != "$LAST_IPV4" ]] \
-		   || [[ -n "$IPV6" && "$IPV6" != "$LAST_IPV6" ]] \
-		   || [[ "$LAST_CHECK" == "error" ]]; then
-
-			bashio::log.info "Dynu DNS Updater - Detected IP change"
-			bashio::log.info "Dynu DNS Updater - New IPv4 address = ${IPV4}"
-			if [[ "$DYNU_IPV6_ENABLED" == "true" ]]; then
-				bashio::log.info "Dynu DNS Updater - New IPv6 address = ${IPV6}"
-			fi
+		
+		UPDATED=0
+		
+		for HOST in "${!IP_MAP[@]}"; do
+			IFS="|" read -r last_ipv4 last_ipv6 type id <<< "${IP_MAP[$HOST]}"
 			
-			UPDATED=${#DOMAIN_ARR[@]}
-			
-			for DOMAIN in "${DOMAIN_ARR[@]}"; do
-				if [[ "$DOMAIN" == "$DYNU_HOSTNAME" ]]; then
-					bashio::log.info "Dynu DNS Updater - Updating Host ${DOMAIN}"
-					COMMAND="https://api.dynu.com/nic/update?hostname=${DYNU_HOSTNAME}&password=${PASSWORD}"
+			if [[ "$IPV4" != "$last_ipv4" ]] || [[ "$DYNU_IPV6_ENABLED" == "true" && -n "$IPV6" && "$IPV6" != "$last_ipv6" ]]; then
+				bashio::log.info "Dynu DNS Updater - Updating $type $HOST"
+				
+				if [[ "$type" == "Host" ]]; then
+					COMMAND="https://api.dynu.com/nic/update?hostname=$DYNU_HOSTNAME&password=$PASSWORD&myip=$IPV4"
 				else
-					bashio::log.info "Dynu DNS Updater - Updating Alias ${DOMAIN}"
-					ALIAS="${DOMAIN%.$DYNU_HOSTNAME}"
-					COMMAND="https://api.dynu.com/nic/update?hostname=${DYNU_HOSTNAME}&alias=${ALIAS}&password=${PASSWORD}"
+					COMMAND="https://api.dynu.com/nic/update?hostname=$DYNU_HOSTNAME&alias=$id&password=$PASSWORD&myip=$IPV4"
 				fi
-
-				if [[ -n "$IPV4" ]]; then
-					COMMAND="${COMMAND}&myip=${IPV4}"
+			
+				if [[ "$DYNU_IPV6_ENABLED" == "true" && -n "$IPV6" ]]; then
+					COMMAND="${COMMAND}&myipv6=$IPV6"
 				fi
-
-				if [[ -n "$IPV6" ]]; then
-					COMMAND="${COMMAND}&myipv6=${IPV6}"
-				fi
-
+			
 				if ! RESPONSE=$(curl -s --fail --max-time 5 "$COMMAND" 2>/dev/null); then
-					bashio::log.error "Dynu DNS Updater - Update request failed: $RESPONSE"
+					bashio::log.error "Dynu DNS Updater - Update request failed"
 				else
 					bashio::log.info "Dynu DNS Updater - Server responded: $RESPONSE"
-					UPDATED=$((UPDATED - 1))
+					UPDATED=$((UPDATED + 1))
+					IP_MAP["$HOST"]="$IPV4|$IPV6|$type|$id"
 				fi
-
-			done
-			
-			if (( UPDATED > 0 )); then
-				bashio::log.warning "Dynu DNS Updater - $UPDATED Hosts/Aliases couldn't be updated"
-				LAST_CHECK="error"
-			else
-				bashio::log.info "Dynu DNS Updater - All Hosts/Aliases updated"
-				LAST_CHECK="ok"
-			fi
-			
-			LAST_IPV4="$IPV4"
-			LAST_IPV6="$IPV6"
-			LAST_UPDATE="$(date -Is)"
-			
-			mqtt_publish "last_ip_update" "$LAST_UPDATE"
-			mqtt_publish "current_ipv4" "$LAST_IPV4"
-			mqtt_publish "current_ipv6" "$LAST_IPV6"
-					
-			
-			jq -n \
-			  --arg ipv4 "$IPV4" \
-			  --arg ipv6 "$IPV6" \
-			  --arg update "$LAST_UPDATE" \
-			  '{ipv4: $ipv4, ipv6: $ipv6, update: $update}' \
-			  > "$DNS_UPDATE_JSON"
-			  
+			fi	
+		done
+		
+		if (( UPDATED > 0 )); then
+			bashio::log.info "Dynu DNS Updater - $UPDATED Hosts/Aliases were updated"
+			mqtt_publish "last_ip_update" "$(date -Is)"
 		elif [[ "$VERBOSE" == "true" ]]; then
 			bashio::log.info "Dynu DNS Updater - No update required"
 		fi
