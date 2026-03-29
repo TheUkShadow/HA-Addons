@@ -128,6 +128,7 @@ LAST_IPV4=""
 LAST_IPV6=""
 LAST_UPDATE=""
 LAST_CHECK="ok"
+FIRST_RUN="true"
 
 DNS_UPDATE_JSON="/data/dns-update.json"
 
@@ -264,8 +265,9 @@ while true; do
 		bashio::log.error "Dynu DNS Updater - Unable to retrieve current IP address data (WAN Down)"
 	fi
 	
-	if [[ ! -f /run/dynu-dns-update.ready ]]; then
+	if [[ "$FIRST_RUN" == "true" ]]; then
 		touch /run/dynu-dns-update.ready
+		FIRST_RUN="false"
 	fi
 
 	sleep 60
