@@ -69,10 +69,10 @@ if bashio::config.has_value 'certfile'; then
 else
 	CERTFILE="fullchain.pem"
 fi
-if bashio::config.has_value 'update_cert_time'; then
-	CERT_TIME=$(bashio::config 'update_cert_time' | xargs)
+if bashio::config.has_value 'update_cert_days'; then
+	CERT_TIME=$(bashio::config 'update_cert_days')
 else
-	CERT_TIME="00:00"
+	CERT_TIME=5
 fi
 if bashio::config.true 'update_cert'; then
     CERT_VALID="true"
@@ -141,8 +141,9 @@ elif [[ "$USE_MQTT" == "true" ]]; then
 		-m "$TEST_PAYLOAD" \
 		-q 1 \
 		>/dev/null 2>&1; then
-		bashio::log.warning "Dynu Updater Initialisation - Unable to connect to MQTT server"
-		USE_MQTT="false"
+		bashio::log.error "Dynu Updater Initialisation - Unable to connect to MQTT server $MQTT_HOST"
+		sleep 1
+		exit 1
 	else
 		bashio::log.info "Dynu Updater Initialisation - MQTT Connected to server $MQTT_HOST"
 	fi
@@ -169,46 +170,47 @@ fi
 if [[ "$CERT_VALID" == "true" ]]; then
 	if [[ -z "$EMAIL" || ! "$EMAIL" =~ ^[^@]+@[^@]+\.[^@]+$ ]]; then
 		bashio::log.info "Dynu Updater Initialisation - invalid email address"
-		CERT_VALID="false"
+		sleep 1
+		exit 1
 	fi
 
 	if [[ -z "$CERT_DOMAINS" ]]; then
 		bashio::log.info "Dynu Updater Initialisation - no Certificate Hostnames configured"
-		CERT_VALID="false"
+		sleep 1
+		exit 1
 	fi
 
 	if [[ -z "$CERTFILE" || ! "$CERTFILE" =~ ^[A-Za-z0-9._/-]+$ ]]; then
 		bashio::log.info "Dynu Updater Initialisation - Invalid Certificate File"
-		CERT_VALID="false"
+		sleep 1
+		exit 1
 	fi
 
 	if [[ -z "$KEYFILE" || ! "$KEYFILE" =~ ^[A-Za-z0-9._/-]+$ ]]; then
 		bashio::log.info "Dynu Updater Initialisation - Invalid Private Key File"
-		CERT_VALID="false"
+		sleep 1
+		exit 1
 	fi
 	
-	if [[ -z "$CERT_TIME" || ! "$CERT_TIME" =~ ^([01][0-9]|2[0-3]):[0-5][0-9]$ ]]; then
-		bashio::log.info "Dynu Updater Initialisation - Invalid Certificate Check Time (00:00 - 23:59)"
-		CERT_VALID="false"
+	if [[ -z "$CERT_TIME" ]] || (( CERT_TIME < 1 || CERT_TIME > 30 )); then
+		bashio::log.info "Dynu Updater Initialisation - Invalid Certificate Check Time"
+		sleep 1
+		exit 1
 	fi
 fi
 
 if [[ "$DNS_VALID" == "true" ]]; then
 	if [[ -z "$IP_DOMAINS" ]]; then
 		bashio::log.info "Dynu Updater Initialisation - no DNS Update Hostnames configured"
-		DNS_VALID="false"
+		sleep 1
+		exit 1
 	fi
 
 	if [[ -z "$PASSWORD" ]]; then
 		bashio::log.info "Dynu Updater Initialisation - no Dynu Account Password configured"
-		DNS_VALID="false"
+		sleep 1
+		exit 1
 	fi
-fi
-
-if [[ "$DNS_VALID" == "false" && "$CERT_VALID" == "false" ]]; then
-	bashio::log.error "Dynu Updater Initialisation - No valid configuration for Certificate generation or DNS IP Updates"
-	sleep 1
-	exit 1
 fi
 
 # Call Dynu API: capture JSON body AND HTTP status separately
