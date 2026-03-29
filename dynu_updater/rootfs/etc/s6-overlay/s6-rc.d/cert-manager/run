@@ -127,13 +127,13 @@ for DOMAIN in $CERT_DOMAINS; do
 		if [[ $(wc -w <<< "$IP_DOMAINS") -ne 1 ]]; then
 			bashio::log.warning "Certificate Manager - Wildcard found, ignoring other DNS Update Hostnames"
 		fi
-		DOMAIN_ARR=("$DOMAIN")
+		DOMAIN_ARR=(-d "$DOMAIN")
 		break
 	elif ! echo "$DYNU_HOSTNAMES" | grep -qx "$DOMAIN"; then
 		bashio::log.warning "Certificate Manager - $DOMAIN is not valid for this account"
 		continue
 	fi
-	DOMAIN_ARR+=("$DOMAIN")
+	DOMAIN_ARR+=(-d "$DOMAIN")
 done
 
 if [[ ${#DOMAIN_ARR[@]} -eq 0 ]]; then
@@ -201,7 +201,7 @@ renew_cert() {
 		--email "$EMAIL" --agree-tos \
 		"${KEY_ARGUMENTS[@]}" \
 		"${ADDITIONAL_ARGS[@]}" \
-		--cert-name "$DYNU_HOSTNAME" \
+		--cert-name "$DYNU_HOSTNAME" "${DOMAIN_ARR[@]}" \
 		--config-dir "$CERT_DIR" --work-dir "$WORK_DIR" \
 		--preferred-challenges dns \
 		"${ACME_ARGUMENTS[@]}" \
