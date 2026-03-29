@@ -127,6 +127,7 @@ fi
 LAST_IPV4=""
 LAST_IPV6=""
 LAST_UPDATE=""
+LAST_CHECK="ok"
 
 DNS_UPDATE_JSON="/data/dns-update.json"
 
@@ -193,7 +194,8 @@ while true; do
 		mqtt_publish "wan_connection" "true"
 		mqtt_publish "last_ip_check" "$(date -Is)"
 		if { [[ -n "$IPV4" && "$IPV4" != "$LAST_IPV4" ]]; } \
-		   || { [[ -n "$IPV6" && "$IPV6" != "$LAST_IPV6" ]]; }; then
+		   || { [[ -n "$IPV6" && "$IPV6" != "$LAST_IPV6" ]]; } \
+		   || { [[ "$LAST_CHECK" == "error"]]; }; then
 
 			bashio::log.info "Dynu DNS Updater - Detected IP change"
 			bashio::log.info "Dynu DNS Updater - New IPv4 address = ${IPV4}"
@@ -232,8 +234,10 @@ while true; do
 			
 			if (( UPDATED > 0 )); then
 				bashio::log.warning "Dynu DNS Updater - $UPDATED Hosts/Aliases couldn't be updated"
+				LAST_CHECK="error"
 			else
 				bashio::log.info "Dynu DNS Updater - All Hosts/Aliases updated"
+				LAST_CHECK="ok"
 			fi
 			
 			LAST_IPV4="$IPV4"
