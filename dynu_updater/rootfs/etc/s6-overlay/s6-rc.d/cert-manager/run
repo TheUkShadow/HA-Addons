@@ -32,6 +32,11 @@ if bashio::config.true 'force_renew'; then
 else
     FORCE_RENEW="false"
 fi
+if bashio::config.true 'dry_run'; then
+    DRY_RUN="true"
+else
+    DRY_RUN="false"
+fi
 if bashio::config.true 'mqtt'; then
     USE_MQTT="true"
 else
@@ -164,7 +169,7 @@ if [[ "$VERBOSE" ==  "true" ]]; then
 	ADDITIONAL_ARGS+=("-vvv")
 fi
 
-if [[ "${DRY_RUN}" = "true" ]]; then
+if [[ "$DRY_RUN" = "true" ]]; then
 	ADDITIONAL_ARGS+=("--dry-run")
 fi
 

@@ -152,7 +152,7 @@ while true; do
 	if RAW=$(curl -4 -s --fail --max-time 5 https://checkip.dynu.com 2>/dev/null); then
 		IPV4=$(echo "$RAW" | awk -F': ' '{print $2}' | tr -d '[:space:]')
 	fi
-	if [[ -z "$IPV4" || "$IPV4" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+	if [[ -z "$IPV4" || ! "$IPV4" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
 		bashio::log.warning "Dynu DNS Updater - Dynu.com returned an invalid IPv4: $IPV4. Trying icanhazip.com"
 		if RAW=$(curl -4 -s --fail --max-time 5 https://icanhazip.com 2>/dev/null); then
 			IPV4=$(echo "$RAW" | tr -d '[:space:]')
