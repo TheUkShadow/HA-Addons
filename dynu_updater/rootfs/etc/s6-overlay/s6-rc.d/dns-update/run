@@ -231,7 +231,7 @@ while true; do
 		
 		UPDATED=0
 		
-		for HOST in "${!IP_MAP[@]}"; do
+		for HOST in "${DOMAIN_ARR[@]}"; do
 			IFS="|" read -r last_ipv4 last_ipv6 type id <<< "${IP_MAP[$HOST]}"
 			
 			if [[ "$VERBOSE" == "true" ]]; then
