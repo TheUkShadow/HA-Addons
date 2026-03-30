@@ -246,7 +246,7 @@ while true; do
 				bashio::log.info "Dynu DNS Updater - Checking $type $HOST"
 			fi
 			
-			if [[ "$IPV4" != "$last_ipv4" ]] || [[ "$DYNU_IPV6_ENABLED" == "true" && -n "$IPV6" && "$IPV6" != "$last_ipv6" ]] || [ "$FIRST_RUN" == "true" ]]; then
+			if [[ "$IPV4" != "$last_ipv4" ]] || [[ "$DYNU_IPV6_ENABLED" == "true" && -n "$IPV6" && "$IPV6" != "$last_ipv6" ]] || [[ "$FIRST_RUN" == "true" ]]; then
 				bashio::log.info "Dynu DNS Updater - Updating $type $HOST"
 				
 				if [[ "$type" == "Host" ]]; then
