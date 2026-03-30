@@ -224,7 +224,7 @@ while true; do
 	else
 		mqtt_publish "current_ipv4/availability" "offline"
 	fi
-	if [[ -n "$IPV46" ]]; then
+	if [[ -n "$IPV6" ]]; then
 		mqtt_publish "current_ipv6/availability" "online"
 		mqtt_publish "current_ipv6" "$IPV6"
 	else
