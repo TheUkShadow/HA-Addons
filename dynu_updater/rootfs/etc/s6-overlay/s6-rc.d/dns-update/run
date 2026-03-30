@@ -263,35 +263,39 @@ while true; do
 				if [[ "$DYNU_IPV6_ENABLED" == "true" && -n "$IPV6" ]]; then
 					COMMAND="${COMMAND}&myipv6=$IPV6"
 				fi
-			
-				case "$RESPONSE" in
-					good*|nochg*)
-						bashio::log.info "Dynu DNS Updater - Success: $RESPONSE"
-						UPDATED=$((UPDATED + 1))
-						IP_MAP["$HOST"]="$IPV4|$IPV6|$type|$id"
-						;;
-					badauth)
-						bashio::log.error "Dynu DNS Updater - Authentication failed (badauth)"
-						;;
-					notfqdn)
-						bashio::log.error "Dynu DNS Updater - Invalid hostname (notfqdn)"
-						;;
-					nohost)
-						bashio::log.error "Dynu DNS Updater - Host not found (nohost)"
-						;;
-					numhost)
-						bashio::log.error "Dynu DNS Updater - Too many hosts (numhost)"
-						;;
-					abuse)
-						bashio::log.error "Dynu DNS Updater - Account blocked (abuse)"
-						;;
-					911)
-						bashio::log.error "Dynu DNS Updater - Dynu server error (911)"
-						;;
-					*)
-						bashio::log.error "Dynu DNS Updater - Updating failed"
-						;;
-				esac
+				
+				if RESPONSE=$(curl -s --max-time 5 "$COMMAND" 2>/dev/null); then
+					case "$RESPONSE" in
+						good*|nochg*)
+							bashio::log.info "Dynu DNS Updater - Success: $RESPONSE"
+							UPDATED=$((UPDATED + 1))
+							IP_MAP["$HOST"]="$IPV4|$IPV6|$type|$id"
+							;;
+						badauth)
+							bashio::log.error "Dynu DNS Updater - Authentication failed (badauth)"
+							;;
+						notfqdn)
+							bashio::log.error "Dynu DNS Updater - Invalid hostname (notfqdn)"
+							;;
+						nohost)
+							bashio::log.error "Dynu DNS Updater - Host not found (nohost)"
+							;;
+						numhost)
+							bashio::log.error "Dynu DNS Updater - Too many hosts (numhost)"
+							;;
+						abuse)
+							bashio::log.error "Dynu DNS Updater - Account blocked (abuse)"
+							;;
+						911)
+							bashio::log.error "Dynu DNS Updater - Dynu server error (911)"
+							;;
+						*)
+							bashio::log.error "Dynu DNS Updater - Updating failed"
+							;;
+					esac
+				else
+					bashio::log.error "Dynu DNS Updater - Updating failed"
+				fi
 				
 			elif [[ "$VERBOSE" == "true" ]]; then
 				bashio::log.info "Dynu DNS Updater - $type $HOST does not require updating"
