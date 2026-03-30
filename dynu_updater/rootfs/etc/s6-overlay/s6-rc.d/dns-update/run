@@ -91,6 +91,9 @@ if ! DYNU_RECORDS=$(curl -s --fail --max-time 5 -H "API-Key: $DYNU_API_KEY" "htt
 	exit 1
 fi
 
+bashio::log.warning "Dynu API Response: $DYNU_API_RESPONSE"
+bashio::log.warning "Dynu Records: $DYNU_RECORDS"
+
 DYNU_IPV6_ENABLED=$(jq -r --arg HOST "$DYNU_HOSTNAME" '
     .domains[]
     | select(.name == $HOST)
@@ -125,6 +128,8 @@ for DOMAIN in $IP_DOMAINS; do
 	DOMAIN_ARR+=("$DOMAIN")
 done
 
+bashio::log.warning "Hosts to update: $DOMAIN_ARR[@]"
+
 if [[ ${#DOMAIN_ARR[@]} -eq 0 ]]; then
 	bashio::log.error "Dynu DNS updater - no valid domains found"
 	sleep 1
@@ -150,7 +155,7 @@ for HOST in "${DOMAIN_ARR[@]}"; do
             ' <<< "$DYNU_API_RESPONSE"
         )
 		type="Host"
-		id=""
+		id="$HOST"
     else
         ipv4=$(
             jq -r --arg HOST "$HOST" '
