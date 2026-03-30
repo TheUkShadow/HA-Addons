@@ -91,9 +91,6 @@ if ! DYNU_RECORDS=$(curl -s --fail --max-time 5 -H "API-Key: $DYNU_API_KEY" "htt
 	exit 1
 fi
 
-bashio::log.warning "Dynu API Response: $DYNU_API_RESPONSE"
-bashio::log.warning "Dynu Records: $DYNU_RECORDS"
-
 DYNU_IPV6_ENABLED=$(jq -r --arg HOST "$DYNU_HOSTNAME" '
     .domains[]
     | select(.name == $HOST)
@@ -127,8 +124,6 @@ for DOMAIN in $IP_DOMAINS; do
 	fi
 	DOMAIN_ARR+=("$DOMAIN")
 done
-
-bashio::log.warning "Hosts to update: $DOMAIN_ARR[@]"
 
 if [[ ${#DOMAIN_ARR[@]} -eq 0 ]]; then
 	bashio::log.error "Dynu DNS updater - no valid domains found"
@@ -222,13 +217,18 @@ while true; do
 	else
 		IPV6=""
 	fi
-
-	if [[ -n "$IPV4" ]]; then
-		mqtt_publish "current_ipv4" "$IPV4"
-	fi
 	
-	if [[ -n "$IPV6" ]]; then
+	if [[ -n "$IPV4" ]]; then
+		mqtt_publish "current_ipv4/availability" "online"
+		mqtt_publish "current_ipv4" "$IPV4"
+	else
+		mqtt_publish "current_ipv4/availability" "offline"
+	fi
+	if [[ -n "$IPV46" ]]; then
+		mqtt_publish "current_ipv6/availability" "online"
 		mqtt_publish "current_ipv6" "$IPV6"
+	else
+		mqtt_publish "current_ipv6/availability" "offline"
 	fi
 	
 	if [[ "$VERBOSE" == "true" ]]; then

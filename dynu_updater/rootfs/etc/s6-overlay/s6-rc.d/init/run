@@ -76,11 +76,74 @@ if bashio::config.true 'update_ip'; then
 else
     DNS_VALID="false"
 fi
+if bashio::config.true 'mqtt'; then
+    USE_MQTT="true"
+else
+    USE_MQTT="false"
+fi
 
 if [[ "$CERT_VALID" == "false" && "$DNS_VALID" == "false" ]]; then
 	bashio::log.error "Dynu Updater Initialisation - Options to Update IP Addresses and Generate Certificate are both disabled - Nothing to do"
     sleep 1
 	exit 1
+fi
+
+if [[ -z "$DYNU_HOSTNAME" || ! "$DYNU_HOSTNAME" =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}(\.[A-Za-z]{2,})*$ ]]; then
+    bashio::log.error "Dynu Updater Initialisation - Invalid Dynu Hostname"
+    sleep 1
+	exit 1
+fi
+
+if [[ -z "$DYNU_API_KEY" ]]; then
+    bashio::log.error "Dynu Updater Initialisation - Invalid Dynu API Key"
+    sleep 1
+	exit 1
+fi
+
+if [[ "$DNS_VALID" == "true" ]]; then
+	if [[ -z "$IP_DOMAINS" ]]; then
+		bashio::log.error "Dynu Updater Initialisation - no DNS Update Hostnames configured"
+		sleep 1
+		exit 1
+	fi
+
+	if [[ -z "$PASSWORD" ]]; then
+		bashio::log.error "Dynu Updater Initialisation - no Dynu Account/IP Update Password configured"
+		sleep 1
+		exit 1
+	fi
+fi
+
+if [[ "$CERT_VALID" == "true" ]]; then
+	if [[ -z "$EMAIL" || ! "$EMAIL" =~ ^[^@]+@[^@]+\.[^@]+$ ]]; then
+		bashio::log.error "Dynu Updater Initialisation - invalid email address"
+		sleep 1
+		exit 1
+	fi
+
+	if [[ -z "$CERT_DOMAINS" ]]; then
+		bashio::log.error "Dynu Updater Initialisation - no Certificate Hostnames configured"
+		sleep 1
+		exit 1
+	fi
+
+	if [[ -z "$CERTFILE" || ! "$CERTFILE" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+		bashio::log.error "Dynu Updater Initialisation - Invalid Certificate File"
+		sleep 1
+		exit 1
+	fi
+
+	if [[ -z "$KEYFILE" || ! "$KEYFILE" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+		bashio::log.error "Dynu Updater Initialisation - Invalid Private Key File"
+		sleep 1
+		exit 1
+	fi
+	
+	if [[ -z "$CERT_TIME" ]] || (( CERT_TIME < 1 || CERT_TIME > 30 )); then
+		bashio::log.error "Dynu Updater Initialisation - Invalid Certificate Check Time"
+		sleep 1
+		exit 1
+	fi
 fi
 
 # MQTT connection
@@ -89,12 +152,6 @@ MQTT_HOST=""
 MQTT_USER=""
 MQTT_PASSWORD=""
 MQTT_PORT=""
-	
-if bashio::config.true 'mqtt'; then
-    USE_MQTT="true"
-else
-    USE_MQTT="false"
-fi
 
 if [[ "$USE_MQTT" == "true" ]] \
    && bashio::services.available 'mqtt' \
@@ -155,64 +212,6 @@ elif [[ "$USE_MQTT" == "true" ]]; then
 		exit 1
 	else
 		bashio::log.info "Dynu Updater Initialisation - MQTT Connected to server $MQTT_HOST"
-	fi
-fi
-
-if [[ -z "$DYNU_HOSTNAME" || ! "$DYNU_HOSTNAME" =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}(\.[A-Za-z]{2,})*$ ]]; then
-    bashio::log.error "Dynu Updater Initialisation - Invalid Dynu Hostname"
-    sleep 1
-	exit 1
-fi
-
-if [[ -z "$DYNU_API_KEY" ]]; then
-    bashio::log.error "Dynu Updater Initialisation - Invalid Dynu API Key"
-    sleep 1
-	exit 1
-fi
-
-if [[ "$DNS_VALID" == "true" ]]; then
-	if [[ -z "$IP_DOMAINS" ]]; then
-		bashio::log.error "Dynu Updater Initialisation - no DNS Update Hostnames configured"
-		sleep 1
-		exit 1
-	fi
-
-	if [[ -z "$PASSWORD" ]]; then
-		bashio::log.error "Dynu Updater Initialisation - no Dynu Account/IP Update Password configured"
-		sleep 1
-		exit 1
-	fi
-fi
-
-if [[ "$CERT_VALID" == "true" ]]; then
-	if [[ -z "$EMAIL" || ! "$EMAIL" =~ ^[^@]+@[^@]+\.[^@]+$ ]]; then
-		bashio::log.error "Dynu Updater Initialisation - invalid email address"
-		sleep 1
-		exit 1
-	fi
-
-	if [[ -z "$CERT_DOMAINS" ]]; then
-		bashio::log.error "Dynu Updater Initialisation - no Certificate Hostnames configured"
-		sleep 1
-		exit 1
-	fi
-
-	if [[ -z "$CERTFILE" || ! "$CERTFILE" =~ ^[A-Za-z0-9._/-]+$ ]]; then
-		bashio::log.error "Dynu Updater Initialisation - Invalid Certificate File"
-		sleep 1
-		exit 1
-	fi
-
-	if [[ -z "$KEYFILE" || ! "$KEYFILE" =~ ^[A-Za-z0-9._/-]+$ ]]; then
-		bashio::log.error "Dynu Updater Initialisation - Invalid Private Key File"
-		sleep 1
-		exit 1
-	fi
-	
-	if [[ -z "$CERT_TIME" ]] || (( CERT_TIME < 1 || CERT_TIME > 30 )); then
-		bashio::log.error "Dynu Updater Initialisation - Invalid Certificate Check Time"
-		sleep 1
-		exit 1
 	fi
 fi
 
@@ -311,8 +310,6 @@ mqtt_publish() {
 	fi
 }
 
-ENTITY_JSON="["
-
 for entry in "${ENTITIES[@]}"; do
 	IFS="|" read -r entity_id name device_class state_topic component extra icon service <<< "$entry"
 
@@ -332,22 +329,9 @@ for entry in "${ENTITIES[@]}"; do
 		STATE="offline"
 	fi
 	
-	entity_avail="${entity_id}/availability"
+	mqtt_publish "${entity_id}/availability" "$STATE"
 	
-	mqtt_publish "${entity_avail}" "$STATE"
-	
-	ENTITY_JSON+="
-	  {
-		\"entity_id\": \"${entity_id}\",
-		\"state_topic\": \"${state_topic}\",
-		\"availability_topic\": \"${entity_avail}\",
-		\"component\": \"${component}\",
-		\"service\": \"${service}\"
-	  },"
 done
-
-ENTITY_JSON="${ENTITY_JSON%,}"
-ENTITY_JSON+="]"
 
 jq -n \
   --arg mqtt "$USE_MQTT" \
@@ -355,14 +339,12 @@ jq -n \
   --arg port "$MQTT_PORT" \
   --arg user "$MQTT_USER" \
   --arg password "$MQTT_PASSWORD" \
-  --argjson entities "$ENTITY_JSON" \
   '{
 	  mqtt: $mqtt,
 	  host: $host,
 	  port: $port,
 	  user: $user,
-	  password: $password,
-	  entities: $entities
+	  password: $password
    }' \
   > /run/dynu-mqtt.conf
   
