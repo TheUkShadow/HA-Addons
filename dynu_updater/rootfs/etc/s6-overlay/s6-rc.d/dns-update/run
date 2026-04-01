@@ -31,6 +31,11 @@ else
 fi
 
 MQTT_CONF="/run/dynu-mqtt.conf"
+DEVICE_ID="dynu_updater_$(hostname)"
+DEVICE_NAME="Dynu Updater"
+MANUFACTURER="TheUkShadow"
+MODEL="Dynu Updater Companion Integration"
+SW_VERSION=$(bashio::addon.version)
 
 if [[ "$USE_MQTT" == "true" && -f "$MQTT_CONF" ]]; then
 	MQTT_DATA=$(< "$MQTT_CONF")
@@ -42,7 +47,7 @@ if [[ "$USE_MQTT" == "true" && -f "$MQTT_CONF" ]]; then
 else
 	USE_MQTT="false"
 fi
-	
+
 mqtt_publish() {
     if [[ "$USE_MQTT" == "true" ]]; then
         local topic="$1"
@@ -130,7 +135,7 @@ load_api() {
 	' <<<"$DYNU_API_RESPONSE")
 	
 	if [[ "$DYNU_IPV6_ENABLED" == "true" ]]; then
-		bashio::log.info "Dynu DNS Updater - IPv6 enabled for $$DYNU_HOSTNAME."
+		bashio::log.info "Dynu DNS Updater - IPv6 enabled for $DYNU_HOSTNAME."
 	fi
 
 	if DYNU_RECORDS=$(curl -s --max-time 5 -H "API-Key: $DYNU_API_KEY" "https://api.dynu.com/v2/dns/${DYNU_DOMAIN_ID}/record" 2>/dev/null); then
@@ -273,6 +278,8 @@ while true; do
 		if ! load_api; then
 			bashio::log.error "Dynu DNS Updater - Unable to load Dynu API. Check log for details."
 			exit 1
+		else
+			echo ${DOMAIN_ARR[@]} > /run/dynu_domain_data.conf
 		fi
 	fi
 	

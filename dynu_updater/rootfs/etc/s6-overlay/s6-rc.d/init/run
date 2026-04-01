@@ -84,32 +84,27 @@ fi
 
 if [[ "$CERT_VALID" == "false" && "$DNS_VALID" == "false" ]]; then
 	bashio::log.error "Dynu Updater Initialisation - Options to Update IP Addresses and Generate Certificate are both disabled - Nothing to do"
-    sleep 1
 	exit 1
 fi
 
 if [[ -z "$DYNU_HOSTNAME" || ! "$DYNU_HOSTNAME" =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}(\.[A-Za-z]{2,})*$ ]]; then
     bashio::log.error "Dynu Updater Initialisation - Invalid Dynu Hostname"
-    sleep 1
 	exit 1
 fi
 
 if [[ -z "$DYNU_API_KEY" ]]; then
     bashio::log.error "Dynu Updater Initialisation - Invalid Dynu API Key"
-    sleep 1
 	exit 1
 fi
 
 if [[ "$DNS_VALID" == "true" ]]; then
 	if [[ -z "$IP_DOMAINS" ]]; then
 		bashio::log.error "Dynu Updater Initialisation - no DNS Update Hostnames configured"
-		sleep 1
 		exit 1
 	fi
 
 	if [[ -z "$PASSWORD" ]]; then
 		bashio::log.error "Dynu Updater Initialisation - no Dynu Account/IP Update Password configured"
-		sleep 1
 		exit 1
 	fi
 fi
@@ -117,31 +112,26 @@ fi
 if [[ "$CERT_VALID" == "true" ]]; then
 	if [[ -z "$EMAIL" || ! "$EMAIL" =~ ^[^@]+@[^@]+\.[^@]+$ ]]; then
 		bashio::log.error "Dynu Updater Initialisation - invalid email address"
-		sleep 1
 		exit 1
 	fi
 
 	if [[ -z "$CERT_DOMAINS" ]]; then
 		bashio::log.error "Dynu Updater Initialisation - no Certificate Hostnames configured"
-		sleep 1
 		exit 1
 	fi
 
 	if [[ -z "$CERTFILE" || ! "$CERTFILE" =~ ^[A-Za-z0-9._/-]+$ ]]; then
 		bashio::log.error "Dynu Updater Initialisation - Invalid Certificate File"
-		sleep 1
 		exit 1
 	fi
 
 	if [[ -z "$KEYFILE" || ! "$KEYFILE" =~ ^[A-Za-z0-9._/-]+$ ]]; then
 		bashio::log.error "Dynu Updater Initialisation - Invalid Private Key File"
-		sleep 1
 		exit 1
 	fi
 	
 	if [[ -z "$CERT_TIME" ]] || (( CERT_TIME < 1 || CERT_TIME > 30 )); then
 		bashio::log.error "Dynu Updater Initialisation - Invalid Certificate Check Time"
-		sleep 1
 		exit 1
 	fi
 fi
@@ -160,7 +150,7 @@ if [[ "$USE_MQTT" == "true" ]] \
    && ! bashio::config.has_value 'mqtt_password' \
    && ! bashio::config.has_value 'mqtt_port'; then
 		  
-	bashio::log.info "Dynu Updater Initialisation - Loading MQTT server from Supervisor"
+	bashio::log.info "Dynu Updater Initialisation - Loading MQTT config from Supervisor"
     MQTT_HOST=$(bashio::services mqtt host)
     MQTT_USER=$(bashio::services mqtt username)
     MQTT_PASSWORD=$(bashio::services mqtt password)
@@ -172,7 +162,7 @@ elif [[ "$USE_MQTT" == "true" ]] \
    && bashio::config.has_value 'mqtt_password' \
    && bashio::config.has_value 'mqtt_port'; then
 
-	bashio::log.info "Dynu Updater Initialisation - Loading MQTT server from configuration"
+	bashio::log.info "Dynu Updater Initialisation - Loading MQTT config from Addon"
     MQTT_HOST=$(bashio::config 'mqtt_host')
     MQTT_USER=$(bashio::config 'mqtt_user')
     MQTT_PASSWORD=$(bashio::config 'mqtt_password')
@@ -193,7 +183,6 @@ if [[ "$USE_MQTT" == "true" && ( -z "$MQTT_HOST" || -z "$MQTT_USER" || -z "$MQTT
 	if [[ -z "$MQTT_PASSWORD" ]]; then
 		bashio::log.error "  No MQTT Password"
 	fi
-	sleep 1
 	exit 1
 elif [[ "$USE_MQTT" == "true" ]]; then
 	TEST_TOPIC="dynu_updater/selftest"
@@ -207,11 +196,10 @@ elif [[ "$USE_MQTT" == "true" ]]; then
 		-m "$TEST_PAYLOAD" \
 		-q 1 \
 		>/dev/null 2>&1; then
-		bashio::log.error "Dynu Updater Initialisation - Unable to connect to MQTT server $MQTT_HOST"
-		sleep 1
+		bashio::log.error "Dynu Updater Initialisation - Unable to connect to MQTT server: $MQTT_HOST"
 		exit 1
 	else
-		bashio::log.info "Dynu Updater Initialisation - MQTT Connected to server $MQTT_HOST"
+		bashio::log.info "Dynu Updater Initialisation - Connected to MQTT server: $MQTT_HOST"
 	fi
 fi
 
@@ -225,8 +213,8 @@ ENTITIES=(
   "last_cert_status|Certificate Valid|problem|dynu_updater/last_cert_status|binary_sensor|\"payload_on\": \"false\", \"payload_off\": \"true\",|mdi:shield-check|dns"
   "wan_connection|WAN Connection|connectivity|dynu_updater/wan_connection|binary_sensor|\"payload_on\": \"true\", \"payload_off\": \"false\",|mdi:wan|dns"
   "update_status|IP Update Status|problem|dynu_updater/update_status|binary_sensor|\"payload_on\": \"false\", \"payload_off\": \"true\",|mdi:sticker-check|dns"
-  "cert_expires|Certificate Expires|timestamp|dynu_updater/cert_expires|sensor||mdi:calendar-alert|dns"
-  "last_cert_renewal|Last Certificate Renewal|timestamp|dynu_updater/last_cert_renewal|sensor||mdi:certificate|dns"
+  "cert_expires|Certificate Expires|timestamp|dynu_updater/cert_expires|sensor||mdi:calendar-alert|cert"
+  "last_cert_renewal|Last Certificate Renewal|timestamp|dynu_updater/last_cert_renewal|sensor||mdi:certificate|cert"
 )
 
 # MQTT Device metadata
