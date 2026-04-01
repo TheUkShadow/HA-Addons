@@ -18,12 +18,13 @@ DYNU_CONF="/run/dynu-updater.conf"
 
 WAIT_COUNT=0
 while [[ ! -f "$DYNU_CONF" ]]; do
-	sleep 1
+	bashio::log.info "Certificate Manager - Conf file not found"
 	WAIT_COUNT=$((WAIT_COUNT + 1))
 	if (( WAIT_COUNT > 20 )); then
 		bashio::log.error "Certificate Manager - Dynu API Config not found"
 		exit 1
 	fi
+	sleep 1
 done
 
 bashio::log.info "Certificate Manager - Started"
