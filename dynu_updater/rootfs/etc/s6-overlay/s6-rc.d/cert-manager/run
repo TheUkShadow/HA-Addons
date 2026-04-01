@@ -14,6 +14,16 @@ if ! bashio::config.true 'update_cert'; then
 	sleep infinity
 fi
 
+DYNU_API_CONF="/run/dynu_domain_data.conf"
+
+while [[ ! -f "$DYNU_API_CONF" ]]; do
+	sleep 1
+done
+
+readarray -t DYNU_HOSTNAMES < <(
+    jq -r '.domains[]' "$DYNU_API_CONF"
+)
+
 bashio::log.info "Certificate Manager - Started"
 
 DYNU_HOSTNAME=$(bashio::config 'dynu_hostname' | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
@@ -87,110 +97,6 @@ mqtt_publish() {
         fi
     fi
 }
-
-DYNU_HOSTNAMES=()
-
-load_api() {
-	# Call Dynu API
-	bashio::log.info "Certificate Manager - Loading data from Dynu API"
-	
-	if DYNU_API_RESPONSE=$(curl -s --max-time 5 -H "API-Key: $DYNU_API_KEY" "https://api.dynu.com/v2/dns" 2>/dev/null); then
-		HTTP_STATUS=$(jq -r '.statusCode // empty' <<< "$DYNU_API_RESPONSE")
-		
-		if [[ -z "$HTTP_STATUS" ]]; then
-			bashio::log.error "Certificate Manager - Invalid or empty JSON returned from Dynu Domain API"
-			exit 1
-		fi
-		
-		EXCEPTION_TYPE=$(jq -r '.exception.type // empty' <<< "$DYNU_API_RESPONSE")
-		
-		EXCEPTION_MESSAGE=$(jq -r '.exception.message // empty' <<< "$DYNU_API_RESPONSE")
-
-		case "$HTTP_STATUS" in
-			200)
-				bashio::log.info "Certificate Manager - Dynu Domain API data retrieved."
-				;;
-			*)
-				bashio::log.error "Certificate Manager - Dynu Domain API Error: status: $HTTP_STATUS, type: $EXCEPTION_TYPE, message: $EXCEPTION_MESSAGE"
-
-		esac
-	else
-		bashio::log.error "Certificate Manager - Dynu Domain API could not be loaded"
-		exit 1
-	fi
-	
-	# Retrieve Domain ID
-	DYNU_DOMAIN_ID=$(
-		jq -r --arg HOST "$DYNU_HOSTNAME" '
-			.domains[]
-			| select(.name == $HOST)
-			| .id // empty
-		' <<< "$DYNU_API_RESPONSE")
-
-	if [[ -z "$DYNU_DOMAIN_ID" ]]; then
-		bashio::log.error "Certificate Manager - '$DYNU_HOSTNAME' not found in the Dynu Domain API response"
-		return 1
-	fi
-	
-	if DYNU_RECORDS=$(curl -s --max-time 5 -H "API-Key: $DYNU_API_KEY" "https://api.dynu.com/v2/dns/${DYNU_DOMAIN_ID}/record" 2>/dev/null); then
-		HTTP_STATUS=$(
-		jq -r '.statusCode // empty' <<< "$DYNU_RECORDS")
-		
-		if [[ -z "$HTTP_STATUS" ]]; then
-			bashio::log.error "Certificate Manager - Invalid or empty JSON returned from Dynu Records API"
-			exit 1
-		fi
-		
-		EXCEPTION_TYPE=$(
-		jq -r '.exception.type // empty' <<< "$DYNU_RECORDS")
-		
-		EXCEPTION_MESSAGE=$(
-		jq -r '.exception.message // empty' <<< "$DYNU_RECORDS")
-
-		case "$HTTP_STATUS" in
-			200)
-				bashio::log.info "Certificate Manager - Dynu Records API data retrieved."
-				;;
-			*)
-				bashio::log.error "Certificate Manager - Dynu Records API Error: status: $HTTP_STATUS, type: $EXCEPTION_TYPE, message: $EXCEPTION_MESSAGE"
-
-		esac
-	else
-		bashio::log.error "Certificate Manager - Dynu Records API could not be loaded"
-		exit 1
-	fi
-
-	readarray -t DYNU_HOSTNAMES < <(
-	  jq -r '
-		[.dnsRecords[]
-		  | select(.recordType | IN("SOA","A","AAAA"))
-		  | .hostname
-		]
-		| unique
-		| sort_by( (split(".") | length), . )
-		| .[]
-	  ' <<< "$DYNU_RECORDS"
-	)
-	
-	if [[ ${#DYNU_HOSTNAMES[@]} -eq 0 ]]; then
-		bashio::log.error "Certificate Manager - no valid hostnames returned by Dynu Records API"
-		return 1
-	fi
-
-	return 0
-}
-
-DYNU_API_CONF="/run/dynu_domain_data.conf"
-DOMAIN_ARR=()
-
-if [[ -f "$DYNU_API_CONF" ]]; then
-	readarray -t DYNU_HOSTNAMES < "$DYNU_API_CONF"
-else
-	if ! load_api; then
-		bashio::log.error "Certificate Manager - Unable to load Dynu API. Check log for details."
-		exit 1
-	fi
-fi
 
 for DOMAIN in $CERT_DOMAINS; do
 	# Wildcard case

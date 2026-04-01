@@ -11,6 +11,17 @@ if ! bashio::config.true 'update_ip'; then
 	sleep infinity
 fi
 
+DYNU_API_CONF="/run/dynu_domain_data.conf"
+
+while [[ ! -f "$DYNU_API_CONF" ]]; do
+	sleep 1
+done
+
+DYNU_IPV6_ENABLED=$(jq -r '.ipv6' "$DYNU_API_CONF")
+readarray -t DYNU_HOSTNAMES < <(
+    jq -r '.domains[]' "$DYNU_API_CONF"
+)
+
 bashio::log.info "Dynu DNS Updater - Started"
 
 IPV6_REGEX='^((([0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){1,7}:)|(([0-9A-Fa-f]{1,4}:){1,6}:[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){1,5}(:[0-9A-Fa-f]{1,4}){1,2})|(([0-9A-Fa-f]{1,4}:){1,4}(:[0-9A-Fa-f]{1,4}){1,3})|(([0-9A-Fa-f]{1,4}:){1,3}(:[0-9A-Fa-f]{1,4}){1,4})|(([0-9A-Fa-f]{1,4}:){1,2}(:[0-9A-Fa-f]{1,4}){1,5})|([0-9A-Fa-f]{1,4}(:([0-9A-Fa-f]{1,4}:){1,6}))|(:((:[0-9A-Fa-f]{1,4}){1,7}|:))|(([0-9A-Fa-f]{1,4}:){1,4}((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])))$'
@@ -84,138 +95,35 @@ fi
 
 LAST_CHECK="true"
 FIRST_RUN="true"
-DYNU_IPV6_ENABLED="false"
 DOMAIN_ARR=()
 
-load_api() {
-	# Call Dynu API
-	bashio::log.info "Dynu DNS Updater - Loading data from Dynu API"
-	
-	if DYNU_API_RESPONSE=$(curl -s --max-time 5 -H "API-Key: $DYNU_API_KEY" "https://api.dynu.com/v2/dns" 2>/dev/null); then
-		HTTP_STATUS=$(jq -r '.statusCode // empty' <<< "$DYNU_API_RESPONSE")
-		
-		if [[ -z "$HTTP_STATUS" ]]; then
-			bashio::log.error "Dynu DNS Updater - Invalid or empty JSON returned from Dynu Domain API"
-			exit 1
-		fi
-		
-		EXCEPTION_TYPE=$(jq -r '.exception.type // empty' <<< "$DYNU_API_RESPONSE")
-		
-		EXCEPTION_MESSAGE=$(jq -r '.exception.message // empty' <<< "$DYNU_API_RESPONSE")
+for DOMAIN in $IP_DOMAINS; do
+	# Wildcard case
+	if [[ "$DOMAIN" == "*.$DYNU_HOSTNAME" ]]; then
 
-		case "$HTTP_STATUS" in
-			200)
-				bashio::log.info "Dynu DNS Updater - Dynu Domain API data retrieved."
-				;;
-			*)
-				bashio::log.error "Dynu DNS Updater - Dynu Domain API Error: status: $HTTP_STATUS, type: $EXCEPTION_TYPE, message: $EXCEPTION_MESSAGE"
-
-		esac
-	else
-		bashio::log.error "Dynu DNS Updater - Dynu Domain API could not be loaded"
-		exit 1
-	fi
-	
-	# Retrieve Domain ID
-	DYNU_DOMAIN_ID=$(
-		jq -r --arg HOST "$DYNU_HOSTNAME" '
-			.domains[]
-			| select(.name == $HOST)
-			| .id // empty
-		' <<< "$DYNU_API_RESPONSE")
-
-	if [[ -z "$DYNU_DOMAIN_ID" ]]; then
-		bashio::log.error "Dynu DNS Updater - '$DYNU_HOSTNAME' not found in the Dynu Domain API response"
-		return 1
-	fi
-	
-	# Retrieve IPv6 enabled status for domain
-	DYNU_IPV6_ENABLED=$(jq -r --arg HOST "$DYNU_HOSTNAME" '
-		.domains[]
-		| select(.name == $HOST)
-		| .ipv6 // "false"
-	' <<<"$DYNU_API_RESPONSE")
-	
-	if [[ "$DYNU_IPV6_ENABLED" == "true" ]]; then
-		bashio::log.info "Dynu DNS Updater - IPv6 enabled for $DYNU_HOSTNAME."
-	fi
-
-	if DYNU_RECORDS=$(curl -s --max-time 5 -H "API-Key: $DYNU_API_KEY" "https://api.dynu.com/v2/dns/${DYNU_DOMAIN_ID}/record" 2>/dev/null); then
-		HTTP_STATUS=$(
-		jq -r '.statusCode // empty' <<< "$DYNU_RECORDS")
-		
-		if [[ -z "$HTTP_STATUS" ]]; then
-			bashio::log.error "Dynu DNS Updater - Invalid or empty JSON returned from Dynu Records API"
-			exit 1
-		fi
-		
-		EXCEPTION_TYPE=$(
-		jq -r '.exception.type // empty' <<< "$DYNU_RECORDS")
-		
-		EXCEPTION_MESSAGE=$(
-		jq -r '.exception.message // empty' <<< "$DYNU_RECORDS")
-
-		case "$HTTP_STATUS" in
-			200)
-				bashio::log.info "Dynu DNS Updater - Dynu Records API data retrieved."
-				;;
-			*)
-				bashio::log.error "Dynu DNS Updater - Dynu Records API Error: status: $HTTP_STATUS, type: $EXCEPTION_TYPE, message: $EXCEPTION_MESSAGE"
-
-		esac
-	else
-		bashio::log.error "Dynu DNS Updater - Dynu Records API could not be loaded"
-		exit 1
-	fi
-
-	readarray -t DYNU_HOSTNAMES < <(
-	  jq -r '
-		[.dnsRecords[]
-		  | select(.recordType | IN("SOA","A","AAAA"))
-		  | .hostname
-		]
-		| unique
-		| sort_by( (split(".") | length), . )
-		| .[]
-	  ' <<< "$DYNU_RECORDS"
-	)
-	
-	if [[ ${#DYNU_HOSTNAMES[@]} -eq 0 ]]; then
-		bashio::log.error "Dynu DNS updater - no valid hostnames returned by Dynu Records API"
-		return 1
-	fi
-
-	for DOMAIN in $IP_DOMAINS; do
-
-		# Wildcard case
-		if [[ "$DOMAIN" == "*.$DYNU_HOSTNAME" ]]; then
-
-			# Warn if wildcard is not the only entry
-			if [[ "$IP_DOMAINS" != "$DOMAIN" ]]; then
-				bashio::log.warning "Dynu DNS updater - Wildcard found, ignoring other DNS Update Hostnames"
-			fi
-
-			# Use all hostnames
-			DOMAIN_ARR=("${DYNU_HOSTNAMES[@]}")
-			break
+		# Warn if wildcard is not the only entry
+		if [[ "$IP_DOMAINS" != "$DOMAIN" ]]; then
+			bashio::log.warning "Dynu DNS updater - Wildcard found, ignoring other DNS Update Hostnames"
 		fi
 
-		# Validate domain
-		if [[ ! " ${DYNU_HOSTNAMES[*]} " =~ " $DOMAIN " ]]; then
-			bashio::log.warning "Dynu DNS updater - $DOMAIN is not valid for this account"
-			continue
-		fi
-
-		DOMAIN_ARR+=("$DOMAIN")
-	done
-
-	if [[ ${#DOMAIN_ARR[@]} -eq 0 ]]; then
-		bashio::log.error "Dynu DNS updater - no valid hostnames found"
-		return 1
+		# Use all hostnames
+		DOMAIN_ARR=("${DYNU_HOSTNAMES[@]}")
+		break
 	fi
 
-	return 0
-}
+	# Validate domain
+	if [[ ! " ${DYNU_HOSTNAMES[*]} " =~ " $DOMAIN " ]]; then
+		bashio::log.warning "Dynu DNS updater - $DOMAIN is not valid for this account"
+		continue
+	fi
+
+	DOMAIN_ARR+=("$DOMAIN")
+done
+
+if [[ ${#DOMAIN_ARR[@]} -eq 0 ]]; then
+	bashio::log.error "Dynu DNS updater - no valid hostnames found"
+	return 1
+fi
 
 update_host() {
 	bashio::log.info "Dynu DNS Updater - Updating $1"
@@ -272,15 +180,6 @@ update_host() {
 }
 
 while true; do
-	if [[ "$FIRST_RUN" == "true" ]]; then
-		if ! load_api; then
-			bashio::log.error "Dynu DNS Updater - Unable to load Dynu API. Check log for details."
-			exit 1
-		else
-			printf "%s\n" "${DOMAIN_ARR[@]}" > /run/dynu_domain_data.conf
-		fi
-	fi
-	
 	if [[ "$VERBOSE" == "true" ]]; then
 		bashio::log.info "Dynu DNS Updater - Checking current IP addresses."
 	fi
