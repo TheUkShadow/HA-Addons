@@ -70,7 +70,7 @@ if ! DYNU_API_RESPONSE=$(curl -s --fail --max-time 5 -H "API-Key: $DYNU_API_KEY"
 	exit 1
 fi
 
-bashio::log.info "API Response: $$DYNU_API_RESPONSE"
+bashio::log.info "API Response: $DYNU_API_RESPONSE"
 
 # Retrieve Domain ID
 DYNU_DOMAIN_ID=$(
@@ -93,7 +93,7 @@ if ! DYNU_RECORDS=$(curl -s --fail --max-time 5 -H "API-Key: $DYNU_API_KEY" "htt
 	exit 1
 fi
 
-bashio::log.info "API Response: $$DYNU_RECORDS"
+bashio::log.info "Dynu Records: $DYNU_RECORDS"
 
 DYNU_IPV6_ENABLED=$(jq -r --arg HOST "$DYNU_HOSTNAME" '
     .domains[]
