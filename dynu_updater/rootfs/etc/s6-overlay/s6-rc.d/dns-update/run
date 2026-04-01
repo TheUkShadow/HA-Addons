@@ -153,11 +153,9 @@ update_host() {
 		COMMAND="https://api.dynu.com/nic/update?hostname=$DYNU_HOSTNAME&alias=${1%.$DYNU_HOSTNAME}&password=$PASSWORD&myip=$2"
 	fi
 
-	if [[ "$DYNU_IPV6_ENABLED" == "true" && -n "$3" ]]; then
+	if [[ -n "$3" ]]; then
 		COMMAND="${COMMAND}&myipv6=$3"
 	fi
-	
-	bashio::log.info "Command = $COMMAND"
 	
 	if RESPONSE=$(curl -s --max-time 5 "$COMMAND" 2>/dev/null); then
 		case "$RESPONSE" in
@@ -215,28 +213,28 @@ while true; do
 		IPV4=$(echo "$RAW" | awk -F': ' '{print $2}' | tr -d '[:space:]')
 	fi
 	if [[ -z "$IPV4" || ! "$IPV4" =~ $IPV4_REGEX ]]; then
-		bashio::log.warning "Dynu DNS Updater - Dynu.com returned an invalid IPv4: $IPV4. Trying icanhazip.com"
+		bashio::log.warning "Dynu DNS Updater - dynu.com returned an invalid IPv4 address. Trying icanhazip.com"
 		if RAW=$(curl -4 -s --fail --max-time 5 https://icanhazip.com 2>/dev/null); then
 			IPV4=$(echo "$RAW" | tr -d '[:space:]')
 		fi
 		if [[ -z "$IPV4" || ! "$IPV4" =~ $IPV4_REGEX ]]; then
-			bashio::log.warning "Dynu DNS Updater - Icanhazip.com returned an invalid IPv4: $IPV4"
+			bashio::log.warning "Dynu DNS Updater - icanhazip.com returned an invalid IPv4 address."
 			IPV4=""
 		fi
 	fi
-
+	
 	# --- Detect IPv6 only if domain supports it ---
 	if [[ "$DYNU_IPV6_ENABLED" == "true" ]]; then
 		if RAW=$(curl -6 -s --fail --max-time 5 https://checkipv6.dynu.com 2>/dev/null); then
 			IPV6=$(echo "$RAW" | awk -F': ' '{print $2}' | tr -d '[:space:]')
 		fi
 		if [[ -z "$IPV6" || ! "$IPV6" =~ $IPV6_REGEX ]]; then
-			bashio::log.warning "Dynu DNS Updater - Dynu.com returned an invalid IPv6: $IPV6. Trying icanhazip.com"
+			bashio::log.warning "Dynu DNS Updater - dynu.com returned an invalid IPv6 address. Trying icanhazip.com"
 			if RAW=$(curl -6 -s --fail --max-time 5 https://icanhazip.com 2>/dev/null); then
 				IPV6=$(echo "$RAW" | tr -d '[:space:]')
 			fi
 			if [[ -z "$IPV6" || ! "$IPV6" =~ $IPV6_REGEX ]]; then
-				bashio::log.warning "Dynu DNS Updater - Icanhazip.com returned an invalid IPv6: $IPV6"
+				bashio::log.warning "Dynu DNS Updater - icanhazip.com returned an invalid IPv6 address."
 				IPV6=""
 			fi
 		fi
@@ -256,11 +254,11 @@ while true; do
 		mqtt_publish "last_ip_check" "$(date -Is)"
 		
 		if [[ "$IPV4" != "$CURRENT_IPV4" ]] || [[ "$IPV6" != "$CURRENT_IPV6" ]]; then
+			
 			bashio::log.info "Dynu DNS Updater - IP address change detected."
 			
 			mqtt_publish "current_ipv4" "$IPV4"
 			mqtt_publish "current_ipv6" "$IPV6"
-			mqtt_publish "last_ip_change" "$(date -Is)"
 			
 			CURRENT_IPV4="$IPV4"
 			CURRENT_IPV6="$IPV6"
@@ -269,7 +267,7 @@ while true; do
 			jq -n \
 			  --arg js_ipv4 "$CURRENT_IPV4" \
 			  --arg js_ipv6 "$CURRENT_IPV6" \
-			  --arg js_last_change "$(date -Is)" \
+			  --arg js_last_change "$LAST_IP_CHANGE" \
 			  '{
 				  ipv4: $js_ipv4,
 				  ipv6: $js_ipv6,
@@ -278,21 +276,32 @@ while true; do
 			  > /data/dynu-ip.json
 			  
 			UPDATED=${#DOMAIN_ARR[@]}
+			FAILED_ARR=()
 			
-			bashio::log.info "Host count = $UPDATED"
-		
 			for HOST in "${DOMAIN_ARR[@]}"; do
 				if update_host "$HOST" "$IPV4" "$IPV6"; then
 					UPDATED=$((UPDATED - 1))
+				else
+					FAILED_ARR+="$HOST"
 				fi
 			done
 			
 			if (( UPDATED > 0 )); then
-				bashio::log.error "Dynu DNS Updater - $UPDATED Hosts/Aliases could not be updated"
+				bashio::log.error "Dynu DNS Updater - $UPDATED Hosts/Aliases could not be updated. Retrying in 60 seconds"
+				sleep 60
+				for HOST in "${FAILED_ARR[@]}"; do
+					if update_host "$HOST" "$IPV4" "$IPV6"; then
+						UPDATED=$((UPDATED - 1))
+					fi
+				done
+			fi
+			
+			if (( UPDATED > 0 )); then
+				bashio::log.error "Dynu DNS Updater - $UPDATED could not be updated. Please check logs for more information"
 			else
 				bashio::log.info "Dynu DNS Updater - All Hosts/Aliases were updated"
-				mqtt_publish "last_ip_update" "$(date -Is)"
 			fi
+			mqtt_publish "last_ip_update" "$(date -Is)"
 		fi
 
 	else
@@ -306,4 +315,5 @@ while true; do
 	fi
 
 	sleep 60
+	
 done
