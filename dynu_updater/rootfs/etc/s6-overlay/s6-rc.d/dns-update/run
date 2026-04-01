@@ -44,16 +44,15 @@ else
     USE_MQTT="false"
 fi
 
-DYNU_IPV6_ENABLED=$(jq -r '.ipv6' "$DYNU_CONF")
-readarray -t DYNU_HOSTNAMES < <(
-    jq -r '.domains[]' "$DYNU_CONF"
-)
+API_DATA=$(< "$DYNU_CONF")
+DYNU_IPV6_ENABLED=$(jq -r '.ipv6' <<< "$API_DATA")
+readarray -t DYNU_HOSTNAMES < <(jq -r '.domains[]' <<< "$API_DATA")
 if [[ "$USE_MQTT" == "true" ]]; then
-	USE_MQTT=$(jq -r '.mqtt.enabled' <<< "$DYNU_CONF")
-	MQTT_HOST=$(jq -r '.mqtt.host' <<< "$DYNU_CONF")
-	MQTT_PORT=$(jq -r '.mqtt.port' <<< "$DYNU_CONF")
-	MQTT_USER=$(jq -r '.mqtt.user' <<< "$DYNU_CONF")
-	MQTT_PASSWORD=$(jq -r '.mqtt.password' <<< "$DYNU_CONF")
+	USE_MQTT=$(jq -r '.mqtt.enabled' <<< "$API_DATA")
+	MQTT_HOST=$(jq -r '.mqtt.host' <<< "$API_DATA")
+	MQTT_PORT=$(jq -r '.mqtt.port' <<< "$API_DATA")
+	MQTT_USER=$(jq -r '.mqtt.user' <<< "$API_DATA")
+	MQTT_PASSWORD=$(jq -r '.mqtt.password' <<< "$API_DATA")
 else
 	USE_MQTT="false"
 fi
