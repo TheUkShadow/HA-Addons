@@ -30,7 +30,6 @@ else
     USE_MQTT="false"
 fi
 
-FIRST_RUN="true"
 MQTT_CONF="/run/dynu-mqtt.conf"
 
 if [[ "$USE_MQTT" == "true" && -f "$MQTT_CONF" ]]; then
@@ -63,86 +62,116 @@ mqtt_publish() {
     fi
 }
 
-# Call Dynu API
-if ! DYNU_API_RESPONSE=$(curl -s --fail --max-time 5 -H "API-Key: $DYNU_API_KEY" "https://api.dynu.com/v2/dns" 2>/dev/null); then
-	bashio::log.error "Dynu DNS Updater - unable to contact Dynu API (network error or invalid API key)"
-    sleep 1
-	exit 1
-fi
-
-# Retrieve Domain ID
-DYNU_DOMAIN_ID=$(
-    jq -r --arg HOST "$DYNU_HOSTNAME" '
-        .domains[]
-        | select(.name == $HOST)
-        | .id // empty
-    ' <<< "$DYNU_API_RESPONSE")
-
-if [[ -z "$DYNU_DOMAIN_ID" ]]; then
-	bashio::log.error "Dynu DNS Updater - '$DYNU_HOSTNAME' not found in Dynu domain list"
-	sleep 1
-	exit 1
-fi
-
-# Retrieve DNS Records for Domain
-if ! DYNU_RECORDS=$(curl -s --fail --max-time 5 -H "API-Key: $DYNU_API_KEY" "https://api.dynu.com/v2/dns/${DYNU_DOMAIN_ID}/record" 2>/dev/null); then
-	bashio::log.error "Dynu DNS Updater - failed to retrieve valid DNS records from Dynu API"
-	sleep 1
-	exit 1
-fi
-
-DYNU_IPV6_ENABLED=$(jq -r --arg HOST "$DYNU_HOSTNAME" '
-    .domains[]
-    | select(.name == $HOST)
-    | .ipv6 // "false"
-' <<<"$DYNU_API_RESPONSE")
-
-DYNU_HOSTNAMES=$(
-  jq -r '
-    [.dnsRecords[]
-      | select(.recordType | IN("SOA","A","AAAA"))
-      | .hostname
-    ]
-    | unique
-    | sort_by( (split(".") | length), . )
-    | .[]
-  ' <<< "$DYNU_RECORDS"
-)
-
-DOMAIN_ARR=()
-for DOMAIN in $IP_DOMAINS; do
-	if [[ "$DOMAIN" == "*.$DYNU_HOSTNAME" ]]; then
-		read -r -a _tmp <<< "$IP_DOMAINS"
-		if (( ${#_tmp[@]} != 1 )); then
-			bashio::log.warning "Dynu DNS updater - Wildcard found, ignoring other DNS Update Hostnames"
-		fi
-		readarray -t DOMAIN_ARR <<< "$DYNU_HOSTNAMES"
-		break
-	elif ! echo "$DYNU_HOSTNAMES" | grep -qx "$DOMAIN"; then
-		bashio::log.warning "Dynu DNS updater - $DOMAIN is not valid for this account"
-		continue
-	fi
-	DOMAIN_ARR+=("$DOMAIN")
-done
-
-if [[ ${#DOMAIN_ARR[@]} -eq 0 ]]; then
-	bashio::log.error "Dynu DNS updater - no valid domains found"
-	sleep 1
-	exit 1
-fi
-
 IP_CONF="/data/dynu-ip.json"
 
 if [[ -f "$IP_CONF" ]]; then
 	IP_DATA=$(< "$IP_CONF")
 	CURRENT_IPV4=$(jq -r '.ipv4' <<< "$IP_DATA")
 	CURRENT_IPV6=$(jq -r '.ipv6' <<< "$IP_DATA")
-	LAST_IP_CHANGE=$(jq -r '.last_change' <<< "$IP_DATA")
+	LAST_IP_UPDATE=$(jq -r '.last' <<< "$IP_DATA")
 else
 	CURRENT_IPV4=""
 	CURRENT_IPV6=""
-	LAST_IP_CHANGE=""
+	LAST_IP_UPDATE=""
 fi
+
+LAST_CHECK="true"
+FIRST_RUN="true"
+DYNU_IPV6_ENABLED="false"
+
+load_api() {
+	# Call Dynu API
+	bashio::log.info "Dynu DNS Updater - Loading data from Dynu API"
+	
+	if DYNU_API_RESPONSE=$(curl -s --max-time 5 -H "API-Key: $DYNU_API_KEY" -w "\n%{http_code}" "https://api.dynu.com/v2/dns" 2>/dev/null); then
+		
+		bashio::log.warning "API Response: $DYNU_API_RESPONSE"
+		
+		HTTP_STATUS=$(tail -n1 <<< "$DYNU_API_RESPONSE")
+		# Handle HTTP status codes explicitly
+		case "$HTTP_STATUS" in
+			200)
+				DYNU_API_RESPONSE=$(sed '$d' <<< "$DYNU_API_RESPONSE")
+				;;
+			401)
+				bashio::log.error "Dynu Updater Initialisation - Invalid Dynu API key"
+				exit 1
+				;;
+			403)
+				bashio::log.error "Dynu Updater Initialisation - Dynu API key does not have permission to access DNS records"
+				exit 1
+				;;
+			*)
+				bashio::log.error "Dynu Updater Initialisation - Dynu API returned HTTP $HTTP_STATUS"
+				exit 1
+				;;
+		esac
+	else
+		bashio::log.error "Dynu Updater Initialisation - Dynu API returned HTTP $HTTP_STATUS"
+		exit 1
+	fi
+
+
+	# Retrieve Domain ID
+	DYNU_DOMAIN_ID=$(
+		jq -r --arg HOST "$DYNU_HOSTNAME" '
+			.domains[]
+			| select(.name == $HOST)
+			| .id // empty
+		' <<< "$DYNU_API_RESPONSE")
+
+	if [[ -z "$DYNU_DOMAIN_ID" ]]; then
+		bashio::log.error "Dynu DNS Updater - '$DYNU_HOSTNAME' not found in Dynu domain list"
+		return 1
+	fi
+
+	# Retrieve DNS Records for Domain
+	if ! DYNU_RECORDS=$(curl -s --fail --max-time 5 -H "API-Key: $DYNU_API_KEY" "https://api.dynu.com/v2/dns/${DYNU_DOMAIN_ID}/record" 2>/dev/null); then
+		bashio::log.error "Dynu DNS Updater - failed to retrieve valid DNS records from Dynu API"
+		return 1
+	fi
+
+	DYNU_IPV6_ENABLED=$(jq -r --arg HOST "$DYNU_HOSTNAME" '
+		.domains[]
+		| select(.name == $HOST)
+		| .ipv6 // "false"
+	' <<<"$DYNU_API_RESPONSE")
+
+	DYNU_HOSTNAMES=$(
+	  jq -r '
+		[.dnsRecords[]
+		  | select(.recordType | IN("SOA","A","AAAA"))
+		  | .hostname
+		]
+		| unique
+		| sort_by( (split(".") | length), . )
+		| .[]
+	  ' <<< "$DYNU_RECORDS"
+	)
+
+	DOMAIN_ARR=()
+	for DOMAIN in $IP_DOMAINS; do
+		if [[ "$DOMAIN" == "*.$DYNU_HOSTNAME" ]]; then
+			read -r -a _tmp <<< "$IP_DOMAINS"
+			if (( ${#_tmp[@]} != 1 )); then
+				bashio::log.warning "Dynu DNS updater - Wildcard found, ignoring other DNS Update Hostnames"
+			fi
+			readarray -t DOMAIN_ARR <<< "$DYNU_HOSTNAMES"
+			break
+		elif ! echo "$DYNU_HOSTNAMES" | grep -qx "$DOMAIN"; then
+			bashio::log.warning "Dynu DNS updater - $DOMAIN is not valid for this account"
+			continue
+		fi
+		DOMAIN_ARR+=("$DOMAIN")
+	done
+
+	if [[ ${#DOMAIN_ARR[@]} -eq 0 ]]; then
+		bashio::log.error "Dynu DNS updater - no valid domains found"
+		return 1
+	fi
+
+	return 0
+}
 
 update_host() {
 	bashio::log.info "Dynu DNS Updater - Updating $1"
@@ -200,11 +229,16 @@ update_host() {
 
 bashio::log.info "Dynu DNS Updater - Started"
 
-LAST_CHECK="true"
-
 while true; do
+	if [[ "$FIRST_RUN" == "true" ]]; then
+		if ! load_api; then
+			bashio::log.error "Dynu DNS Updater - Unable to load Dynu API. Check log for details."
+			exit 1
+		fi
+	fi
+	
 	if [[ "$VERBOSE" == "true" ]]; then
-		bashio::log.info "Dynu DNS Updater - Checking current IP addresses"
+		bashio::log.info "Dynu DNS Updater - Checking current IP addresses."
 	fi
 	
 	IPV4=""
@@ -243,7 +277,7 @@ while true; do
 	else
 		IPV6=""
 	fi
-		
+	
 	if [[ "$VERBOSE" == "true" ]]; then
 		bashio::log.info "Dynu DNS Updater - Current IPv4 address: $IPV4"
 		if [[ "$DYNU_IPV6_ENABLED" == "true" ]]; then
@@ -256,8 +290,11 @@ while true; do
 		mqtt_publish "last_ip_check" "$(date -Is)"
 		
 		if [[ "$LAST_CHECK" == "false" || "$IPV4" != "$CURRENT_IPV4" || "$IPV6" != "$CURRENT_IPV6" ]]; then
-			
-			bashio::log.info "Dynu DNS Updater - IP address change detected."
+			if [[ "$LAST_CHECK" == "false" ]]; then
+				bashio::log.info "Dynu DNS Updater - Last update failed. Updating all hosts."
+			else
+				bashio::log.info "Dynu DNS Updater - IP address change detected. Updating all hosts"
+			fi
 						  
 			UPDATED=${#DOMAIN_ARR[@]}
 			
@@ -274,7 +311,7 @@ while true; do
 			else
 				CURRENT_IPV4="$IPV4"
 				CURRENT_IPV6="$IPV6"
-				LAST_IP_CHANGE="$(date -Is)"
+				LAST_IP_UPDATE="$(date -Is)"
 				LAST_CHECK="true"
 				
 				mqtt_publish "update_status" "true"
@@ -285,11 +322,11 @@ while true; do
 				jq -n \
 				  --arg js_ipv4 "$CURRENT_IPV4" \
 				  --arg js_ipv6 "$CURRENT_IPV6" \
-				  --arg js_last_change "$LAST_IP_CHANGE" \
+				  --arg js_last "$(date -Is)" \
 				  '{
 					  ipv4: $js_ipv4,
 					  ipv6: $js_ipv6,
-					  last_change: $js_last_change
+					  last: $js_last
 				   }' \
 				  > /data/dynu-ip.json
 				  
@@ -301,7 +338,7 @@ while true; do
 
 	else
 		mqtt_publish "wan_connection" "false"
-		bashio::log.error "Dynu DNS Updater - Unable to retrieve current IP address data (WAN Down)"
+		bashio::log.error "Dynu DNS Updater - Unable to retrieve current IP address data (WAN Down?)"
 	fi
 	
 	if [[ "$FIRST_RUN" == "true" ]]; then
@@ -313,6 +350,9 @@ while true; do
 		bashio::log.info "Dynu DNS Updater - Checking and updating complete. Rechecking in 60 seconds"
 	fi
 
-	sleep 60
-	
+	if [[ "LAST_CHECK" == "false" ]]; then
+		sleep 300
+	else
+		sleep 60
+	fi	
 done
