@@ -142,7 +142,7 @@ if DYNU_API_RESPONSE=$(curl -s --max-time 5 -H "API-Key: $DYNU_API_KEY" "https:/
 	HTTP_STATUS=$(jq -r '.statusCode // empty' <<< "$DYNU_API_RESPONSE")
 	
 	if [[ -z "$HTTP_STATUS" ]]; then
-		bashio::log.error "Dynu DNS Initialisation - Invalid or empty JSON returned from Dynu Domain API"
+		bashio::log.error "Dynu Updater Initialisation - Invalid or empty JSON returned from Dynu Domain API"
 		exit 1
 	fi
 	
@@ -152,16 +152,16 @@ if DYNU_API_RESPONSE=$(curl -s --max-time 5 -H "API-Key: $DYNU_API_KEY" "https:/
 
 	case "$HTTP_STATUS" in
 		200)
-			bashio::log.info "Dynu DNS Initialisation - Dynu Domain API data retrieved."
+			bashio::log.info "Dynu Updater Initialisation - Dynu Domain API data retrieved."
 			;;
 		*)
-			bashio::log.error "Dynu DNS Initialisation - Dynu Domain API Error: status: $HTTP_STATUS, type: $EXCEPTION_TYPE, message: $EXCEPTION_MESSAGE"
+			bashio::log.error "Dynu Updater Initialisation - Dynu Domain API Error: status: $HTTP_STATUS, type: $EXCEPTION_TYPE, message: $EXCEPTION_MESSAGE"
 			exit 1
 			;;
 
 	esac
 else
-	bashio::log.error "Dynu DNS Initialisation - Dynu Domain API could not be loaded"
+	bashio::log.error "Dynu Updater Initialisation - Dynu Domain API could not be loaded"
 	exit 1
 fi
 
@@ -174,7 +174,7 @@ DYNU_DOMAIN_ID=$(
 	' <<< "$DYNU_API_RESPONSE")
 
 if [[ -z "$DYNU_DOMAIN_ID" ]]; then
-	bashio::log.error "Dynu DNS Initialisation - '$DYNU_HOSTNAME' not found in the Dynu Domain API response"
+	bashio::log.error "Dynu Updater Initialisation - '$DYNU_HOSTNAME' not found in the Dynu Domain API response"
 	exit 1
 fi
 
@@ -186,7 +186,7 @@ DYNU_IPV6_ENABLED=$(jq -r --arg HOST "$DYNU_HOSTNAME" '
 ' <<<"$DYNU_API_RESPONSE")
 
 if [[ "$DYNU_IPV6_ENABLED" == "true" ]]; then
-	bashio::log.info "Dynu DNS Initialisation - IPv6 enabled for $DYNU_HOSTNAME."
+	bashio::log.info "Dynu Updater Initialisation - IPv6 enabled for $DYNU_HOSTNAME."
 fi
 
 if DYNU_RECORDS=$(curl -s --max-time 5 -H "API-Key: $DYNU_API_KEY" "https://api.dynu.com/v2/dns/${DYNU_DOMAIN_ID}/record" 2>/dev/null); then
@@ -194,7 +194,7 @@ if DYNU_RECORDS=$(curl -s --max-time 5 -H "API-Key: $DYNU_API_KEY" "https://api.
 	jq -r '.statusCode // empty' <<< "$DYNU_RECORDS")
 	
 	if [[ -z "$HTTP_STATUS" ]]; then
-		bashio::log.error "Dynu DNS Initialisation - Invalid or empty JSON returned from Dynu Records API"
+		bashio::log.error "Dynu Updater Initialisation - Invalid or empty JSON returned from Dynu Records API"
 		exit 1
 	fi
 	
@@ -206,16 +206,16 @@ if DYNU_RECORDS=$(curl -s --max-time 5 -H "API-Key: $DYNU_API_KEY" "https://api.
 
 	case "$HTTP_STATUS" in
 		200)
-			bashio::log.info "Dynu DNS Initialisation - Dynu Records API data retrieved."
+			bashio::log.info "Dynu Updater Initialisation - Dynu Records API data retrieved."
 			;;
 		*)
-			bashio::log.error "Dynu DNS Initialisation - Dynu Records API Error: status: $HTTP_STATUS, type: $EXCEPTION_TYPE, message: $EXCEPTION_MESSAGE"
+			bashio::log.error "Dynu Updater Initialisation - Dynu Records API Error: status: $HTTP_STATUS, type: $EXCEPTION_TYPE, message: $EXCEPTION_MESSAGE"
 			exit 1
 			;;
 
 	esac
 else
-	bashio::log.error "Dynu DNS Initialisation - Dynu Records API could not be loaded"
+	bashio::log.error "Dynu Updater Initialisation - Dynu Records API could not be loaded"
 	exit 1
 fi
 
@@ -232,21 +232,10 @@ readarray -t DYNU_HOSTNAMES < <(
 )
 
 if [[ ${#DYNU_HOSTNAMES[@]} -eq 0 ]]; then
-	bashio::log.error "Dynu DNS Initialisation - no valid hostnames returned by Dynu Records API"
+	bashio::log.error "Dynu Updater Initialisation - no valid hostnames returned by Dynu Records API"
 	exit 1
 fi
 
-jq -n \
-  --arg ipv6 "$DYNU_IPV6_ENABLED" \
-  --argjson domains "$(printf '%s\n' "${DYNU_HOSTNAMES[@]}" | jq -R . | jq -s .)" \
-  '{
-      ipv6: $ipv6,
-      domains: $domains
-   }' \
-  > /run/dynu_domain_data.conf
-  
-# printf "%s\n" "${DOMAIN_ARR[@]}" > /run/dynu_domain_data.conf
-	
 bashio::log.info "Dynu Updater Initialisation - Generating MQTT Configuration"
 # MQTT connection
 
@@ -435,19 +424,25 @@ for entry in "${ENTITIES[@]}"; do
 done
 
 jq -n \
+  --arg ipv6 "$DYNU_IPV6_ENABLED" \
+  --argjson domains "$(printf '%s\n' "${DYNU_HOSTNAMES[@]}" | jq -R . | jq -s .)" \
   --arg mqtt "$USE_MQTT" \
   --arg host "$MQTT_HOST" \
   --arg port "$MQTT_PORT" \
   --arg user "$MQTT_USER" \
   --arg password "$MQTT_PASSWORD" \
   '{
-	  mqtt: $mqtt,
-	  host: $host,
-	  port: $port,
-	  user: $user,
-	  password: $password
+      ipv6: $ipv6,
+      domains: $domains,
+	  mqtt: {
+	    enabled: $mqtt,
+	    host: $host,
+	    port: $port,
+	    user: $user,
+	    password: $password
+	  }
    }' \
-  > /run/dynu-mqtt.conf
+  > /run/dynu-updater.conf
   
 mqtt_publish "availability" "online"
 

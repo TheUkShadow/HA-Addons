@@ -14,15 +14,17 @@ if ! bashio::config.true 'update_cert'; then
 	sleep infinity
 fi
 
-DYNU_API_CONF="/run/dynu_domain_data.conf"
+DYNU_CONF="/run/dynu-updater.conf"
 
-while [[ ! -f "$DYNU_API_CONF" ]]; do
+WAIT_COUNT=0
+while [[ ! -f "$DYNU_CONF" ]]; do
 	sleep 1
+	WAIT_COUNT=$((WAIT_COUNT + 1))
+	if (( WAIT_COUNT > 20 )); then
+		bashio::log.error "Certificate Manager - Dynu API Config not found"
+		exit 1
+	fi
 done
-
-readarray -t DYNU_HOSTNAMES < <(
-    jq -r '.domains[]' "$DYNU_API_CONF"
-)
 
 bashio::log.info "Certificate Manager - Started"
 
@@ -66,15 +68,15 @@ POST_CHECK="false"
 LAST_CHECK="ok"
 PROPAGATION_SECONDS=300
 
-MQTT_CONF="/run/dynu-mqtt.conf"
-
-if [[ "$USE_MQTT" == "true" && -f "$MQTT_CONF" ]]; then
-	MQTT_DATA=$(< "$MQTT_CONF")
-	USE_MQTT=$(jq -r '.mqtt' <<< "$MQTT_DATA")
-	MQTT_HOST=$(jq -r '.host' <<< "$MQTT_DATA")
-	MQTT_PORT=$(jq -r '.port' <<< "$MQTT_DATA")
-	MQTT_USER=$(jq -r '.user' <<< "$MQTT_DATA")
-	MQTT_PASSWORD=$(jq -r '.password' <<< "$MQTT_DATA")
+readarray -t DYNU_HOSTNAMES < <(
+    jq -r '.domains[]' "$DYNU_CONF"
+)
+if [[ "$USE_MQTT" == "true" ]]; then
+	USE_MQTT=$(jq -r '.mqtt.enabled' <<< "$DYNU_CONF")
+	MQTT_HOST=$(jq -r '.mqtt.host' <<< "$DYNU_CONF")
+	MQTT_PORT=$(jq -r '.mqtt.port' <<< "$DYNU_CONF")
+	MQTT_USER=$(jq -r '.mqtt.user' <<< "$DYNU_CONF")
+	MQTT_PASSWORD=$(jq -r '.mqtt.password' <<< "$DYNU_CONF")
 else
 	USE_MQTT="false"
 fi
