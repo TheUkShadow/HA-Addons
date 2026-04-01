@@ -82,7 +82,7 @@ mqtt_publish() {
     fi
 }
 
-IP_CONF="/data/dynu-ip.json"
+IP_CONF="/data/dynu-ip.conf"
 
 if [[ -f "$IP_CONF" ]]; then
 	IP_DATA=$(< "$IP_CONF")
@@ -273,7 +273,7 @@ while true; do
 					  ipv6: $js_ipv6,
 					  last: $js_last
 				   }' \
-				  > /data/dynu-ip.json
+				  > "$IP_CONF"
 				  
 				bashio::log.info "Dynu DNS Updater - All Hosts/Aliases were updated"
 			fi
