@@ -283,7 +283,7 @@ while true; do
 		
 			for HOST in "${DOMAIN_ARR[@]}"; do
 				if update_host "$HOST" "$IPV4" "$IPV6"; then
-					UPDATED=(( UPDATED - 1 ))
+					UPDATED=$((UPDATED - 1))
 				fi
 			done
 			
