@@ -178,7 +178,7 @@ load_api() {
 
 	DOMAIN_ARR=()
 
-	for DOMAIN in $IP_DOMAINS; do
+	for DOMAIN in $CERT_DOMAINS; do
 
 		# Wildcard case
 		if [[ "$DOMAIN" == "*.$DYNU_HOSTNAME" ]]; then
