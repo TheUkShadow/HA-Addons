@@ -243,7 +243,7 @@ jq -n \
       ipv6: $ipv6,
       domains: $domains
    }' \
-  > /run/dynu-domain_data.conf
+  > /run/dynu_domain_data.conf
   
 # printf "%s\n" "${DOMAIN_ARR[@]}" > /run/dynu_domain_data.conf
 	
