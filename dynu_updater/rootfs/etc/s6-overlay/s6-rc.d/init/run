@@ -224,6 +224,7 @@ ENTITIES=(
   "last_cert_check|Last Certificate Check|timestamp|dynu_updater/last_cert_check|sensor||mdi:certificate-outline|cert"
   "last_cert_status|Certificate Valid|problem|dynu_updater/last_cert_status|binary_sensor|\"payload_on\": \"false\", \"payload_off\": \"true\",|mdi:shield-check|dns"
   "wan_connection|WAN Connection|connectivity|dynu_updater/wan_connection|binary_sensor|\"payload_on\": \"true\", \"payload_off\": \"false\",|mdi:wan|dns"
+  "update_status|IP Update Status|problem|dynu_updater/update_status|binary_sensor|\"payload_on\": \"false\", \"payload_off\": \"true\",|mdi:sticker-check|dns"
   "cert_expires|Certificate Expires|timestamp|dynu_updater/cert_expires|sensor||mdi:calendar-alert|dns"
   "last_cert_renewal|Last Certificate Renewal|timestamp|dynu_updater/last_cert_renewal|sensor||mdi:certificate|dns"
 )
