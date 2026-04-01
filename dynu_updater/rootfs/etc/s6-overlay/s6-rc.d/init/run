@@ -442,7 +442,7 @@ jq -n \
 	    password: $password
 	  }
    }' \
-  > /run/dynu-updater.conf
+  > /data/dynu-updater.conf
   
 mqtt_publish "availability" "online"
 

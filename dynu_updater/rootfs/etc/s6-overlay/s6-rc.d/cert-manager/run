@@ -14,7 +14,7 @@ if ! bashio::config.true 'update_cert'; then
 	sleep infinity
 fi
 
-DYNU_CONF="/run/dynu-updater.conf"
+DYNU_CONF="/data/dynu-updater.conf"
 
 WAIT_COUNT=0
 while [[ ! -f "$DYNU_CONF" ]]; do
