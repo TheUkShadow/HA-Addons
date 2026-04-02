@@ -137,6 +137,11 @@ check_connectivity() {
     return 1
 }
 
+DOMAINS=()
+for DOMAIN in "${DOMAIN_ARR[@]}"; do
+	DOMAINS+=(-d "$DOMAIN")
+done
+
 renew_cert() {
 	POST_CHECK="true"
 	until check_connectivity; do
@@ -152,7 +157,7 @@ renew_cert() {
 		  --email "$EMAIL" --agree-tos \
 		  "${KEY_ARGUMENTS[@]}" \
 		  "${ADDITIONAL_ARGS[@]}" \
-		  --cert-name "$DYNU_HOSTNAME" "${DOMAIN_ARR[@]}" \
+		  --cert-name "$DYNU_HOSTNAME" "${DOMAINS[@]}" \
 		  --config-dir "$CERT_DIR" --work-dir "$WORK_DIR" \
 		  --preferred-challenges dns \
 		  "${ACME_ARGUMENTS[@]}" \
