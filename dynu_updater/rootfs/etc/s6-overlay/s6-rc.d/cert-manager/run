@@ -157,7 +157,7 @@ renew_cert() {
 		  --email "$EMAIL" --agree-tos \
 		  "${KEY_ARGUMENTS[@]}" \
 		  "${ADDITIONAL_ARGS[@]}" \
-		  --cert-name "$DYNU_HOSTNAME" "${DOMAINS[@]}" \
+		  --cert-name "$DYNU_HOSTNAME" "${DOMAIN_ARR[@]/#/-d }" \
 		  --config-dir "$CERT_DIR" --work-dir "$WORK_DIR" \
 		  --preferred-challenges dns \
 		  "${ACME_ARGUMENTS[@]}" \
