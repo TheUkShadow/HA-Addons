@@ -241,7 +241,7 @@ CERT_HOSTNAMES=()
 
 if [[ "$DNS_VALID" == "true" ]]; then
 	for DOMAIN in $IP_DOMAINS; do
-		if [[ "$DOMAIN" != "*.$DYNU_HOSTNAME" || ! " ${DYNU_HOSTNAMES[*]} " =~ " $DOMAIN " ]]; then
+		if [[ "$DOMAIN" != "*.$DYNU_HOSTNAME" && ! " ${DYNU_HOSTNAMES[*]} " =~ " $DOMAIN " ]]; then
 			bashio::log.error "Dynu Updater Initialisation - DNS Update Hostname $DOMAIN is not valid for this account"
 			exit 1
 		elif [[ "$DOMAIN" == "*.$DYNU_HOSTNAME" ]]; then
@@ -263,7 +263,7 @@ if [[ "$DNS_VALID" == "true" ]]; then
 fi
 if [[ "$CERT_VALID" == "true" ]]; then
 	for DOMAIN in $CERT_DOMAINS; do
-		if [[ "$DOMAIN" != "*.$DYNU_HOSTNAME" || ! " ${DYNU_HOSTNAMES[*]} " =~ " $DOMAIN " ]]; then
+		if [[ "$DOMAIN" != "*.$DYNU_HOSTNAME" && ! " ${DYNU_HOSTNAMES[*]} " =~ " $DOMAIN " ]]; then
 			bashio::log.error "Dynu Updater Initialisation - Certificate Hostname $DOMAIN is not valid for this account"
 			exit 1
 		elif [[ "$DOMAIN" == "*.$DYNU_HOSTNAME" ]]; then
