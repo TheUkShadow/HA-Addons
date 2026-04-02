@@ -318,7 +318,7 @@ elif [[ "$USE_MQTT" == "true" ]] \
     MQTT_PORT=$(bashio::config 'mqtt.port')
 fi
 
-if [[ "$USE_MQTT" == "true" && ( -z "$MQTT_HOST" || -z "$MQTT_USER" || -z "$MQTT_PASSWORD" || -z "$MQTT_PORT" || ! "$MQTT_PORT" =~ ^[0-9]+$ ]]) ]]; then
+if [[ "$USE_MQTT" == "true" && ( -z "$MQTT_HOST" || -z "$MQTT_USER" || -z "$MQTT_PASSWORD" || -z "$MQTT_PORT" || ! "$MQTT_PORT" =~ ^[0-9]+$ ) ]]; then
 	bashio::log.error "Dynu Updater Initialisation - Invalid configuration for MQTT"
 	if [[ -z "$MQTT_HOST" ]]; then
 		bashio::log.error "  No MQTT Hostname"
