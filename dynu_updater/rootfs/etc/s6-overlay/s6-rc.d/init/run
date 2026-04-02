@@ -383,7 +383,6 @@ if [[ "$USE_MQTT" == "true" && "$MQTT_CORE" == "true" ]] && bashio::services.ava
 			fi
 			exit 1
 		else
-			TLS_FLAGS+=("--tls")
 			TLS_FLAGS+=("--cafile" "$MQTT_CAFILE")
 			TLS_FLAGS+=("--cert" "$MQTT_CERTFILE")
 			TLS_FLAGS+=("--key" "$MQTT_KEYFILE")
@@ -450,7 +449,6 @@ elif [[ "$USE_MQTT" == "true" && "$MQTT_CORE" == "false" ]]; then
 			fi
 			exit 1
 		else
-			TLS_FLAGS+=("--tls")
 			TLS_FLAGS+=("--cafile" "$MQTT_CAFILE")
 			TLS_FLAGS+=("--cert" "$MQTT_CERTFILE")
 			TLS_FLAGS+=("--key" "$MQTT_KEYFILE")
