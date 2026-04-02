@@ -294,10 +294,10 @@ MQTT_PORT=""
 
 if [[ "$USE_MQTT" == "true" ]] \
    && bashio::services.available 'mqtt' \
-   && ! bashio::config.has_value 'mqtt_host' \
-   && ! bashio::config.has_value 'mqtt_user' \
-   && ! bashio::config.has_value 'mqtt_password' \
-   && ! bashio::config.has_value 'mqtt_port'; then
+   && ! bashio::config.has_value 'mqtt.host' \
+   && ! bashio::config.has_value 'mqtt.user' \
+   && ! bashio::config.has_value 'mqtt.password' \
+   && ! bashio::config.has_value 'mqtt.port'; then
 		  
 	bashio::log.info "Dynu Updater Initialisation - Loading MQTT config from Supervisor"
     MQTT_HOST=$(bashio::services mqtt host)
@@ -306,16 +306,16 @@ if [[ "$USE_MQTT" == "true" ]] \
     MQTT_PORT=$(bashio::services mqtt port)
 	
 elif [[ "$USE_MQTT" == "true" ]] \
-   && bashio::config.has_value 'mqtt_host' \
-   && bashio::config.has_value 'mqtt_user' \
-   && bashio::config.has_value 'mqtt_password' \
-   && bashio::config.has_value 'mqtt_port'; then
+   && bashio::config.has_value 'mqtt.host' \
+   && bashio::config.has_value 'mqtt.user' \
+   && bashio::config.has_value 'mqtt.password' \
+   && bashio::config.has_value 'mqtt.port'; then
 
 	bashio::log.info "Dynu Updater Initialisation - Loading MQTT config from Addon"
-    MQTT_HOST=$(bashio::config 'mqtt_host')
-    MQTT_USER=$(bashio::config 'mqtt_user')
-    MQTT_PASSWORD=$(bashio::config 'mqtt_password')
-    MQTT_PORT=$(bashio::config 'mqtt_port')
+    MQTT_HOST=$(bashio::config 'mqtt.host')
+    MQTT_USER=$(bashio::config 'mqtt.user')
+    MQTT_PASSWORD=$(bashio::config 'mqtt.password')
+    MQTT_PORT=$(bashio::config 'mqtt.port')
 fi
 
 if [[ "$USE_MQTT" == "true" && ( -z "$MQTT_HOST" || -z "$MQTT_USER" || -z "$MQTT_PASSWORD" || -z "$MQTT_PORT" || ! "$MQTT_PORT" =~ ^[0-9]+$ ]]) ]]; then
