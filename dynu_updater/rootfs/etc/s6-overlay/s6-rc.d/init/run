@@ -392,7 +392,7 @@ if [[ "$USE_MQTT" == "true" && "$MQTT_CORE" == "true" ]] && bashio::services.ava
 	else
 		MQTT_PORT=$(bashio::services mqtt port)
 	fi
-elif [[ "$USE_MQTT" == "true" && "$MQTT_CORE" == "true" && ! bashio::services.available 'mqtt' ]]; then
+elif [[ "$USE_MQTT" == "true" && "$MQTT_CORE" == "true" ]] && ! bashio::services.available 'mqtt'; then
 	bashio::log.error "Dynu Updater Initialisation - MQTT Service not available for Core Mosquitton Addon"
 	exit 1
 elif [[ "$USE_MQTT" == "true" && "$MQTT_CORE" == "false" ]]; then
