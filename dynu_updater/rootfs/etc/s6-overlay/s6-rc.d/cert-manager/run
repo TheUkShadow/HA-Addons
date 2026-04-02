@@ -31,7 +31,6 @@ KEYFILE=$(bashio::config 'keyfile' | xargs)
 CERTFILE=$(bashio::config 'certfile' | xargs)
 CHECK_DAYS=$(bashio::config 'update_cert_days')
 DYNU_API_KEY=$(bashio::config 'dynu_api_key' | xargs)
-CERT_DOMAINS=$(bashio::config 'domains' | tr '[:upper:]' '[:lower:]' | xargs)
 
 if bashio::config.true 'verbose'; then
     VERBOSE="true"
@@ -66,7 +65,7 @@ LAST_CHECK="ok"
 PROPAGATION_SECONDS=300
 
 API_DATA=$(< "$DYNU_CONF")
-readarray -t DYNU_HOSTNAMES < <(jq -r '.domains[]' <<< "$API_DATA")
+readarray -t DOMAIN_ARR < <(jq -r '.cert_domains[]' <<< "$API_DATA")
 if [[ "$USE_MQTT" == "true" ]]; then
 	USE_MQTT=$(jq -r '.mqtt.enabled' <<< "$API_DATA")
 	MQTT_HOST=$(jq -r '.mqtt.host' <<< "$API_DATA")
@@ -95,34 +94,6 @@ mqtt_publish() {
         fi
     fi
 }
-
-for DOMAIN in $CERT_DOMAINS; do
-	# Wildcard case
-	if [[ "$DOMAIN" == "*.$DYNU_HOSTNAME" ]]; then
-
-		# Warn if wildcard is not the only entry
-		if [[ "$CERT_DOMAINS" != "$DOMAIN" ]]; then
-			bashio::log.warning "Certificate Manager - Wildcard found, ignoring other hostnames"
-		fi
-
-		# Use all hostnames
-		DOMAIN_ARR=(-d "$DOMAIN")
-		break
-	fi
-
-	# Validate domain
-	if [[ ! " ${DYNU_HOSTNAMES[*]} " =~ " $DOMAIN " ]]; then
-		bashio::log.warning "Certificate Manager - $DOMAIN is not valid for this account"
-		continue
-	fi
-
-	DOMAIN_ARR+=(-d "$DOMAIN")
-done
-
-if [[ ${#DOMAIN_ARR[@]} -eq 0 ]]; then
-	bashio::log.error "Certificate Manager - no valid hostnames found"
-	exit 1
-fi
 
 mkdir -p "${WORK_DIR}"
 mkdir -p "${CERT_DIR}"

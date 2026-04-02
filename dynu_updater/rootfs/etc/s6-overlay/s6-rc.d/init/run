@@ -236,6 +236,54 @@ if [[ ${#DYNU_HOSTNAMES[@]} -eq 0 ]]; then
 	exit 1
 fi
 
+IP_HOSTNAMES=()
+CERT_HOSTNAMES=()
+
+if [[ "$DNS_VALID" == "true" ]];
+	for DOMAIN in $IP_DOMAINS; do
+		if [[ "$DOMAIN" != "*.$DYNU_HOSTNAME" || ! " ${DYNU_HOSTNAMES[*]} " =~ " $DOMAIN " ]]; then
+			bashio::log.error "Dynu Updater Initialisation - DNS Update Hostname $DOMAIN is not valid for this account"
+			exit 1
+		elif [[ "$DOMAIN" == "*.$DYNU_HOSTNAME" ]]; then
+			# Warn if wildcard is not the only entry
+			if [[ "$IP_DOMAINS" != "$DOMAIN" ]]; then
+				bashio::log.warning "Dynu Updater Initialisation - Wildcard found, ignoring other DNS Update Hostnames"
+			fi
+
+			# Use all hostnames
+			IP_HOSTNAMES=("${DYNU_HOSTNAMES[@]}")
+			break
+		fi
+		IP_HOSTNAMES+=("$DOMAIN")
+	done
+	if [[ ${#IP_HOSTNAMES[@]} -eq 0 ]]; then
+		bashio::log.error "Dynu Updater Initialisation - no valid hostnames for DNS Updater"
+		exit 1
+	fi
+fi
+if [[ "$CERT_VALID" == "true" ]];
+	for DOMAIN in $CERT_DOMAINS; do
+		if [[ "$DOMAIN" != "*.$DYNU_HOSTNAME" || ! " ${DYNU_HOSTNAMES[*]} " =~ " $DOMAIN " ]]; then
+			bashio::log.error "Dynu Updater Initialisation - Certificate Hostname $DOMAIN is not valid for this account"
+			exit 1
+		elif [[ "$DOMAIN" == "*.$DYNU_HOSTNAME" ]]; then
+			# Warn if wildcard is not the only entry
+			if [[ "$CERT_DOMAINS" != "$DOMAIN" ]]; then
+				bashio::log.warning "Dynu Updater Initialisation - Wildcard found, ignoring other Certificate Hostnames"
+			fi
+
+			# Use *.hostname only
+			CERT_HOSTNAMES=(-d "$DOMAIN")
+			break
+		fi
+		CERT_HOSTNAMES+=("$DOMAIN")
+	done
+	if [[ ${#CERT_HOSTNAMES[@]} -eq 0 ]]; then
+		bashio::log.error "Dynu Updater Initialisation - no valid hostnames for Certificate Manager"
+		exit 1
+	fi
+fi
+
 bashio::log.info "Dynu Updater Initialisation - Generating MQTT Configuration"
 # MQTT connection
 
@@ -304,7 +352,7 @@ elif [[ "$USE_MQTT" == "true" ]]; then
 	fi
 fi
 
-ENTITIES=(
+MQTT_ENTITIES=(
   "last_ip_check|Last IP Check|timestamp|dynu_updater/last_ip_check|sensor||mdi:clock-check|dns"
   "last_ip_update|Last IP Update|timestamp|dynu_updater/last_ip_update|sensor||mdi:update|dns"
   "current_ipv4|Current IPv4||dynu_updater/current_ipv4|sensor||mdi:ip-network|dns"
@@ -400,7 +448,7 @@ mqtt_publish() {
 	fi
 }
 
-for entry in "${ENTITIES[@]}"; do
+for entry in "${MQTT_ENTITIES[@]}"; do
 	IFS="|" read -r entity_id name device_class state_topic component extra icon service <<< "$entry"
 
 	publish_discovery \
@@ -425,25 +473,31 @@ done
 
 jq -n \
   --arg ipv6 "$DYNU_IPV6_ENABLED" \
-  --argjson domains "$(printf '%s\n' "${DYNU_HOSTNAMES[@]}" | jq -R . | jq -s .)" \
+  --argjson ip_domains "$(printf '%s\n' "${IP_HOSTNAMES[@]}" | jq -R . | jq -s .)" \
+  --argjson cert_domains "$(printf '%s\n' "${CERT_HOSTNAMES[@]}" | jq -R . | jq -s .)" \
   --arg mqtt "$USE_MQTT" \
   --arg host "$MQTT_HOST" \
   --arg port "$MQTT_PORT" \
   --arg user "$MQTT_USER" \
   --arg password "$MQTT_PASSWORD" \
+  --argjson entities "$(printf '%s\n' "${MQTT_ENTITIES[@]}" | jq -R . | jq -s .)" \
   '{
       ipv6: $ipv6,
-      domains: $domains,
+      ip_domains: $ip_domains,
+	  cert_domains: $cert_domains,
 	  mqtt: {
 	    enabled: $mqtt,
 	    host: $host,
 	    port: $port,
 	    user: $user,
-	    password: $password
+	    password: $password,
+		entities: $entities
 	  }
    }' \
   > /run/dynu-updater.conf
   
 mqtt_publish "availability" "online"
+
+sleep 1
 
 bashio::log.info "Dynu Updater Initialisation - Complete"
