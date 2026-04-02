@@ -469,6 +469,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
         -t "$TEST_TOPIC" \
         -m "$TEST_PAYLOAD" \
         -q 1 \
+		-A ipv4 \
 		"${TLS_FLAGS[@]}" \
 		2>&1); then
 
