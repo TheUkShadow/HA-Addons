@@ -20,7 +20,7 @@ configuration:
         name: Dynu Account Password
         description: This is either the account password, or the IP Update password
       domains:
-        name: IP Update Hostnames
+        name: Hostnames
         description: Hostnames listed here will have their IP address information updated (eg yourdomain.com, example.yourdomain.com, *.yourdomain.com)
   cert:
     name: Certificate Options
@@ -33,10 +33,10 @@ configuration:
         name: Email Address
         description: The email address that will be used to register the certificate (eg admin@yourdomain.com).
       update_cert_days:
-        name: Certificate Renew Days
+        name: Renew Days
         description: This is the number of days before the certificate expires to generate a new certificate (1 - 30)
       domains:
-        name: Certificate Hostnames
+        name: Hostnames
         description: Hostnames listed here will be included in the certificate request (eg yourdomain.com, example.yourdomain.com or *.yourdomain.com)
       keyfile:
         name: Private Key File
@@ -44,6 +44,9 @@ configuration:
       certfile:
         name: Certificate File
         description: Name of the Certificate File for the created certificate. This will be placed in /ssl
+      cafile:
+        name: CA File
+        description: Name of the CA File for the created certificate. This will be placed in /ssl
       restart_addons:
         name: Restart Addons
         description: A list of addons to restart when the certificate is created/renewed (eg a0d7b954-nodered or core-nginx-proxy)
@@ -60,26 +63,32 @@ configuration:
       enabled:
         name: Enabled
         description: Enables MQTT
+      core:
+        name: Core Mosquitto
+        description: Use the Mosquitto Broker Addon
       host:
-        name: MQTT Hostname
+        name: Hostname
         description: The hostname for the custom MQTT server.
       port:
-        name: MQTT Port
+        name: Port
         description: The port for the custom MQTT server (1883 or 8883 when using TLS)
       user:
-        name: MQTT User
+        name: User
         description: The username for the custom MQTT server.
       password:
-        name: MQTT Password
+        name: Password
         description: The password for the custom MQTT server.
       tls:
-        name: MQTT TLS
-        description: Enables TLS for the MQTT server connection
+        name: TLS
+        description: Enables TLS for the MQTT server connection (Port must be set along with Certificate, Private Key, and CA files)
       keyfile:
-        name: MQTT Private Key File
+        name: Private Key File
         description: The Private Key File to use for MQTT TLS
       certfile:
-        name: MQTT Certificate File
+        name: Certificate File
         description: The Certificate File to use for MQTT TLS
+      cafile:
+        name: CA File
+        description: The CA File to use for MQTT TLS
 network:
   8855/tcp: Websocket port for Integration connection.
