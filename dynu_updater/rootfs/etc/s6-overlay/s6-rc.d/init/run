@@ -550,7 +550,8 @@ publish_discovery() {
 				  \"model\": \"${MODEL}\",
 				  \"sw_version\": \"${SW_VERSION}\"
 			    }
-			  }"; then
+			  }" \
+			  "${TLS_FLAGS[@]}"; then
 			
 			bashio::log.warning "Dynu Updater Initialisation - MQTT discovery failed for entity $entity_id"
 		fi	
