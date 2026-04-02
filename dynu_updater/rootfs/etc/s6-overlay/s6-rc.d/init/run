@@ -276,7 +276,7 @@ if [[ "$CERT_VALID" == "true" ]]; then
 			CERT_HOSTNAMES=(-d "$DOMAIN")
 			break
 		fi
-		CERT_HOSTNAMES+=("$DOMAIN")
+		CERT_HOSTNAMES+=(-d "$DOMAIN")
 	done
 	if [[ ${#CERT_HOSTNAMES[@]} -eq 0 ]]; then
 		bashio::log.error "Dynu Updater Initialisation - no valid hostnames for Certificate Manager"
