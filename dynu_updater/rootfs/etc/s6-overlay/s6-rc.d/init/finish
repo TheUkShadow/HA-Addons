@@ -6,7 +6,7 @@ if [[ -f "$DYNU_CONF" ]]; then
 	MQTT_HOST=$(jq -r '.mqtt.host' "$DYNU_CONF")
 	MQTT_PORT=$(jq -r '.mqtt.port' "$DYNU_CONF")
 	MQTT_USER=$(jq -r '.mqtt.user' "$DYNU_CONF")
-	MQTT_PASSWORD=$(jq -r '.password' "$DYNU_CONF")
+	MQTT_PASSWORD=$(jq -r '.mqtt.password' "$DYNU_CONF")
 
 	# Publish offline availability
 	if [[ "$USE_MQTT" == "true" ]]; then
