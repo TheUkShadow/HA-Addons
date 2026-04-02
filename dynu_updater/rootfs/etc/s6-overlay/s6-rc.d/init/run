@@ -344,7 +344,7 @@ bashio::log.info "Dynu Updater Initialisation - Generating MQTT Configuration"
 
 TLS_FLAGS=()
 
-if [[ "$USE_MQTT" == "true" && "$MQTT_CORE" == "true" && bashio::services.available 'mqtt' ]]; then	  
+if [[ "$USE_MQTT" == "true" && "$MQTT_CORE" == "true" ]] && bashio::services.available 'mqtt'; then	  
 	bashio::log.info "Dynu Updater Initialisation - Using Mosquitto Broker Addon"
     MQTT_HOST=$(bashio::services mqtt host)
     MQTT_USER=$(bashio::services mqtt username)
