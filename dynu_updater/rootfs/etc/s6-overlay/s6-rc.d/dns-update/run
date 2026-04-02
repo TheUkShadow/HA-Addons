@@ -159,6 +159,8 @@ while true; do
 	if RAW=$(curl -4 -s --fail --max-time 5 https://b_checkip.dynu.com 2>/dev/null); then
 		bashio::log.warning "Dynu Raw IPv4: $RAW"
 		IPV4=$(echo "$RAW" | awk -F': ' '{print $2}' | tr -d '[:space:]')
+	else
+		bashio::log.warning "Dynu Raw IPv4: $RAW"
 	fi
 	if [[ -z "$IPV4" || ! "$IPV4" =~ $IPV4_REGEX ]]; then
 		bashio::log.warning "Dynu DNS Updater - dynu.com returned an invalid IPv4 address. Trying icanhazip.com"
