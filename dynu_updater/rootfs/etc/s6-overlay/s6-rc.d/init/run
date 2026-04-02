@@ -383,7 +383,7 @@ if [[ "$USE_MQTT" == "true" && "$MQTT_CORE" == "true" ]] && bashio::services.ava
 			fi
 			exit 1
 		else
-			TLS_FLAGS+=("--cafile" ${MQTT_CAFILE})
+			TLS_FLAGS+=("--cafile" "$MQTT_CAFILE")
 			# TLS_FLAGS+=("--cert" "$MQTT_CERTFILE")
 			# TLS_FLAGS+=("--key" "$MQTT_KEYFILE")
 		fi
@@ -449,7 +449,7 @@ elif [[ "$USE_MQTT" == "true" && "$MQTT_CORE" == "false" ]]; then
 			fi
 			exit 1
 		else
-			TLS_FLAGS+=("--cafile" ${MQTT_CAFILE})
+			TLS_FLAGS+=("--cafile" "$MQTT_CAFILE")
 			# TLS_FLAGS+=("--cert" "$MQTT_CERTFILE")
 			# TLS_FLAGS+=("--key" "$MQTT_KEYFILE")
 		fi
@@ -458,6 +458,7 @@ fi
 
 if [[ "$USE_MQTT" == "true" ]]; then
 	bashio::log.info "Dynu Updater Initialisation - Testing MQTT connection to $MQTT_HOST"
+	bashio::log.info "Dynu Updater Initialisation - Testing MQTT connection with $MQTT_CAFILE"
 	TEST_TOPIC="dynu_updater/selftest"
     TEST_PAYLOAD="selftest_$(date +%s)"
 	if ! OUTPUT=$(mosquitto_pub \
