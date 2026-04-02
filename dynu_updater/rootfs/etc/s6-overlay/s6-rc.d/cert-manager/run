@@ -25,7 +25,7 @@ fi
 
 bashio::log.info "Certificate Manager - Started"
 
-DYNU_HOSTNAME=$(jq -r '.hostname' <<< "$API_DATA")
+DYNU_HOSTNAME=$(bashio::config 'dynu_hostname' | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
 EMAIL=$(bashio::config 'cert.email' | xargs)
 KEYFILE=$(bashio::config 'cert.keyfile' | xargs)
 CERTFILE=$(bashio::config 'cert.certfile' | xargs)
