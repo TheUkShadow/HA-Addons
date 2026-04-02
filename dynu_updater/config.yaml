@@ -1,5 +1,5 @@
 ---
-version: 1.0.123
+version: 1.0.124
 slug: dynu_updater
 name: Dynu Domain Update Tool
 description: Update dynamic DNS and generate certificates for a domain registerd with dynu.com
@@ -29,9 +29,9 @@ options:
     enabled: false
     core: true
     tls: false
-    keyfile: privkey.pem
-    certfile: fullchain.pem
-    cafile: chain.pem
+    keyfile: /ssl/privkey.pem
+    certfile: /ssl/fullchain.pem
+    cafile: /ssl/chain.pem
   verbose: false
 schema:
   dynu_hostname: str
