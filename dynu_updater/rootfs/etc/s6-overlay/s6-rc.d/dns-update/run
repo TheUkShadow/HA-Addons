@@ -157,6 +157,7 @@ while true; do
 	
 	# --- Detect IPv4 ---
 	if RAW=$(curl -4 -s --fail --max-time 5 https://checkip.dynu.com 2>/dev/null); then
+		bashio::log.warning "Dynu Raw IPv4: $RAW"
 		IPV4=$(echo "$RAW" | awk -F': ' '{print $2}' | tr -d '[:space:]')
 	fi
 	if [[ -z "$IPV4" || ! "$IPV4" =~ $IPV4_REGEX ]]; then
@@ -173,6 +174,7 @@ while true; do
 	# --- Detect IPv6 only if domain supports it ---
 	if [[ "$DYNU_IPV6_ENABLED" == "true" ]]; then
 		if RAW=$(curl -6 -s --fail --max-time 5 https://checkipv6.dynu.com 2>/dev/null); then
+			bashio::log.warning "Dynu Raw IPv6: $RAW"
 			IPV6=$(echo "$RAW" | awk -F': ' '{print $2}' | tr -d '[:space:]')
 		fi
 		if [[ -z "$IPV6" || ! "$IPV6" =~ $IPV6_REGEX ]]; then
@@ -216,7 +218,7 @@ while true; do
 			done
 			
 			if (( UPDATED > 0 )); then
-				bashio::log.error "Dynu DNS Updater - $UPDATED could not be updated. Please check logs for more information"
+				bashio::log.error "Dynu DNS Updater - $UPDATED Hosts/Aliases could not be updated. Delaying next check for 5 minutes"
 				LAST_CHECK="false"
 				mqtt_publish "update_status" "false"
 			else
