@@ -11,18 +11,18 @@ if bashio::config.has_value 'dynu_hostname'; then
 else
 	DYNU_HOSTNAME=""
 fi
-if bashio::config.has_value 'email'; then
-	EMAIL=$(bashio::config 'email' | xargs)
+if bashio::config.has_value 'cert.email'; then
+	EMAIL=$(bashio::config 'cert.email' | xargs)
 else
 	EMAIL=""
 fi
-if bashio::config.has_value 'domains'; then
-	CERT_DOMAINS=$(bashio::config 'domains' | tr '[:upper:]' '[:lower:]' | xargs)
+if bashio::config.has_value 'cert.domains'; then
+	CERT_DOMAINS=$(bashio::config 'cert.domains' | tr '[:upper:]' '[:lower:]' | xargs)
 else
 	CERT_DOMAINS=""
 fi
-if bashio::config.has_value 'ip_domains'; then
-	IP_DOMAINS=$(bashio::config 'ip_domains' | tr '[:upper:]' '[:lower:]' | xargs)
+if bashio::config.has_value 'dns.domains'; then
+	IP_DOMAINS=$(bashio::config 'dns.domains' | tr '[:upper:]' '[:lower:]' | xargs)
 else
 	IP_DOMAINS=""
 fi
@@ -31,12 +31,12 @@ if bashio::config.true 'verbose'; then
 else
     VERBOSE="false"
 fi
-if bashio::config.true 'force_renew'; then
+if bashio::config.true 'cert.force_renew'; then
     FORCE_RENEW="true"
 else
     FORCE_RENEW="false"
 fi
-if bashio::config.true 'dry_run'; then
+if bashio::config.true 'cert.dry_run'; then
     DRY_RUN="true"
 else
     DRY_RUN="false"
@@ -46,23 +46,23 @@ if bashio::config.has_value 'dynu_api_key'; then
 else
 	DYNU_API_KEY=""
 fi
-if bashio::config.has_value 'dynu_update_password'; then
-	PASSWORD=$(bashio::config 'dynu_update_password' | xargs)
+if bashio::config.has_value 'dns.dynu_update_password'; then
+	PASSWORD=$(bashio::config 'dns.dynu_update_password' | xargs)
 else
 	PASSWORD=""
 fi
-if bashio::config.has_value 'keyfile'; then
-	KEYFILE=$(bashio::config 'keyfile' | xargs)
+if bashio::config.has_value 'cert.keyfile'; then
+	KEYFILE=$(bashio::config 'cert.keyfile' | xargs)
 else
 	KEYFILE=""
 fi
-if bashio::config.has_value 'certfile'; then
-	CERTFILE=$(bashio::config 'certfile' | xargs)
+if bashio::config.has_value 'cert.certfile'; then
+	CERTFILE=$(bashio::config 'cert.certfile' | xargs)
 else
 	CERTFILE=""
 fi
-if bashio::config.has_value 'update_cert_days'; then
-	CERT_TIME=$(bashio::config 'update_cert_days')
+if bashio::config.has_value 'cert.update_cert_days'; then
+	CERT_TIME=$(bashio::config 'cert.update_cert_days')
 else
 	CERT_TIME=5
 fi
@@ -76,7 +76,7 @@ if bashio::config.true 'dns.update_ip'; then
 else
     DNS_VALID="false"
 fi
-if bashio::config.true 'mqtt_enabled'; then
+if bashio::config.true 'mqtt.enabled'; then
     USE_MQTT="true"
 else
     USE_MQTT="false"

@@ -19,7 +19,7 @@ configuration:
       dynu_update_password:
         name: Dynu Account Password
         description: This is either the account password, or the IP Update password
-      ip_domains:
+      domains:
         name: IP Update Hostnames
         description: Hostnames listed here will have their IP address information updated (eg yourdomain.com, example.yourdomain.com, *.yourdomain.com)
   cert:
@@ -57,28 +57,28 @@ configuration:
     name: MQTT
     description: Creates MQTT Sensors for use in automations, etc. Either core-mosquitto must be installed, or a custom server configured.
     fields:
-      mqtt_enabled:
+      enabled:
         name: Enabled
         description: Enables MQTT
-      mqtt_host:
+      host:
         name: MQTT Hostname
         description: The hostname for the custom MQTT server.
-      mqtt_port:
+      port:
         name: MQTT Port
         description: The port for the custom MQTT server (1883 or 8883 when using TLS)
-      mqtt_user:
+      user:
         name: MQTT User
         description: The username for the custom MQTT server.
-      mqtt_password:
+      password:
         name: MQTT Password
         description: The password for the custom MQTT server.
-      mqtt_tls:
+      tls:
         name: MQTT TLS
         description: Enables TLS for the MQTT server connection
-      mqtt_key:
+      keyfile:
         name: MQTT Private Key File
         description: The Private Key File to use for MQTT TLS
-      mqtt_cert:
+      certfile:
         name: MQTT Certificate File
         description: The Certificate File to use for MQTT TLS
 network:

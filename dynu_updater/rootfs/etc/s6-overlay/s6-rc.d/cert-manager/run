@@ -9,7 +9,7 @@ while [[ ! -f /run/dynu-dns-update.ready ]]; do
 	sleep 1
 done
 
-if ! bashio::config.true 'update_cert'; then
+if ! bashio::config.true 'cert.update_cert'; then
 	bashio::log.info "Certificate Manager - Not required"
 	sleep infinity
 fi
@@ -26,10 +26,10 @@ fi
 bashio::log.info "Certificate Manager - Started"
 
 DYNU_HOSTNAME=$(jq -r '.hostname' <<< "$API_DATA")
-EMAIL=$(bashio::config 'email' | xargs)
-KEYFILE=$(bashio::config 'keyfile' | xargs)
-CERTFILE=$(bashio::config 'certfile' | xargs)
-CHECK_DAYS=$(bashio::config 'update_cert_days')
+EMAIL=$(bashio::config 'cert.email' | xargs)
+KEYFILE=$(bashio::config 'cert.keyfile' | xargs)
+CERTFILE=$(bashio::config 'cert.certfile' | xargs)
+CHECK_DAYS=$(bashio::config 'cert.update_cert_days')
 DYNU_API_KEY=$(bashio::config 'dynu_api_key' | xargs)
 
 if bashio::config.true 'verbose'; then
@@ -37,17 +37,17 @@ if bashio::config.true 'verbose'; then
 else
     VERBOSE="false"
 fi
-if bashio::config.true 'force_renew'; then
+if bashio::config.true 'cert.force_renew'; then
     FORCE_RENEW="true"
 else
     FORCE_RENEW="false"
 fi
-if bashio::config.true 'dry_run'; then
+if bashio::config.true 'cert.dry_run'; then
     DRY_RUN="true"
 else
     DRY_RUN="false"
 fi
-if bashio::config.true 'mqtt'; then
+if bashio::config.true 'mqtt.enabled'; then
     USE_MQTT="true"
 else
     USE_MQTT="false"
