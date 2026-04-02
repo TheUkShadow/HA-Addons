@@ -76,7 +76,7 @@ if bashio::config.true 'update_ip'; then
 else
     DNS_VALID="false"
 fi
-if bashio::config.true 'mqtt'; then
+if bashio::config.true 'mqtt_enabled'; then
     USE_MQTT="true"
 else
     USE_MQTT="false"
@@ -318,37 +318,46 @@ elif [[ "$USE_MQTT" == "true" ]] \
     MQTT_PORT=$(bashio::config 'mqtt_port')
 fi
 
-if [[ "$USE_MQTT" == "true" && ( -z "$MQTT_HOST" || -z "$MQTT_USER" || -z "$MQTT_PASSWORD" || -z "$MQTT_PORT" ) ]]; then
+if [[ "$USE_MQTT" == "true" && ( -z "$MQTT_HOST" || -z "$MQTT_USER" || -z "$MQTT_PASSWORD" || -z "$MQTT_PORT" || ! "$MQTT_PORT" =~ ^[0-9]+$ ]]) ]]; then
 	bashio::log.error "Dynu Updater Initialisation - Invalid configuration for MQTT"
 	if [[ -z "$MQTT_HOST" ]]; then
 		bashio::log.error "  No MQTT Hostname"
+	elif [[ ! "$MQTT_HOST" =~ ^([A-Za-z0-9._-]+|\[?[A-Fa-f0-9:]+\]?)$ ]]; then
+		bashio::log.error "  MQTT Host is not valid"
 	fi
 	if [[ -z "$MQTT_PORT" ]]; then
 		bashio::log.error "  No MQTT Port"
+	elif [[ ! "$MQTT_PORT" =~ ^[0-9]+$ ]]; then
+		bashio::log.error "  MQTT Port is not valid"
 	fi
 	if [[ -z "$MQTT_USER" ]]; then
 		bashio::log.error "  No MQTT User"
+	elif [[ ! "$MQTT_USER" =~ ^[A-Za-z0-9._-]+$ ]]; then
+		bashio::log.error "  MQTT User is not valid"
 	fi
 	if [[ -z "$MQTT_PASSWORD" ]]; then
 		bashio::log.error "  No MQTT Password"
+	elif [[ "$MQTT_PASSWORD" =~ [[:space:]] ]]; then
+		bashio::log.error "  MQTT Password is not valid"
 	fi
 	exit 1
 elif [[ "$USE_MQTT" == "true" ]]; then
+	bashio::log.info "Dynu Updater Initialisation - Testing MQTT connection to $MQTT_HOST"
 	TEST_TOPIC="dynu_updater/selftest"
     TEST_PAYLOAD="selftest_$(date +%s)"
-	if ! mosquitto_pub \
-		-h "$MQTT_HOST" \
-		-u "$MQTT_USER" \
-		-P "$MQTT_PASSWORD" \
-		-p "$MQTT_PORT" \
-		-t "$TEST_TOPIC" \
-		-m "$TEST_PAYLOAD" \
-		-q 1 \
-		>/dev/null 2>&1; then
-		bashio::log.error "Dynu Updater Initialisation - Unable to connect to MQTT server: $MQTT_HOST"
+	if ! OUTPUT=$(mosquitto_pub \
+        -h "$MQTT_HOST" \
+        -u "$MQTT_USER" \
+        -P "$MQTT_PASSWORD" \
+        -p "$MQTT_PORT" \
+        -t "$TEST_TOPIC" \
+        -m "$TEST_PAYLOAD" \
+        -q 1 2>&1); then
+
+		bashio::log.error "Dynu Updater Initialisation - Unable to connect to $MQTT_HOST. $OUTPUT"
 		exit 1
 	else
-		bashio::log.info "Dynu Updater Initialisation - Connected to MQTT server: $MQTT_HOST"
+		bashio::log.info "Dynu Updater Initialisation - Connected to $MQTT_HOST"
 	fi
 fi
 

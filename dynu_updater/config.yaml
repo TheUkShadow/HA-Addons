@@ -1,5 +1,5 @@
 ---
-version: 1.0.103
+version: 1.0.104
 slug: dynu_updater
 name: Dynu Domain Update Tool
 description: Update dynamic DNS and generate certificates for a domain registerd with dynu.com
@@ -21,30 +21,38 @@ options:
   update_cert: true
   keyfile: privkey.pem
   certfile: fullchain.pem
+  mqtt_key: privkey.pem
+  mqtt_cert: fullchain.pem
   update_cert_days: 5
 schema:
   dynu_hostname: str
-  dynu_update_password: password
   dynu_api_key: password
-  email: email
-  update_ip: bool
-  ip_domains:
-    - str
-  update_cert: bool
-  update_cert_days: int(1,30)
-  domains:
-    - str 
-  keyfile: str
-  certfile: str
-  restart_addons:
-    - str?
-  mqtt: bool?
-  mqtt_host: str?
-  mqtt_port: int?
-  mqtt_user: str?
-  mqtt_password: password?
+  dns:
+    update_ip: bool
+    dynu_update_password: password
+    ip_domains:
+      - str
+  cert:
+    update_cert: bool
+    email: email
+    update_cert_days: int(1,30)
+    domains:
+      - str 
+    keyfile: str
+    certfile: str
+    restart_addons:
+      - str?
+    force_renew: bool?
+    dry_run: bool?
+  mqtt:
+    mqtt_enabled: bool?
+    mqtt_host: str?
+    mqtt_port: int?
+    mqtt_user: str?
+    mqtt_password: password?
+    mqtt_tls: bool?
+    mqtt_key: str?
+    mqtt_cert: str?
   verbose: bool?
-  force_renew: bool?
-  dry_run: bool?
 
 startup: services
