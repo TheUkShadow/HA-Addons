@@ -66,12 +66,12 @@ if bashio::config.has_value 'update_cert_days'; then
 else
 	CERT_TIME=5
 fi
-if bashio::config.true 'update_cert'; then
+if bashio::config.true 'cert.update_cert'; then
     CERT_VALID="true"
 else
     CERT_VALID="false"
 fi
-if bashio::config.true 'update_ip'; then
+if bashio::config.true 'dns.update_ip'; then
     DNS_VALID="true"
 else
     DNS_VALID="false"
