@@ -61,11 +61,6 @@ if bashio::config.has_value 'cert.certfile'; then
 else
 	CERTFILE=""
 fi
-if bashio::config.has_value 'cert.cafile'; then
-	CAFILE=$(bashio::config 'cert.cafile' | xargs)
-else
-	CAFILE=""
-fi
 if bashio::config.has_value 'mqtt.host'; then
 	MQTT_HOST=$(bashio::config 'mqtt.host' | xargs)
 else
@@ -182,11 +177,6 @@ if [[ "$CERT_VALID" == "true" ]]; then
 
 	if [[ -z "$KEYFILE" || ! "$KEYFILE" =~ ^[A-Za-z0-9._/-]+$ ]]; then
 		bashio::log.error "Dynu Updater Initialisation - Invalid Private Key File"
-		exit 1
-	fi
-	
-	if [[ -z "$CAFILE" || ! "$CAFILE" =~ ^[A-Za-z0-9._/-]+$ ]]; then
-		bashio::log.error "Dynu Updater Initialisation - Invalid CA File"
 		exit 1
 	fi
 	
