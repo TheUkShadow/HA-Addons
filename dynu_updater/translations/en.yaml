@@ -37,7 +37,7 @@ configuration:
         description: This is the number of days before the certificate expires to generate a new certificate (1 - 30)
       domains:
         name: Hostnames
-        description: Hostnames listed here will be included in the certificate request (eg yourdomain.com, example.yourdomain.com or *.yourdomain.com)
+        description: Hostnames listed here will be included in the certificate request (eg yourdomain.com, example.yourdomain.com, *.yourdomain.com)
       keyfile:
         name: Private Key File
         description: Name of the Private Key File for the created certificate. This will be placed in /ssl
@@ -54,33 +54,33 @@ configuration:
         name: Force Renew
         description: Force certificate renewal even if it is not close to expiry.
       dry_run:
-        name: Dry Run
-        description: Do a Certbot dry-run when requesting the certificate from Let's Encrypt. 
+        name: Test Run
+        description: Performs a test of the Certificate creation/renewal without changing/updating any certificates. 
   mqtt:
     name: MQTT
-    description: Creates MQTT Sensors for use in automations, etc. Either core-mosquitto must be installed, or a custom server configured.
+    description: Creates MQTT Sensors for use in automations, etc.
     fields:
       enabled:
         name: Enabled
         description: Enables MQTT
       core:
-        name: Core Mosquitto
-        description: Use the Mosquitto Broker Addon
+        name: Core Mosquitto Credentials
+        description: The User and Password from the Mosquitto Addon will be used, if it is installed.
       host:
         name: Hostname
-        description: The hostname for the custom MQTT server (eg yourdomain.com or 192.168.4.10).
+        description: The hostname for the MQTT server (eg core-mosquitto, localhost, yourdomain.com, 192.168.4.10).
       port:
         name: Port
-        description: The port for the custom MQTT server (eg 1883 or 8883 when using TLS).
+        description: The port for the MQTT server (eg 1883 or 8883 when using TLS).
       user:
         name: User
-        description: The username for the custom MQTT server.
+        description: The username for the MQTT server (Not required if using Core Mosqitto Credentials).
       password:
         name: Password
-        description: The password for the custom MQTT server.
+        description: The password for the MQTT server (Not required if using Core Mosqitto Credentials).
       tls:
         name: TLS
-        description: Enables TLS for the MQTT server (Port must be set even if using Core Mosquitto).
+        description: Enables TLS for the MQTT server.
       server_cert:
         name: Validate Server Certificate
         description: When connecting using TLS, the Hostname will be validated using the server Certificate.
@@ -93,5 +93,3 @@ configuration:
       cafile:
         name: CA File
         description: The CA File to use for MQTT TLS
-network:
-  8855/tcp: Websocket port for Integration connection.

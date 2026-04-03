@@ -347,34 +347,13 @@ fi
 bashio::log.info "Dynu Updater Initialisation - Generating MQTT Configuration"
 # MQTT connection
 
-if [[ "$USE_MQTT" == "true" && "$MQTT_CORE" == "true" ]] && bashio::services.available 'mqtt'; then	  
-	bashio::log.info "Dynu Updater Initialisation - Using Mosquitto Broker Addon"
-    MQTT_HOST=$(bashio::services mqtt host)
-    MQTT_USER=$(bashio::services mqtt username)
-    MQTT_PASSWORD=$(bashio::services mqtt password)
-	if [[ "$MQTT_USE_TLS" == "true" ]]; then
-		if [[ -z "$MQTT_PORT" || ! "$MQTT_PORT" =~ ^[0-9]+$ ]]; then
-			bashio::log.error "Dynu Updater Initialisation - Invalid configuration for Core Mosquitto TLS"
-			if [[ -z "$MQTT_PORT" ]]; then
-				bashio::log.error "  Port missing from config"
-			elif [[ ! "$MQTT_PORT" =~ ^[0-9]+$ ]]; then
-				bashio::log.error "  Port is not valid"
-			fi	
-			exit 1
-		fi
-	else
-		MQTT_PORT=$(bashio::services mqtt port)
-	fi
-elif [[ "$USE_MQTT" == "true" && "$MQTT_CORE" == "true" ]] && ! bashio::services.available 'mqtt'; then
-	bashio::log.error "Dynu Updater Initialisation - MQTT Service not available for Core Mosquitto Addon"
-	exit 1
-elif [[ "$USE_MQTT" == "true" && "$MQTT_CORE" == "false" ]]; then
-	bashio::log.info "Dynu Updater Initialisation - Using Mosquitto Broker from Config"
+TLS_FLAGS=()
+MQTT_ENTITIES=()
+
+if [[ "$USE_MQTT" == "true" ]]; then
 	if [[ -z "$MQTT_HOST" || ! "$MQTT_HOST" =~ ^([A-Za-z0-9._-]+|\[?[A-Fa-f0-9:]+\]?)$ \
-		  || -z "$MQTT_PORT" || ! "$MQTT_PORT" =~ ^[0-9]+$ \
-		  || -z "$MQTT_USER" || ! "$MQTT_USER" =~ ^[A-Za-z0-9._-]+$ \
-		  || -z "$$MQTT_PASSWORD" || "$MQTT_PASSWORD" =~ [[:space:]] ]]; then
-		bashio::log.error "Dynu Updater Initialisation - Invalid configuration for Custom MQTT"
+	  || -z "$MQTT_PORT" || ! "$MQTT_PORT" =~ ^[0-9]+$ ]]; then
+		bashio::log.error "Dynu Updater Initialisation - Invalid configuration for MQTT"
 		if [[ -z "$MQTT_HOST" ]]; then
 			bashio::log.error "  Hostname missing from config"
 		elif [[ ! "$MQTT_HOST" =~ ^([A-Za-z0-9._-]+|\[?[A-Fa-f0-9:]+\]?)$ ]]; then
@@ -385,52 +364,64 @@ elif [[ "$USE_MQTT" == "true" && "$MQTT_CORE" == "false" ]]; then
 		elif [[ ! "$MQTT_PORT" =~ ^[0-9]+$ ]]; then
 			bashio::log.error "  Port is not valid"
 		fi
-		if [[ -z "$MQTT_USER" ]]; then
-			bashio::log.error "  User missing from config"
-		elif [[ ! "$MQTT_USER" =~ ^[A-Za-z0-9._-]+$ ]]; then
-			bashio::log.error "  User is not valid"
+		exit 1
+	fi
+	if [[ "$MQTT_CORE" == "true" ]]; then
+		if bashio::services.available 'mqtt'; then
+			bashio::log.info "Dynu Updater Initialisation - Using Core Mosquitto Credentials"
+			MQTT_USER=$(bashio::services mqtt username)
+			MQTT_PASSWORD=$(bashio::services mqtt password)
+		else
+			bashio::log.warning "Dynu Updater Initialisation - Core Mosquitto Addon not installed"
 		fi
-		if [[ -z "$MQTT_PASSWORD" ]]; then
-			bashio::log.error "  Password missing from config"
-		elif [[ "$MQTT_PASSWORD" =~ [[:space:]] ]]; then
-			bashio::log.error "  Password is not valid"
+	fi
+	if [[ "$MQTT_CORE" == "false" ]] || ! bashio::services.available 'mqtt'; then
+		if [[ -z "$MQTT_USER" || ! "$MQTT_USER" =~ ^[A-Za-z0-9._-]+$ \
+		  || -z "$$MQTT_PASSWORD" || "$MQTT_PASSWORD" =~ [[:space:]] ]]; then
+			bashio::log.error "Dynu Updater Initialisation - Invalid configuration for MQTT"
+			if [[ -z "$MQTT_USER" ]]; then
+				bashio::log.error "  User missing from config"
+			elif [[ ! "$MQTT_USER" =~ ^[A-Za-z0-9._-]+$ ]]; then
+				bashio::log.error "  User is not valid"
+			fi
+			if [[ -z "$MQTT_PASSWORD" ]]; then
+				bashio::log.error "  Password missing from config"
+			elif [[ "$MQTT_PASSWORD" =~ [[:space:]] ]]; then
+				bashio::log.error "  Password is not valid"
+			fi
+			exit 1
 		fi
-		exit 1
 	fi
-fi
-
-TLS_FLAGS=()
-
-if [[ "$USE_MQTT" == "true" && "$MQTT_USE_TLS" == "true" ]]; then
-	if [[ -n "$MQTT_CAFILE" && ! -f "$MQTT_CAFILE" ]]; then
-		bashio::log.error "Dynu Updater Initialisation - Specified CA File does not exist"
-		exit 1
+	
+	if [[ "$MQTT_USE_TLS" == "true" ]]; then
+		if [[ -n "$MQTT_CAFILE" && ! -f "$MQTT_CAFILE" ]]; then
+			bashio::log.error "Dynu Updater Initialisation - Specified CA File does not exist"
+			exit 1
+		fi
+		if [[ -n "$MQTT_CERTFILE" && ! -f "$MQTT_CERTFILE" ]]; then
+			bashio::log.error "Dynu Updater Initialisation - Specified Certificate File does not exist"
+			exit 1
+		fi
+		if [[ -n "$MQTT_KEYFILE" && ! -f "$MQTT_KEYFILE" ]]; then
+			bashio::log.error "Dynu Updater Initialisation - Specified Private Key File does not exist"
+			exit 1
+		fi
+		if [[ -n "$MQTT_CAFILE" ]]; then
+			TLS_FLAGS+=("--cafile" "$MQTT_CAFILE")
+		else
+			TLS_FLAGS+=("--tls-use-os-certs")
+		fi
+		if [[ -n "$MQTT_CERTFILE" ]]; then
+			TLS_FLAGS+=("--cert" "$MQTT_CERTFILE")
+		fi
+		if [[ -n "$MQTT_KEYFILE" ]]; then
+			TLS_FLAGS+=("--key" "$MQTT_KEYFILE")
+		fi
+		if [[ "$MQTT_VALIDATE" == "false" ]]; then
+			TLS_FLAGS+=("--insecure")
+		fi
 	fi
-	if [[ -n "$MQTT_CERTFILE" && ! -f "$MQTT_CERTFILE" ]]; then
-		bashio::log.error "Dynu Updater Initialisation - Specified Certificate File does not exist"
-		exit 1
-	fi
-	if [[ -n "$MQTT_KEYFILE" && ! -f "$MQTT_KEYFILE" ]]; then
-		bashio::log.error "Dynu Updater Initialisation - Specified Private Key File does not exist"
-		exit 1
-	fi
-	if [[ -n "$MQTT_CAFILE" ]]; then
-		TLS_FLAGS+=("--cafile" "$MQTT_CAFILE")
-	else
-		TLS_FLAGS+=("--tls-use-os-certs")
-	fi
-	if [[ -n "$MQTT_CERTFILE" ]]; then
-		TLS_FLAGS+=("--cert" "$MQTT_CERTFILE")
-	fi
-	if [[ -n "$MQTT_KEYFILE" ]]; then
-		TLS_FLAGS+=("--key" "$MQTT_KEYFILE")
-	fi
-	if [[ "$MQTT_VALIDATE" == "false" ]]; then
-		TLS_FLAGS+=("--insecure")
-	fi
-fi
-
-if [[ "$USE_MQTT" == "true" ]]; then
+	
 	bashio::log.info "Dynu Updater Initialisation - Testing MQTT connection to $MQTT_HOST"
 	bashio::log.info "Dynu Updater Initialisation - Testing MQTT connection with $MQTT_CAFILE"
 	TEST_TOPIC="dynu_updater/selftest"
@@ -451,129 +442,131 @@ if [[ "$USE_MQTT" == "true" ]]; then
 	else
 		bashio::log.info "Dynu Updater Initialisation - Connected to $MQTT_HOST"
 	fi
-fi
 
-MQTT_ENTITIES=(
-  "last_ip_check|Last IP Check|timestamp|dynu_updater/last_ip_check|sensor||mdi:clock-check|dns"
-  "last_ip_update|Last IP Update|timestamp|dynu_updater/last_ip_update|sensor||mdi:update|dns"
-  "current_ipv4|Current IPv4||dynu_updater/current_ipv4|sensor||mdi:ip-network|dns"
-  "current_ipv6|Current IPv6||dynu_updater/current_ipv6|sensor||mdi:ip-network-outline|dns"
-  "next_cert_check|Next Certificate Check|timestamp|dynu_updater/next_cert_check|sensor||mdi:calendar-clock|cert"
-  "last_cert_check|Last Certificate Check|timestamp|dynu_updater/last_cert_check|sensor||mdi:certificate-outline|cert"
-  "last_cert_status|Certificate Valid|problem|dynu_updater/last_cert_status|binary_sensor|\"payload_on\": \"false\", \"payload_off\": \"true\",|mdi:shield-check|dns"
-  "wan_connection|WAN Connection|connectivity|dynu_updater/wan_connection|binary_sensor|\"payload_on\": \"true\", \"payload_off\": \"false\",|mdi:wan|dns"
-  "update_status|IP Update Status|problem|dynu_updater/update_status|binary_sensor|\"payload_on\": \"false\", \"payload_off\": \"true\",|mdi:sticker-check|dns"
-  "cert_expires|Certificate Expires|timestamp|dynu_updater/cert_expires|sensor||mdi:calendar-alert|cert"
-  "last_cert_renewal|Last Certificate Renewal|timestamp|dynu_updater/last_cert_renewal|sensor||mdi:certificate|cert"
-)
+	MQTT_ENTITIES=(
+	  "last_ip_check|Last IP Check|timestamp|dynu_updater/last_ip_check|sensor||mdi:clock-check|dns"
+	  "last_ip_update|Last IP Update|timestamp|dynu_updater/last_ip_update|sensor||mdi:update|dns"
+	  "current_ipv4|Current IPv4||dynu_updater/current_ipv4|sensor||mdi:ip-network|dns"
+	  "current_ipv6|Current IPv6||dynu_updater/current_ipv6|sensor||mdi:ip-network-outline|dns"
+	  "next_cert_check|Next Certificate Check|timestamp|dynu_updater/next_cert_check|sensor||mdi:calendar-clock|cert"
+	  "last_cert_check|Last Certificate Check|timestamp|dynu_updater/last_cert_check|sensor||mdi:certificate-outline|cert"
+	  "last_cert_status|Certificate Valid|problem|dynu_updater/last_cert_status|binary_sensor|\"payload_on\": \"false\", \"payload_off\": \"true\",|mdi:shield-check|dns"
+	  "wan_connection|WAN Connection|connectivity|dynu_updater/wan_connection|binary_sensor|\"payload_on\": \"true\", \"payload_off\": \"false\",|mdi:wan|dns"
+	  "update_status|IP Update Status|problem|dynu_updater/update_status|binary_sensor|\"payload_on\": \"false\", \"payload_off\": \"true\",|mdi:sticker-check|dns"
+	  "cert_expires|Certificate Expires|timestamp|dynu_updater/cert_expires|sensor||mdi:calendar-alert|cert"
+	  "last_cert_renewal|Last Certificate Renewal|timestamp|dynu_updater/last_cert_renewal|sensor||mdi:certificate|cert"
+	)
 
-# MQTT Device metadata
-DEVICE_ID="dynu_updater_$(hostname)"
-DEVICE_NAME="Dynu Updater"
-MANUFACTURER="TheUkShadow"
-MODEL="Dynu Updater Companion Integration"
-SW_VERSION=$(bashio::addon.version)
+	# MQTT Device metadata
+	DEVICE_ID="dynu_updater_$(hostname)"
+	DEVICE_NAME="Dynu Updater"
+	MANUFACTURER="TheUkShadow"
+	MODEL="Dynu Updater Companion Integration"
+	SW_VERSION=$(bashio::addon.version)
 
-# Shared availability topic
-AVAIL_TOPIC="dynu_updater/availability"
+	# Shared availability topic
+	AVAIL_TOPIC="dynu_updater/availability"
 
-publish_discovery() {
-	if [[ "$USE_MQTT" == "true" ]]; then
-		local entity_id="$1"
-		local name="$2"
-		local device_class="$3"
-		local state_topic="$4"
-		local component="$5"
-		local extra="$6"
-		local icon="$7"
+	publish_discovery() {
+		if [[ "$USE_MQTT" == "true" ]]; then
+			local entity_id="$1"
+			local name="$2"
+			local device_class="$3"
+			local state_topic="$4"
+			local component="$5"
+			local extra="$6"
+			local icon="$7"
 
-		# Only include device_class if non-empty
-		local device_class_json=""
-		if [[ -n "$device_class" ]]; then
-			device_class_json="\"device_class\": \"${device_class}\","
-		fi
-		
-		local icon_json=""
-		if [[ -n "$icon" ]]; then
-			icon_json="\"icon\": \"${icon}\","
-		fi
-		
-		# Per‑entity availability topic
-		local entity_avail_topic="dynu_updater/${entity_id}/availability"
-
-		if ! mosquitto_pub -h "$MQTT_HOST" -u "$MQTT_USER" -P "$MQTT_PASSWORD" -p "$MQTT_PORT" -r \
-			  -t "homeassistant/${component}/${entity_id}/config" \
-			  -m "{
-			    \"name\": \"${name}\",
-			    \"unique_id\": \"${DEVICE_ID}_${entity_id}\",
-			    \"state_topic\": \"${state_topic}\",
-			    \"availability\": [
-				  { \"topic\": \"${AVAIL_TOPIC}\" },
-				  { \"topic\": \"${entity_avail_topic}\" }
-			    ],
-			    \"payload_available\": \"online\",
-			    \"payload_not_available\": \"offline\",
-			    ${device_class_json}
-				${icon_json}
-			    ${extra}
-			    \"device\": {
-				  \"identifiers\": [\"${DEVICE_ID}\"],
-				  \"name\": \"${DEVICE_NAME}\",
-				  \"manufacturer\": \"${MANUFACTURER}\",
-				  \"model\": \"${MODEL}\",
-				  \"sw_version\": \"${SW_VERSION}\"
-			    }
-			  }" \
-			  "${TLS_FLAGS[@]}"; then
+			# Only include device_class if non-empty
+			local device_class_json=""
+			if [[ -n "$device_class" ]]; then
+				device_class_json="\"device_class\": \"${device_class}\","
+			fi
 			
-			bashio::log.warning "Dynu Updater Initialisation - MQTT discovery failed for entity $entity_id"
-		fi	
-	fi
-}
+			local icon_json=""
+			if [[ -n "$icon" ]]; then
+				icon_json="\"icon\": \"${icon}\","
+			fi
+			
+			# Per‑entity availability topic
+			local entity_avail_topic="dynu_updater/${entity_id}/availability"
 
-mqtt_publish() {
-	if [[ "$USE_MQTT" == "true" ]]; then
-		local topic="$1"
-		local payload="$2"
-
-		if ! mosquitto_pub \
-			-h "$MQTT_HOST" \
-			-p "$MQTT_PORT" \
-			-u "$MQTT_USER" \
-			-P "$MQTT_PASSWORD" \
-			-t "dynu_updater/$topic" \
-			-m "$payload" \
-			-r \
-			"${TLS_FLAGS[@]}"; then
-
-			bashio::log.warning "Dynu Updater Initialisation - MQTT publish failed for topic $topic"
+			if ! mosquitto_pub -h "$MQTT_HOST" -u "$MQTT_USER" -P "$MQTT_PASSWORD" -p "$MQTT_PORT" -r \
+				  -t "homeassistant/${component}/${entity_id}/config" \
+				  -m "{
+					\"name\": \"${name}\",
+					\"unique_id\": \"${DEVICE_ID}_${entity_id}\",
+					\"state_topic\": \"${state_topic}\",
+					\"availability\": [
+					  { \"topic\": \"${AVAIL_TOPIC}\" },
+					  { \"topic\": \"${entity_avail_topic}\" }
+					],
+					\"payload_available\": \"online\",
+					\"payload_not_available\": \"offline\",
+					${device_class_json}
+					${icon_json}
+					${extra}
+					\"device\": {
+					  \"identifiers\": [\"${DEVICE_ID}\"],
+					  \"name\": \"${DEVICE_NAME}\",
+					  \"manufacturer\": \"${MANUFACTURER}\",
+					  \"model\": \"${MODEL}\",
+					  \"sw_version\": \"${SW_VERSION}\"
+					}
+				  }" \
+				  "${TLS_FLAGS[@]}"; then
+				
+				bashio::log.warning "Dynu Updater Initialisation - MQTT discovery failed for entity $entity_id"
+			fi	
 		fi
-	fi
-}
+	}
 
-for entry in "${MQTT_ENTITIES[@]}"; do
-	IFS="|" read -r entity_id name device_class state_topic component extra icon service <<< "$entry"
+	mqtt_publish() {
+		if [[ "$USE_MQTT" == "true" ]]; then
+			local topic="$1"
+			local payload="$2"
 
-	publish_discovery \
-		"$entity_id" \
-		"$name" \
-		"$device_class" \
-		"$state_topic" \
-		"$component" \
-		"$extra" \
-		"$icon" 
+			if ! mosquitto_pub \
+				-h "$MQTT_HOST" \
+				-p "$MQTT_PORT" \
+				-u "$MQTT_USER" \
+				-P "$MQTT_PASSWORD" \
+				-t "dynu_updater/$topic" \
+				-m "$payload" \
+				-r \
+				"${TLS_FLAGS[@]}"; then
 
-	# Publish initial per‑entity availability
-	STATE="online"
-	if [[ "$service" == "dns"  && "$DNS_VALID"  == "false" ]] ||
-	   [[ "$service" == "cert" && "$CERT_VALID" == "false" ]]; then
-		STATE="offline"
-	fi
-	
-	mqtt_publish "${entity_id}/availability" "$STATE"
-	
-done
+				bashio::log.warning "Dynu Updater Initialisation - MQTT publish failed for topic $topic"
+			fi
+		fi
+	}
 
+	for entry in "${MQTT_ENTITIES[@]}"; do
+		IFS="|" read -r entity_id name device_class state_topic component extra icon service <<< "$entry"
+
+		publish_discovery \
+			"$entity_id" \
+			"$name" \
+			"$device_class" \
+			"$state_topic" \
+			"$component" \
+			"$extra" \
+			"$icon" 
+
+		# Publish initial per‑entity availability
+		STATE="online"
+		if [[ "$service" == "dns"  && "$DNS_VALID"  == "false" ]] ||
+		   [[ "$service" == "cert" && "$CERT_VALID" == "false" ]]; then
+			STATE="offline"
+		fi
+		
+		mqtt_publish "${entity_id}/availability" "$STATE"
+		
+	done
+
+	mqtt_publish "availability" "online"
+
+fi
 jq -n \
   --arg ipv6 "$DYNU_IPV6_ENABLED" \
   --argjson ip_domains "$(printf '%s\n' "${IP_HOSTNAMES[@]}" | jq -R . | jq -s .)" \
@@ -600,8 +593,7 @@ jq -n \
 	  }
    }' \
   > /run/dynu-updater.conf
-  
-mqtt_publish "availability" "online"
+
 
 sleep 1
 

@@ -1,5 +1,5 @@
 ---
-version: 1.0.136
+version: 1.0.137
 slug: dynu_updater
 name: Dynu Domain Update Tool
 description: Update dynamic DNS and generate certificates for a domain registerd with dynu.com
@@ -30,6 +30,8 @@ options:
   mqtt:
     enabled: false
     core: true
+    host: core-mosquitto
+    port: 1883
     tls: false
     server_cert: true
   verbose: false
@@ -57,8 +59,8 @@ schema:
   mqtt:
     enabled: bool
     core: bool
-    host: str?
-    port: int?
+    host: str
+    port: int
     user: str?
     password: password?
     tls: bool
