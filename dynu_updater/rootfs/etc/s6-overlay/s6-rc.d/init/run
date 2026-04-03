@@ -585,26 +585,37 @@ if [[ "$USE_MQTT" == "true" ]]; then
 	mqtt_publish "availability" "online"
 
 fi
+
+# Function to convert a Bash array into a JSON array safely
 json_array_from_bash_array() {
     local -n arr=$1
+
     if (( ${#arr[@]} )); then
+        # Convert each element to a JSON string, then wrap into a JSON array
         printf '%s\n' "${arr[@]}" | jq -R . | jq -s .
     else
+        # Empty array → return []
         echo "[]"
     fi
 }
 
+# Convert arrays
+ip_hostnames_json=$(json_array_from_bash_array IP_HOSTNAMES)
+cert_hostnames_json=$(json_array_from_bash_array CERT_HOSTNAMES)
+tls_flags_json=$(json_array_from_bash_array TLS_FLAGS)
+mqtt_entities_json=$(json_array_from_bash_array MQTT_ENTITIES)
+
 jq -n \
   --arg ipv6 "$DYNU_IPV6_ENABLED" \
-  --argjson ip_domains ${json_array_from_bash_array IP_HOSTNAMES}
-  --argjson cert_domains "$(printf '%s\n' "${CERT_HOSTNAMES[@]}" | jq -R . | jq -s .)" \
+  --argjson ip_domains "$ip_hostnames_json" \
+  --argjson cert_domains "$cert_hostnames_json" \
   --arg mqtt "$USE_MQTT" \
   --arg host "$MQTT_HOST" \
   --arg port "$MQTT_PORT" \
   --arg user "$MQTT_USER" \
   --arg password "$MQTT_PASSWORD" \
-  --argjson tls_flags "$(printf '%s\n' "${TLS_FLAGS[@]}" | jq -R . | jq -s .)" \
-  --argjson entities "$(printf '%s\n' "${MQTT_ENTITIES[@]}" | jq -R . | jq -s .)" \
+  --argjson tls_flags "$tls_flags_json" \
+  --argjson entities "$mqtt_entities_json" \
   '{
       ipv6: $ipv6,
       ip_domains: $ip_domains,
