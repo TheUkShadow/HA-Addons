@@ -208,7 +208,7 @@ if [[ "$CERT_VALID" == "true" ]]; then
 			bashio::log.error "Dynu Updater Initialisation - The App $RESTART_ADDON_NAME does not exist"
 			exit 1
 		else
-			SLUG=$ADDONS_MAP["$RESTART_ADDON_NAME"]
+			SLUG="${ADDONS_MAP["$RESTART_ADDON_NAME"]}"
 			RESTART_ADDONS+=("$SLUG")
 		fi
 	done
