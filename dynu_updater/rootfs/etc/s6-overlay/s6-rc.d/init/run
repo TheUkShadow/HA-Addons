@@ -430,10 +430,9 @@ if [[ "$USE_MQTT" == "true" ]]; then
 	fi
 	
 	bashio::log.info "Dynu Updater Initialisation - Testing MQTT connection to $MQTT_HOST"
-	bashio::log.info "Dynu Updater Initialisation - Testing MQTT connection with $MQTT_CAFILE"
 	TEST_TOPIC="dynu_updater/selftest"
     TEST_PAYLOAD="selftest_$(date +%s)"
-	if ! OUTPUT=$(mosquitto_pub \
+	if ! OUTPUT=$(timeout 5s mosquitto_pub \
         -h "$MQTT_HOST" \
         -u "$MQTT_USER" \
         -P "$MQTT_PASSWORD" \
@@ -447,7 +446,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
 		bashio::log.error "Dynu Updater Initialisation - Unable to connect to $MQTT_HOST. $OUTPUT"
 		
 		if [[ "$MQTT_USE_TLS" == "true" ]]; then
-			if ! TLS_OUTPUT=$(openssl s_client -connect "${MQTT_HOST}:${MQTT_PORT}" \
+			if ! TLS_OUTPUT=$(timeout 5s openssl s_client -connect "${MQTT_HOST}:${MQTT_PORT}" \
 				  -servername "${MQTT_HOST}" \
 				  "${OPENSSL_FLAGS[@]}" \
 				  -verify 10 -verify_return_error < /dev/null 2>&1); then
