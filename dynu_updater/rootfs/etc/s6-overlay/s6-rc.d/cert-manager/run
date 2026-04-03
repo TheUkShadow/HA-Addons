@@ -142,7 +142,7 @@ restart_addons() {
 			if ! INFO_OUTPUT=$(curl --fail -s \
 			  -H "Authorization: Bearer $HASSIO_TOKEN" \
 			  http://hassio/addons/${ADDON}/info 2>&1); then
-				bashio::log.warning "Certificate Manager - Failed to query state for addon: ${ADDON}"
+				bashio::log.warning "Certificate Manager - Failed to query state for App: ${ADDON}"
 				continue
 			fi
 
@@ -153,16 +153,17 @@ restart_addons() {
 				  -H "Authorization: Bearer $HASSIO_TOKEN" \
 				  -H "Content-Type: application/json" \
 				  http://hassio/addons/${ADDON}/restart 2>&1); then
-					bashio::log.info "Certificate Manager - Restarting add-on ${ADDON}"
+					bashio::log.info "Certificate Manager - Restarting App ${ADDON}"
 					RESTARTED+=("$ADDON")
 				else
-					bashio::log.error "Certificate Manager - Unable to trigger restart of $ADDON"
+					bashio::log.error "Certificate Manager - Unable to trigger restart for App $ADDON"
 				fi
 			else
-				bashio::log.warning "Certificate Manager - $ADDON is not running (state: $STATE)"
+				bashio::log.warning "Certificate Manager - App $ADDON is not running (state: $STATE)"
 			fi
 		done
 		
+		bashio::log.info "Certificate Manager - Waiting for App(s) to start..."
 		sleep 10
 		
 		LOOP_COUNT=0
@@ -179,7 +180,7 @@ restart_addons() {
 							[[ "$item" == "$ADDON" ]] || NEW_LIST+=("$item")
 						done
 						RESTARTED=("${NEW_LIST[@]}")
-						bashio::log.info "Certificate Manager - ${ADDON} started"
+						bashio::log.info "Certificate Manager - App $ADDON started"
 					fi
 				fi
 			done
@@ -188,7 +189,7 @@ restart_addons() {
 		done
 		
 		for ADDON in "${RESTARTED[@]}"; do
-			bashio::log.error "Certificate Manager - ${ADDON} failed to restart"
+			bashio::log.error "Certificate Manager - App $ADDON failed to restart"
 		done
 	fi
 }
