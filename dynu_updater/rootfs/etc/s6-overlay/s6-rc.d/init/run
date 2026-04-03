@@ -203,7 +203,7 @@ if [[ "$CERT_VALID" == "true" ]]; then
 	done < <(echo "$ADDONS_JSON" | jq -c '.data.addons[]')
 	
 	RESTART_ADDONS=()
-	for RESTART_ADDON_NAME in "$RESTART_ADDON_NAMES"; do
+	for RESTART_ADDON_NAME in $RESTART_ADDON_NAMES[@]; do
 		if [[ ! -v ADDONS_MAP["$RESTART_ADDON_NAME"] ]]; then
 			bashio::log.error "Dynu Updater Initialisation - The App $RESTART_ADDON_NAME does not exist"
 			exit 1
