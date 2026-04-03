@@ -433,34 +433,37 @@ if [[ "$USE_MQTT" == "true" ]]; then
 	TEST_TOPIC="dynu_updater/selftest"
     TEST_PAYLOAD="selftest_$(date +%s)"
 	
-	if ! OUTPUT=$(mosquitto_pub \
+	if ! timeout 2 bash -c "echo > /dev/tcp/$MQTT_HOST/$MQTT_PORT" 2>/dev/null; then
+		bashio::log.error "Dynu Updater Initialisation - Cannot reach $MQTT_HOST:$MQTT_PORT"
+		exit 1
+	elif ! OUTPUT=$(mosquitto_pub \
 		-h "$MQTT_HOST" \
-        -u "$MQTT_USER" \
-        -P "$MQTT_PASSWORD" \
-        -p "$MQTT_PORT" \
-        -t "$TEST_TOPIC" \
-        -m "$TEST_PAYLOAD" \
-		-k 5 \
-        -q 1 \
+		-u "$MQTT_USER" \
+		-P "$MQTT_PASSWORD" \
+		-p "$MQTT_PORT" \
+		-t "$TEST_TOPIC" \
+		-m "$TEST_PAYLOAD" \
+		-q 1 \
 		"${TLS_FLAGS[@]}" \
 		2>&1); then
 		
 		bashio::log.error "Dynu Updater Initialisation - Unable to connect to $MQTT_HOST: $OUTPUT"
 		if [[ "$MQTT_USE_TLS" == "true" ]]; then
+			bashio::log.info "Dynu Updater Initialisation - Checking OpenSSL Connection."
 			if ! TLS_OUTPUT=$(openssl s_client -connect "${MQTT_HOST}:${MQTT_PORT}" \
 				-servername "${MQTT_HOST}" \
 				"${OPENSSL_FLAGS[@]}" \
 				-verify 10 -verify_return_error < /dev/null 2>&1); then
 				
 				REASON=$(echo "$TLS_OUTPUT" | grep -E "verify error|Verify return code|Hostname mismatch|expired|unable|self signed" | head -n 1)
-				bashio::log.error "Dynu Updater Initialisation - Openssl query returned: $REASON"
+				bashio::log.error "Dynu Updater Initialisation - OpenSSL query returned: $REASON"
 			else
-				bashio::log.error "Dynu Updater Initialisation - Openssl query returned: Success"
+				bashio::log.error "Dynu Updater Initialisation - OpenSSL query returned: Success"
 			fi
 		fi
 		exit 1
 	else
-		bashio::log.info "Dynu Updater Initialisation - Connected to $MQTT_HOST"
+		bashio::log.info "Dynu Updater Initialisation - Connected to $MQTT_HOST"	
 	fi
 
 	MQTT_ENTITIES=(
