@@ -432,7 +432,8 @@ if [[ "$USE_MQTT" == "true" ]]; then
 	bashio::log.info "Dynu Updater Initialisation - Testing MQTT connection to $MQTT_HOST"
 	TEST_TOPIC="dynu_updater/selftest"
     TEST_PAYLOAD="selftest_$(date +%s)"
-	OUTPUT=$(timeout 5s mosquitto_pub \
+	
+	if ! OUTPUT=$(timeout 5s mosquitto_pub \
 		-h "$MQTT_HOST" \
         -u "$MQTT_USER" \
         -P "$MQTT_PASSWORD" \
@@ -441,28 +442,32 @@ if [[ "$USE_MQTT" == "true" ]]; then
         -m "$TEST_PAYLOAD" \
         -q 1 \
 		"${TLS_FLAGS[@]}" \
-		2>&1) || true
-    EXIT_CODE=$?
+		2>&1); then
+		
+		EXIT_CODE=$?
 	
-	if [[ $EXIT_CODE -eq 124 ]]; then
-		bashio::log.error "Dynu Updater Initialisation - Unable to connect to $MQTT_HOST: Connection timed out after 5 seconds."
-		exit 1
-	elif [[ $EXIT_CODE -ne 0 ]]; then
-		bashio::log.error "Dynu Updater Initialisation - Unable to connect to $MQTT_HOST: $OUTPUT"
-		if [[ "$MQTT_USE_TLS" == "true" ]]; then
-			TLS_OUTPUT=$(timeout 5s openssl s_client -connect "${MQTT_HOST}:${MQTT_PORT}" \
-				-servername "${MQTT_HOST}" \
-				"${OPENSSL_FLAGS[@]}" \
-				-verify 10 -verify_return_error < /dev/null 2>&1) || true
-			EXIT_CODE=$?
-			if [ $? -eq 124 ]; then
-				bashio::log.error "Dynu Updater Initialisation - Openssl query failed: Connection timed out after 5 seconds."
-			elif [[ $EXIT_CODE -ne 0 ]]; then
-				REASON=$(echo "$TLS_OUTPUT" | grep -E "verify error|Verify return code|Hostname mismatch|expired|unable|self signed" | head -n 1 || true)
-				bashio::log.error "Dynu Updater Initialisation - Openssl query returned: $REASON"
+		if [[ $EXIT_CODE -eq 124 ]]; then
+			bashio::log.error "Dynu Updater Initialisation - Unable to connect to $MQTT_HOST: Connection timed out after 5 seconds."
+			exit 1
+		else
+			bashio::log.error "Dynu Updater Initialisation - Unable to connect to $MQTT_HOST: $OUTPUT"
+			if [[ "$MQTT_USE_TLS" == "true" ]]; then
+				if TLS_OUTPUT=$(timeout 5s openssl s_client -connect "${MQTT_HOST}:${MQTT_PORT}" \
+					-servername "${MQTT_HOST}" \
+					"${OPENSSL_FLAGS[@]}" \
+					-verify 10 -verify_return_error < /dev/null 2>&1); then
+					
+					EXIT_CODE=$?
+					if [ $? -eq 124 ]; then
+						bashio::log.error "Dynu Updater Initialisation - Openssl query failed: Connection timed out after 5 seconds."
+					elif [[ $EXIT_CODE -ne 0 ]]; then
+						REASON=$(echo "$TLS_OUTPUT" | grep -E "verify error|Verify return code|Hostname mismatch|expired|unable|self signed" | head -n 1 || true)
+						bashio::log.error "Dynu Updater Initialisation - Openssl query returned: $REASON"
+					fi
+				fi
 			fi
+			exit 1
 		fi
-		exit 1
 	else
 		bashio::log.info "Dynu Updater Initialisation - Connected to $MQTT_HOST"
 	fi
