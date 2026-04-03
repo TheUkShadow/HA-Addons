@@ -352,7 +352,7 @@ MQTT_ENTITIES=()
 
 if [[ "$USE_MQTT" == "true" ]]; then
 	if [[ -z "$MQTT_HOST" || ! "$MQTT_HOST" =~ ^([A-Za-z0-9._-]+|\[?[A-Fa-f0-9:]+\]?)$ \
-	  || -z "$MQTT_PORT" || ! "$MQTT_PORT" =~ ^[0-9]+$ ]]; then
+		  || -z "$MQTT_PORT" || ! "$MQTT_PORT" =~ ^[0-9]+$ ]]; then
 		bashio::log.error "Dynu Updater Initialisation - Invalid configuration for MQTT"
 		if [[ -z "$MQTT_HOST" ]]; then
 			bashio::log.error "  Hostname missing from config"
@@ -377,7 +377,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
 	fi
 	if [[ "$MQTT_CORE" == "false" ]] || ! bashio::services.available 'mqtt'; then
 		if [[ -z "$MQTT_USER" || ! "$MQTT_USER" =~ ^[A-Za-z0-9._-]+$ \
-		  || -z "$$MQTT_PASSWORD" || "$MQTT_PASSWORD" =~ [[:space:]] ]]; then
+			  || -z "$$MQTT_PASSWORD" || "$MQTT_PASSWORD" =~ [[:space:]] ]]; then
 			bashio::log.error "Dynu Updater Initialisation - Invalid configuration for MQTT"
 			if [[ -z "$MQTT_USER" ]]; then
 				bashio::log.error "  User missing from config"
@@ -392,6 +392,8 @@ if [[ "$USE_MQTT" == "true" ]]; then
 			exit 1
 		fi
 	fi
+	
+	OPENSSL_FLAGS=()
 	
 	if [[ "$MQTT_USE_TLS" == "true" ]]; then
 		if [[ -n "$MQTT_CAFILE" && ! -f "$MQTT_CAFILE" ]]; then
@@ -408,14 +410,17 @@ if [[ "$USE_MQTT" == "true" ]]; then
 		fi
 		if [[ -n "$MQTT_CAFILE" ]]; then
 			TLS_FLAGS+=("--cafile" "$MQTT_CAFILE")
+			OPENSSL_FLAGS+=("--CAfile" "$MQTT_CAFILE")
 		else
 			TLS_FLAGS+=("--tls-use-os-certs")
 		fi
 		if [[ -n "$MQTT_CERTFILE" ]]; then
 			TLS_FLAGS+=("--cert" "$MQTT_CERTFILE")
+			OPENSSL_FLAGS+=("--cert" "$MQTT_CERTFILE")
 		fi
 		if [[ -n "$MQTT_KEYFILE" ]]; then
 			TLS_FLAGS+=("--key" "$MQTT_KEYFILE")
+			OPENSSL_FLAGS+=("--key" "$MQTT_KEYFILE")
 		fi
 		if [[ "$MQTT_VALIDATE" == "false" ]]; then
 			TLS_FLAGS+=("--insecure")
@@ -438,6 +443,15 @@ if [[ "$USE_MQTT" == "true" ]]; then
 		2>&1); then
 
 		bashio::log.error "Dynu Updater Initialisation - Unable to connect to $MQTT_HOST. $OUTPUT"
+		
+		
+		if ! openssl s_client -connect "${MQTT_HOST}:${MQTT_PORT}" \
+			  -servername "${MQTT_HOST}" \
+			  "${OPENSSL_FLAGS[@]}" \
+			  -verify 10 -verify_return_error; then
+			bashio::log.error "Dynu Updater Initialisation - Unable to verify failure with openssl"
+		fi
+
 		exit 1
 	else
 		bashio::log.info "Dynu Updater Initialisation - Connected to $MQTT_HOST"
