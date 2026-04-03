@@ -23,7 +23,6 @@ options:
     update_cert: true
     keyfile: privkey.pem
     certfile: fullchain.pem
-    cafile: chain.pem
     update_cert_days: 5
     force_renew: false
     dry_run: false
@@ -51,7 +50,6 @@ schema:
       - str?
     keyfile: str?
     certfile: str?
-    cafile: str?
     restart_addons:
       - str?
     force_renew: bool

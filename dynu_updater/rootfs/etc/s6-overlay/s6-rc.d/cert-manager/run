@@ -131,6 +131,42 @@ fi
 KEY_ARGUMENTS+=("--key-type" "ecdsa")
 KEY_ARGUMENTS+=("--elliptic-curve" "secp256r1")
 
+restart_addons() {
+	if bashio::config.has_value 'cert.restart_addons'; then
+		for index in $(bashio::config 'cert.restart_addons|keys'); do
+			sleep 1
+			RAW_ADDON=$(bashio::config "cert.restart_addons[${index}]")
+			ADDON="${RAW_ADDON//-/_}"
+
+			if ! INFO_OUTPUT=$(curl --fail -s \
+			  -H "Authorization: Bearer $HASSIO_TOKEN" \
+			  http://hassio/addons/${ADDON}/info 2>&1); then
+				bashio::log.warning "Certificate Manager - Failed to query state for addon: ${ADDON}"
+				continue
+			fi
+
+			STATE=$(jq -r '.data.state' <<< "$INFO_OUTPUT")
+
+			if [[ "$STATE" == "started" ]]; then
+
+				bashio::log.info "Certificate Manager - Restarting add-on: ${ADDON}"
+
+				if RESTART_OUTPUT=$(curl --fail -s -X POST \
+				  -H "Authorization: Bearer $HASSIO_TOKEN" \
+				  -H "Content-Type: application/json" \
+				  http://hassio/addons/${ADDON}/restart 2>&1); then
+					bashio::log.info "Certificate Manager - Restarted add-on: ${ADDON}"
+				else
+					bashio::log.warning "Certificate Manager - Failed to restart addon: ${ADDON}"
+				fi
+			
+			else
+				bashio::log.warning "Certificate Manager - ${ADDON} is not running (state: $STATE)"
+			fi
+		done
+	fi
+}
+
 check_connectivity() {
     # Try Dynu (IPv4 or IPv6)
     if curl -4 -s --fail --max-time 5 https://checkip.dynu.com >/dev/null \
@@ -186,45 +222,13 @@ renew_cert() {
 			fi
 			cp "${CERT_DIR_LATEST}privkey.pem" "/ssl/$KEYFILE"
 			cp "${CERT_DIR_LATEST}fullchain.pem" "/ssl/$CERTFILE"
-			cp "${CERT_DIR_LATEST}chain.pem" "/ssl/$CAFILE"
-			
-			if bashio::config.has_value 'restart_addons'; then
-				for index in $(bashio::config 'restart_addons|keys'); do
-					sleep 1
-					RAW_ADDON=$(bashio::config "restart_addons[${index}]")
-					ADDON="${RAW_ADDON//-/_}"
-
-					if ! INFO_OUTPUT=$(curl --fail -s \
-					  -H "Authorization: Bearer $HASSIO_TOKEN" \
-					  http://hassio/addons/${ADDON}/info 2>&1); then
-						bashio::log.warning "Certificate Manager - Failed to query state for addon: ${ADDON}"
-						continue
-					fi
-
-					STATE=$(echo "$INFO_OUTPUT" | jq -r '.data.state')
-
-					if [[ "$STATE" == "started" ]]; then
-
-						bashio::log.info "Certificate Manager - Restarting add-on: ${ADDON}"
-
-						if RESTART_OUTPUT=$(curl --fail -s -X POST \
-						  -H "Authorization: Bearer $HASSIO_TOKEN" \
-						  -H "Content-Type: application/json" \
-						  http://hassio/addons/${ADDON}/restart 2>&1); then
-							bashio::log.info "Certificate Manager - Restarted add-on: ${ADDON}"
-						else
-							bashio::log.warning "Certificate Manager - Failed to restart addon: ${ADDON}"
-						fi
-					
-					else
-						bashio::log.warning "Certificate Manager - ${ADDON} is not running (state: $STATE)"
-					fi
-				done
-			fi
+			bashio::log.info "Certificate Manager - New certificates copied to /ssl"
+			restart_addons
 		elif echo "$CERTBOT_OUTPUT" | grep -q "Certificate not yet due for renewal"; then
 			bashio::log.info "Certificate Manager - Current certificate is valid"
 		elif [[ "$DRY_RUN" == "true" ]] && echo "$CERTBOT_OUTPUT" | grep -q "The dry run was successful"; then	
 			bashio::log.info "Certificate Manager - The dry-run was successful"
+			restart_addons
 		else
 			bashio::log.warning "Certificate Manager - Unexpected Certbot output:"
 		fi
