@@ -443,6 +443,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
 		"${TLS_FLAGS[@]}" \
 		2>&1); then
 		
+		bashio::log.warning "Return code = $?"
 		if [ $? -eq 124 ]; then
 			bashio::log.error "Dynu Updater Initialisation - Unable to connect to $MQTT_HOST: Connection timed out after 5 seconds."
 		else
