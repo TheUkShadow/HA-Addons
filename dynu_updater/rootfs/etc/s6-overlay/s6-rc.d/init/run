@@ -452,7 +452,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
 		else
 			bashio::log.error "Dynu Updater Initialisation - Unable to connect to $MQTT_HOST: $OUTPUT"
 			if [[ "$MQTT_USE_TLS" == "true" ]]; then
-				if TLS_OUTPUT=$(timeout 5s openssl s_client -connect "${MQTT_HOST}:${MQTT_PORT}" \
+				if ! TLS_OUTPUT=$(timeout 5s openssl s_client -connect "${MQTT_HOST}:${MQTT_PORT}" \
 					-servername "${MQTT_HOST}" \
 					"${OPENSSL_FLAGS[@]}" \
 					-verify 10 -verify_return_error < /dev/null 2>&1); then
