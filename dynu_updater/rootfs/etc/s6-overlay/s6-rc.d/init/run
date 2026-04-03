@@ -26,11 +26,6 @@ if bashio::config.has_value 'dns.domains'; then
 else
 	IP_DOMAINS=""
 fi
-if bashio::config.has_value 'cert.restart_addons'; then
-	mapfile -t RESTART_ADDON_NAMES < <(bashio::config 'restart_addons[]')
-else
-	RESTART_ADDON_NAMES=""
-fi
 if bashio::config.true 'verbose'; then
     VERBOSE="true"
 else
@@ -189,29 +184,6 @@ if [[ "$CERT_VALID" == "true" ]]; then
 		bashio::log.error "Dynu Updater Initialisation - Invalid Certificate Check Time"
 		exit 1
 	fi
-	declare -A ADDONS_MAP
-
-	ADDONS_JSON=$(curl -s \
-	  -H "Authorization: Bearer $HASSIO_TOKEN" \
-	  http://hassio/addons)
-
-	# Populate the associative array
-	while IFS= read -r row; do
-		NAME=$(jq -r '.name' <<< "$row")
-		SLUG=$(jq -r '.slug' <<< "$row")
-		ADDONS_MAP["$NAME"]="$SLUG"
-	done < <(echo "$ADDONS_JSON" | jq -c '.data.addons[]')
-	
-	RESTART_ADDONS=()
-	for NAME in "${RESTART_ADDON_NAMES[@]}"; do
-		if [[ -v ADDONS_MAP["$NAME"] ]]; then
-			SLUG="${ADDONS_MAP[$NAME]}"
-			RESTART_ADDONS+=("$SLUG")
-		else
-			bashio::log.warning "Dynu Updater Initialisation - Unknown App name in config: $NAME"
-		fi
-	done
-	bashio::log.info "Dynu Updater Initialisation - ${RESTART_ADDONS[@]}"
 fi
 
 bashio::log.info "Dynu Updater Initialisation - Contacting Dynu API"
