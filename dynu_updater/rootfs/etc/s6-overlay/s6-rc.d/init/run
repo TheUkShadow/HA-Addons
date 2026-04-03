@@ -434,7 +434,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
     TEST_PAYLOAD="selftest_$(date +%s)"
 	
 	if ! timeout 2 bash -c "echo > /dev/tcp/$MQTT_HOST/$MQTT_PORT" 2>/dev/null; then
-		bashio::log.error "Dynu Updater Initialisation - Cannot reach $MQTT_HOST:$MQTT_PORT"
+		bashio::log.error "Dynu Updater Initialisation - Cannot reach MQTT Server at $MQTT_HOST:$MQTT_PORT"
 		exit 1
 	elif ! OUTPUT=$(mosquitto_pub \
 		-h "$MQTT_HOST" \
@@ -564,6 +564,8 @@ if [[ "$USE_MQTT" == "true" ]]; then
 		fi
 	}
 
+	bashio::log.info "Dynu Updater Initialisation - Sending MQTT Discovery for Entities"
+	
 	for entry in "${MQTT_ENTITIES[@]}"; do
 		IFS="|" read -r entity_id name device_class state_topic component extra icon service <<< "$entry"
 
@@ -583,6 +585,9 @@ if [[ "$USE_MQTT" == "true" ]]; then
 			STATE="offline"
 		fi
 		
+		if [[ "$VERBOSE" == "true" ]]; then
+			bashio::log.info "    - $name"
+		fi
 		mqtt_publish "${entity_id}/availability" "$STATE"
 		
 	done
@@ -621,5 +626,3 @@ jq -n \
 sleep 1
 
 bashio::log.info "Dynu Updater Initialisation - Complete"
-
-exit 0
