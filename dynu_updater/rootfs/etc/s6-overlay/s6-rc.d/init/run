@@ -190,7 +190,7 @@ if [[ "$CERT_VALID" == "true" ]]; then
 		exit 1
 	fi
 	if ADDONS_JSON=$(curl -s --max-time 5 -H "Authorization: Bearer $HASSIO_TOKEN" http://hassio/addons); then
-		ADDON_NAMES=($(jq -r '.data.addons[].name') <<< "$ADDONS_JSON")
+		ADDON_NAMES=$(jq -r '.data.addons[].name' <<< "$ADDONS_JSON")
 		for ADDON_NAME in ${ADDON_NAMES[@]}; do
 			bashio::log.info "$ADDON_NAME"
 		done
