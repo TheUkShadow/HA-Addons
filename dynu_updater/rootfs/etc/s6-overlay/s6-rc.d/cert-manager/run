@@ -154,7 +154,7 @@ restart_addons() {
 				  -H "Content-Type: application/json" \
 				  http://hassio/addons/${ADDON}/restart 2>&1); then
 					bashio::log.info "Certificate Manager - Restarting add-on ${ADDON}"
-					restarted+=("$ADDON")
+					RESTARTED+=("$ADDON")
 				else
 					bashio::log.warning "Certificate Manager - ${ADDON} failed to restart"
 				fi
