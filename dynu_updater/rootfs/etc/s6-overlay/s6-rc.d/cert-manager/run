@@ -133,6 +133,7 @@ KEY_ARGUMENTS+=("--elliptic-curve" "secp256r1")
 
 restart_addons() {
 	if bashio::config.has_value 'cert.restart_addons'; then
+		RESTARTED=()
 		for index in $(bashio::config 'cert.restart_addons|keys'); do
 			sleep 1
 			RAW_ADDON=$(bashio::config "cert.restart_addons[${index}]")
@@ -148,20 +149,42 @@ restart_addons() {
 			STATE=$(jq -r '.data.state' <<< "$INFO_OUTPUT")
 
 			if [[ "$STATE" == "started" ]]; then
-
-				bashio::log.info "Certificate Manager - Restarting add-on: ${ADDON}"
-
 				if RESTART_OUTPUT=$(curl --fail -s -X POST \
 				  -H "Authorization: Bearer $HASSIO_TOKEN" \
 				  -H "Content-Type: application/json" \
 				  http://hassio/addons/${ADDON}/restart 2>&1); then
-					bashio::log.info "Certificate Manager - Restarted add-on: ${ADDON}"
+					bashio::log.info "Certificate Manager - Restarting add-on ${ADDON}"
+					restarted+=("$ADDON")
 				else
-					bashio::log.warning "Certificate Manager - Failed to restart addon: ${ADDON}"
+					bashio::log.warning "Certificate Manager - ${ADDON} failed to restart"
 				fi
-			
 			else
 				bashio::log.warning "Certificate Manager - ${ADDON} is not running (state: $STATE)"
+			fi
+		done
+		
+		for ADDON in "${RESTARTED[@]}"; do
+			STATE="unknown"
+			FAILED="false"
+			LOOP_COUNT=0
+			while [[ "$STATE" != "started" ]]; do
+				sleep 1
+				if INFO_OUTPUT=$(curl --fail -s \
+				  -H "Authorization: Bearer $HASSIO_TOKEN" \
+				  http://hassio/addons/${ADDON}/info 2>&1); then
+					STATE=$(jq -r '.data.state' <<< "$INFO_OUTPUT")
+				fi
+
+				LOOP_COUNT=$((LOOP_COUNT + 1))
+				if (( LOOP_COUNT > 20 )); then
+					FAILED="true"
+					break
+				fi
+			done
+			if [[ "$FAILED" == "true" ]]; then
+				bashio::log.error "Certificate Manager - ${ADDON} failed to start (state: $STATE)"
+			else
+				bashio::log.info "Certificate Manager - ${ADDON} started"
 			fi
 		done
 	fi
