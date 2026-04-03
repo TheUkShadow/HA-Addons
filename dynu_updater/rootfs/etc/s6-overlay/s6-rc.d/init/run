@@ -27,7 +27,7 @@ else
 	IP_DOMAINS=""
 fi
 if bashio::config.has_value 'cert.restart_addons'; then
-	RESTART_ADDON_NAMES=$(bashio::config 'cert.restart_addons' | xargs)
+	mapfile -t RESTART_ADDON_NAMES < <(bashio::config 'restart_addons[]')
 else
 	RESTART_ADDON_NAMES=""
 fi
@@ -203,13 +203,12 @@ if [[ "$CERT_VALID" == "true" ]]; then
 	done < <(echo "$ADDONS_JSON" | jq -c '.data.addons[]')
 	
 	RESTART_ADDONS=()
-	for RESTART_ADDON_NAME in "${RESTART_ADDON_NAMES[@]}"; do
-		if [[ ! -v ADDONS_MAP["$RESTART_ADDON_NAME"] ]]; then
-			bashio::log.error "Dynu Updater Initialisation - The App $RESTART_ADDON_NAME does not exist"
-			exit 1
-		else
-			SLUG="${ADDONS_MAP["$RESTART_ADDON_NAME"]}"
+	for NAME in "${RESTART_ADDON_NAMES[@]}"; do
+		if [[ -v ADDONS_MAP["$NAME"] ]]; then
+			SLUG="${ADDONS_MAP[$NAME]}"
 			RESTART_ADDONS+=("$SLUG")
+		else
+			bashio::log.warning "Dynu Updater Initialisation - Unknown App name in config: $NAME"
 		fi
 	done
 	bashio::log.info "Dynu Updater Initialisation - $RESTART_ADDONS[@]"
