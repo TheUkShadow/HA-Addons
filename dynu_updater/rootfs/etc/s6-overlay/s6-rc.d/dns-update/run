@@ -69,7 +69,7 @@ mqtt_publish() {
             -t "dynu_updater/$topic" \
             -m "$payload" \
             -r \
-			${TLS_FLAGS[@]}; then
+			"${TLS_FLAGS[@]}"; then
 
             bashio::log.warning "Dynu DNS Updater - MQTT publish failed: Topic=$topic"
         fi
