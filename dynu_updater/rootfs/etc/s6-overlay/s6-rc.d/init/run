@@ -131,6 +131,11 @@ if bashio::config.true 'mqtt.tls'; then
 else
     MQTT_USE_TLS="false"
 fi
+if bashio::config.true 'mqtt.server_cert'; then
+    MQTT_VALIDATE="true"
+else
+    MQTT_VALIDATE="false"
+fi
 
 if [[ "$CERT_VALID" == "false" && "$DNS_VALID" == "false" ]]; then
 	bashio::log.error "Dynu Updater Initialisation - Options to Update IP Addresses and Generate Certificate are both disabled - Nothing to do"
@@ -342,56 +347,26 @@ fi
 bashio::log.info "Dynu Updater Initialisation - Generating MQTT Configuration"
 # MQTT connection
 
-TLS_FLAGS=()
-
 if [[ "$USE_MQTT" == "true" && "$MQTT_CORE" == "true" ]] && bashio::services.available 'mqtt'; then	  
 	bashio::log.info "Dynu Updater Initialisation - Using Mosquitto Broker Addon"
     MQTT_HOST=$(bashio::services mqtt host)
     MQTT_USER=$(bashio::services mqtt username)
     MQTT_PASSWORD=$(bashio::services mqtt password)
 	if [[ "$MQTT_USE_TLS" == "true" ]]; then
-		if [[ -z "$MQTT_PORT" || ! "$MQTT_PORT" =~ ^[0-9]+$ \
-			  || -z "$MQTT_CERTFILE" || ! "$MQTT_CERTFILE" =~ ^[A-Za-z0-9._/-]+$ || ! -f "$MQTT_CERTFILE" \
-			  || -z "$MQTT_KEYFILE" || ! "$MQTT_KEYFILE" =~ ^[A-Za-z0-9._/-]+$ || ! -f "$MQTT_KEYFILE" \
-			  || -z "$MQTT_CAFILE" || ! "$MQTT_CAFILE" =~ ^[A-Za-z0-9._/-]+$ || ! -f "$MQTT_CAFILE" ]]; then
+		if [[ -z "$MQTT_PORT" || ! "$MQTT_PORT" =~ ^[0-9]+$ ]]; then
 			bashio::log.error "Dynu Updater Initialisation - Invalid configuration for Core Mosquitto TLS"
 			if [[ -z "$MQTT_PORT" ]]; then
 				bashio::log.error "  Port missing from config"
 			elif [[ ! "$MQTT_PORT" =~ ^[0-9]+$ ]]; then
 				bashio::log.error "  Port is not valid"
 			fi	
-			if [[ -z "$MQTT_CERTFILE" ]]; then
-				bashio::log.error "  Certificate File missing from config"
-			elif [[ ! "$MQTT_CERTFILE" =~ ^[A-Za-z0-9._/-]+$ ]]; then
-				bashio::log.error "  Certificate File is not a valid file name"
-			elif [[ ! -f "$MQTT_CERTFILE" ]]; then
-				bashio::log.error "  Certificate File does not exist"
-			fi
-			if [[ -z "$MQTT_CAFILE" ]]; then
-				bashio::log.error "  CA File missing from config"
-			elif [[ ! "$MQTT_CAFILE" =~ ^[A-Za-z0-9._/-]+$ ]]; then
-				bashio::log.error "  CA File is not a valid file name"
-			elif [[ ! -f "$MQTT_CAFILE" ]]; then
-				bashio::log.error "  CA File does not exist"
-			fi
-			if [[ -z "$MQTT_KEYFILE" ]]; then
-				bashio::log.error "  Private Key file missing from config"
-			elif [[ ! "$MQTT_KEYFILE" =~ ^[A-Za-z0-9._/-]+$ ]]; then
-				bashio::log.error "  Private Key file is not a valid file name"
-			elif [[ ! -f "$MQTT_KEYFILE" ]]; then
-				bashio::log.error "  Private Key File does not exist"
-			fi
 			exit 1
-		else
-			TLS_FLAGS+=("--cafile" "$MQTT_CAFILE")
-			# TLS_FLAGS+=("--cert" "$MQTT_CERTFILE")
-			# TLS_FLAGS+=("--key" "$MQTT_KEYFILE")
 		fi
 	else
 		MQTT_PORT=$(bashio::services mqtt port)
 	fi
 elif [[ "$USE_MQTT" == "true" && "$MQTT_CORE" == "true" ]] && ! bashio::services.available 'mqtt'; then
-	bashio::log.error "Dynu Updater Initialisation - MQTT Service not available for Core Mosquitton Addon"
+	bashio::log.error "Dynu Updater Initialisation - MQTT Service not available for Core Mosquitto Addon"
 	exit 1
 elif [[ "$USE_MQTT" == "true" && "$MQTT_CORE" == "false" ]]; then
 	bashio::log.info "Dynu Updater Initialisation - Using Mosquitto Broker from Config"
@@ -421,38 +396,37 @@ elif [[ "$USE_MQTT" == "true" && "$MQTT_CORE" == "false" ]]; then
 			bashio::log.error "  Password is not valid"
 		fi
 		exit 1
-	elif [[ "$MQTT_USE_TLS" == "true" ]]; then
-		if [[ -z "$MQTT_CERTFILE" || ! "$MQTT_CERTFILE" =~ ^[A-Za-z0-9._/-]+$ || ! -f "$MQTT_CERTFILE" \
-			  || -z "$MQTT_KEYFILE" || ! "$MQTT_KEYFILE" =~ ^[A-Za-z0-9._/-]+$ || ! -f "$MQTT_KEYFILE" \
-			  || -z "$MQTT_CAFILE" || ! "$MQTT_CAFILE" =~ ^[A-Za-z0-9._/-]+$ || ! -f "$MQTT_CAFILE" ]]; then
-			bashio::log.error "Dynu Updater Initialisation - Invalid configuration for Custom Mosquitto TLS"
-			if [[ -z "$MQTT_CERTFILE" ]]; then
-				bashio::log.error "  Certificate File missing from config"
-			elif [[ ! "$MQTT_CERTFILE" =~ ^[A-Za-z0-9._/-]+$ ]]; then
-				bashio::log.error "  Certificate File is not a valid file name"
-			elif [[ ! -f "$MQTT_CERTFILE" ]]; then
-				bashio::log.error "  Certificate File does not exist"
-			fi
-			if [[ -z "$MQTT_CAFILE" ]]; then
-				bashio::log.error "  CA File missing from config"
-			elif [[ ! "$MQTT_CAFILE" =~ ^[A-Za-z0-9._/-]+$ ]]; then
-				bashio::log.error "  CA File is not a valid file name"
-			elif [[ ! -f "$MQTT_CAFILE" ]]; then
-				bashio::log.error "  CA File does not exist"
-			fi
-			if [[ -z "$MQTT_KEYFILE" ]]; then
-				bashio::log.error "  Private Key file missing from config"
-			elif [[ ! "$MQTT_KEYFILE" =~ ^[A-Za-z0-9._/-]+$ ]]; then
-				bashio::log.error "  Private Key file is not a valid file name"
-			elif [[ ! -f "$MQTT_KEYFILE" ]]; then
-				bashio::log.error "  Private Key File does not exist"
-			fi
-			exit 1
-		else
-			TLS_FLAGS+=("--cafile" "$MQTT_CAFILE")
-			# TLS_FLAGS+=("--cert" "$MQTT_CERTFILE")
-			# TLS_FLAGS+=("--key" "$MQTT_KEYFILE")
-		fi
+	fi
+fi
+
+TLS_FLAGS=()
+
+if [[ "$USE_MQTT" == "true" && "$MQTT_USE_TLS" == "true" ]]; then
+	if [[ -n "$MQTT_CAFILE" && ! -f "$MQTT_CAFILE" ]]; then
+		bashio::log.error "Dynu Updater Initialisation - CA File does not exist"
+		exit 1
+	fi
+	if [[ -n "$MQTT_CERTFILE" && ! -f "$MQTT_CERTFILE" ]]; then
+		bashio::log.error "Dynu Updater Initialisation - Certificate File does not exist"
+		exit 1
+	fi
+	if [[ -n "$MQTT_KEYFILE" && ! -f "$MQTT_KEYFILE" ]]; then
+		bashio::log.error "Dynu Updater Initialisation - Private Key File does not exist"
+		exit 1
+	fi
+	if [[ -n "$MQTT_CAFILE" ]]; then
+		TLS_FLAGS+=("--cafile" "$MQTT_CAFILE")
+	else
+		TLS_FLAGS+=("--tls-use-os-certs")
+	fi
+	if [[ -n "$MQTT_CERTFILE" ]]; then
+		TLS_FLAGS+=("--cert" "$MQTT_CERTFILE")
+	fi
+	if [[ -n "$MQTT_KEYFILE" ]]; then
+		TLS_FLAGS+=("--key" "$MQTT_KEYFILE")
+	fi
+	if [[ "$MQTT_VALIDATE" == "false" ]]; then
+		TLS_FLAGS+=("--insecure")
 	fi
 fi
 

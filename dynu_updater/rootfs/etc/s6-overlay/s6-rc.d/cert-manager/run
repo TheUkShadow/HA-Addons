@@ -111,7 +111,7 @@ echo "DYNU_PROPAGATION_TIMEOUT=${PROPAGATION_SECONDS}" >> "${DNS_MULTI_CREDS}"
 ACME_ARGUMENTS+=("--authenticator" "dns-multi" "--dns-multi-credentials" "${DNS_MULTI_CREDS}" "--dns-multi-propagation-seconds" "${PROPAGATION_SECONDS}")
 
 # Default Let's Encrypt servers.
-ACME_ARGUMENTS+=("--preferred-chain" "ISRG Root X1")
+ACME_ARGUMENTS+=("--preferred-chain" "ISRG Root X2")
 
 if [[ "$FORCE_RENEW" == "true" ]]; then
 	ADDITIONAL_ARGS+=("--force-renewal")
@@ -127,6 +127,7 @@ fi
 
 # Set key-type
 KEY_ARGUMENTS+=("--key-type" "ecdsa")
+KEY_ARGUMENTS+=("--elliptic-curve" "secp256r1")
 
 check_connectivity() {
     # Try Dynu (IPv4 or IPv6)

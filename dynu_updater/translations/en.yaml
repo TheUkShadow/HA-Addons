@@ -68,10 +68,10 @@ configuration:
         description: Use the Mosquitto Broker Addon
       host:
         name: Hostname
-        description: The hostname for the custom MQTT server.
+        description: The hostname for the custom MQTT server (eg yourdomain.com or 192.168.4.10).
       port:
         name: Port
-        description: The port for the custom MQTT server (1883 or 8883 when using TLS)
+        description: The port for the custom MQTT server (eg 1883 or 8883 when using TLS).
       user:
         name: User
         description: The username for the custom MQTT server.
@@ -80,7 +80,10 @@ configuration:
         description: The password for the custom MQTT server.
       tls:
         name: TLS
-        description: Enables TLS for the MQTT server connection (Port must be set along with Certificate, Private Key, and CA files)
+        description: Enables TLS for the MQTT server (Port must be set even if using Core Mosquitto).
+      server_cert:
+        name: Validate Server Certificate
+        description: When connecting using TLS, the Hostname will be validated using the server Certificate.
       keyfile:
         name: Private Key File
         description: The Private Key File to use for MQTT TLS
