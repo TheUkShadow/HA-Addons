@@ -73,6 +73,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
 	MQTT_PORT=$(jq -r '.mqtt.port' <<< "$API_DATA")
 	MQTT_USER=$(jq -r '.mqtt.user' <<< "$API_DATA")
 	MQTT_PASSWORD=$(jq -r '.mqtt.password' <<< "$API_DATA")
+	readarray -t TLS_FLAGS < <(jq -r '.tls_flags[]' <<< "$API_DATA")
 else
 	USE_MQTT="false"
 fi
@@ -89,7 +90,8 @@ mqtt_publish() {
             -P "$MQTT_PASSWORD" \
             -t "dynu_updater/$topic" \
             -m "$payload" \
-            -r; then
+            -r \
+			"${TLS_FLAGS[@]}"; then
 
             bashio::log.warning "Certificate Manager - MQTT publish failed: Topic=$topic"
         fi

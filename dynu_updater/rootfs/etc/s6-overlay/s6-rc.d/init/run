@@ -403,15 +403,15 @@ TLS_FLAGS=()
 
 if [[ "$USE_MQTT" == "true" && "$MQTT_USE_TLS" == "true" ]]; then
 	if [[ -n "$MQTT_CAFILE" && ! -f "$MQTT_CAFILE" ]]; then
-		bashio::log.error "Dynu Updater Initialisation - CA File does not exist"
+		bashio::log.error "Dynu Updater Initialisation - Specified CA File does not exist"
 		exit 1
 	fi
 	if [[ -n "$MQTT_CERTFILE" && ! -f "$MQTT_CERTFILE" ]]; then
-		bashio::log.error "Dynu Updater Initialisation - Certificate File does not exist"
+		bashio::log.error "Dynu Updater Initialisation - Specified Certificate File does not exist"
 		exit 1
 	fi
 	if [[ -n "$MQTT_KEYFILE" && ! -f "$MQTT_KEYFILE" ]]; then
-		bashio::log.error "Dynu Updater Initialisation - Private Key File does not exist"
+		bashio::log.error "Dynu Updater Initialisation - Specified Private Key File does not exist"
 		exit 1
 	fi
 	if [[ -n "$MQTT_CAFILE" ]]; then
@@ -523,7 +523,8 @@ publish_discovery() {
 				  \"model\": \"${MODEL}\",
 				  \"sw_version\": \"${SW_VERSION}\"
 			    }
-			  }"; then
+			  }" \
+			  "${TLS_FLAGS[@]}"; then
 			
 			bashio::log.warning "Dynu Updater Initialisation - MQTT discovery failed for entity $entity_id"
 		fi	
@@ -542,7 +543,8 @@ mqtt_publish() {
 			-P "$MQTT_PASSWORD" \
 			-t "dynu_updater/$topic" \
 			-m "$payload" \
-			-r; then
+			-r \
+			"${TLS_FLAGS[@]}"; then
 
 			bashio::log.warning "Dynu Updater Initialisation - MQTT publish failed for topic $topic"
 		fi
@@ -581,6 +583,7 @@ jq -n \
   --arg port "$MQTT_PORT" \
   --arg user "$MQTT_USER" \
   --arg password "$MQTT_PASSWORD" \
+  --argjson tls_flags "$(printf '%s\n' "${TLS_FLAGS[@]}" | jq -R . | jq -s .)" \
   --argjson entities "$(printf '%s\n' "${MQTT_ENTITIES[@]}" | jq -R . | jq -s .)" \
   '{
       ipv6: $ipv6,
@@ -592,6 +595,7 @@ jq -n \
 	    port: $port,
 	    user: $user,
 	    password: $password,
+		tls: tls_flags,
 		entities: $entities
 	  }
    }' \
