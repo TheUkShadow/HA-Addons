@@ -211,7 +211,7 @@ if [[ "$CERT_VALID" == "true" ]]; then
 			bashio::log.warning "Dynu Updater Initialisation - Unknown App name in config: $NAME"
 		fi
 	done
-	bashio::log.info "Dynu Updater Initialisation - $RESTART_ADDONS[@]"
+	bashio::log.info "Dynu Updater Initialisation - ${RESTART_ADDONS[@]}"
 fi
 
 bashio::log.info "Dynu Updater Initialisation - Contacting Dynu API"
