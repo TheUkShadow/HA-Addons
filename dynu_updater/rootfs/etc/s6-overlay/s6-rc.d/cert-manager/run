@@ -156,36 +156,39 @@ restart_addons() {
 					bashio::log.info "Certificate Manager - Restarting add-on ${ADDON}"
 					RESTARTED+=("$ADDON")
 				else
-					bashio::log.warning "Certificate Manager - ${ADDON} failed to restart"
+					bashio::log.error "Certificate Manager - Unable to trigger restart of $ADDON"
 				fi
 			else
-				bashio::log.warning "Certificate Manager - ${ADDON} is not running (state: $STATE)"
+				bashio::log.warning "Certificate Manager - $ADDON is not running (state: $STATE)"
 			fi
 		done
 		
-		for ADDON in "${RESTARTED[@]}"; do
-			STATE="unknown"
-			FAILED="false"
-			LOOP_COUNT=0
-			while [[ "$STATE" != "started" ]]; do
-				sleep 1
+		sleep 10
+		
+		LOOP_COUNT=0
+		
+		while (( ${#RESTARTED[@]} > 0 )) && (( LOOP_COUNT < 20 )); do
+			for ADDON in "${RESTARTED[@]}"; do
 				if INFO_OUTPUT=$(curl --fail -s \
 				  -H "Authorization: Bearer $HASSIO_TOKEN" \
 				  http://hassio/addons/${ADDON}/info 2>&1); then
 					STATE=$(jq -r '.data.state' <<< "$INFO_OUTPUT")
-				fi
-
-				LOOP_COUNT=$((LOOP_COUNT + 1))
-				if (( LOOP_COUNT > 20 )); then
-					FAILED="true"
-					break
+					if [[ "$STATE" == "started" ]]; then
+						NEW_LIST=()
+						for item in "${RESTARTED[@]}"; do
+							[[ "$item" == "$ADDON" ]] || NEW_LIST+=("$item")
+						done
+						RESTARTED=("${NEW_LIST[@]}")
+						bashio::log.info "Certificate Manager - ${ADDON} started"
+					fi
 				fi
 			done
-			if [[ "$FAILED" == "true" ]]; then
-				bashio::log.error "Certificate Manager - ${ADDON} failed to start (state: $STATE)"
-			else
-				bashio::log.info "Certificate Manager - ${ADDON} started"
-			fi
+			LOOP_COUNT=$((LOOP_COUNT + 1))
+			sleep 1
+		done
+		
+		for ADDON in "${RESTARTED[@]}"; do
+			bashio::log.error "Certificate Manager - ${ADDON} failed to restart"
 		done
 	fi
 }
