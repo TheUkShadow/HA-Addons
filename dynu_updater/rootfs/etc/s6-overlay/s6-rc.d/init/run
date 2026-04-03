@@ -596,7 +596,7 @@ json_array_from_bash_array() {
 
 jq -n \
   --arg ipv6 "$DYNU_IPV6_ENABLED" \
-  --argjson ip_domains arr_json=$(json_array_from_bash_array $IP_HOSTNAMES[@])
+  --argjson ip_domains arr_json=$(json_array_from_bash_array ${IP_HOSTNAMES[@]})
   --argjson cert_domains "$(printf '%s\n' "${CERT_HOSTNAMES[@]}" | jq -R . | jq -s .)" \
   --arg mqtt "$USE_MQTT" \
   --arg host "$MQTT_HOST" \
