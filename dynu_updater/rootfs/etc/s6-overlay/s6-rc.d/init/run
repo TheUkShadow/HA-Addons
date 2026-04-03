@@ -442,16 +442,21 @@ if [[ "$USE_MQTT" == "true" ]]; then
         -q 1 \
 		"${TLS_FLAGS[@]}" \
 		2>&1); then
-
-		bashio::log.error "Dynu Updater Initialisation - Unable to connect to $MQTT_HOST. $OUTPUT"
 		
-		if [[ "$MQTT_USE_TLS" == "true" ]]; then
-			if ! TLS_OUTPUT=$(timeout 5s openssl s_client -connect "${MQTT_HOST}:${MQTT_PORT}" \
-				  -servername "${MQTT_HOST}" \
-				  "${OPENSSL_FLAGS[@]}" \
-				  -verify 10 -verify_return_error < /dev/null 2>&1); then
-				REASON=$(echo "$TLS_OUTPUT" | grep -E "verify error|Verify return code|Hostname mismatch|expired|unable|self signed" | head -n 1)
-				bashio::log.error "TLS validation failed: $REASON"
+		if [ $? -eq 124 ]; then
+			bashio::log.error "Dynu Updater Initialisation - Unable to connect to $MQTT_HOST: Connection timed out after 5 seconds."
+		else
+			bashio::log.error "Dynu Updater Initialisation - Unable to connect to $MQTT_HOST: $OUTPUT"
+			if [[ "$MQTT_USE_TLS" == "true" ]]; then
+				if ! TLS_OUTPUT=$(timeout 5s openssl s_client -connect "${MQTT_HOST}:${MQTT_PORT}" \
+					  -servername "${MQTT_HOST}" \
+					  "${OPENSSL_FLAGS[@]}" \
+					  -verify 10 -verify_return_error < /dev/null 2>&1); then
+					if [ ! $? -eq 124 ]; then
+						REASON=$(echo "$TLS_OUTPUT" | grep -E "verify error|Verify return code|Hostname mismatch|expired|unable|self signed" | head -n 1)
+						bashio::log.error "TLS validation failed: $REASON"
+					fi
+				fi
 			fi
 		fi
 
