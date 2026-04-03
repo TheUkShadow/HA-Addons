@@ -123,7 +123,7 @@ if [[ "$VERBOSE" ==  "true" ]]; then
 	ADDITIONAL_ARGS+=("-vvv")
 fi
 
-if [[ "$DRY_RUN" = "true" ]]; then
+if [[ "$DRY_RUN" == "true" ]]; then
 	ADDITIONAL_ARGS+=("--dry-run")
 fi
 
