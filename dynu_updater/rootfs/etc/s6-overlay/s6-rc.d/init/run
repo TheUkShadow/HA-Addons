@@ -595,7 +595,7 @@ jq -n \
 	    port: $port,
 	    user: $user,
 	    password: $password,
-		tls_flags: tls_flags,
+		tls_flags: $tls_flags,
 		entities: $entities
 	  }
    }' \
