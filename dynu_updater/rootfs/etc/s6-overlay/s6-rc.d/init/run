@@ -407,6 +407,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
 		-h "$MQTT_HOST" \
 		-u "$MQTT_USER" \
 		-P "$MQTT_PASSWORD" \
+		-i "$(hostname)" \
 		-p "$MQTT_PORT" \
 		-t "$TEST_TOPIC" \
 		-m "$TEST_PAYLOAD" \
@@ -482,7 +483,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
 			local entity_avail_topic="dynu_updater/${entity_id}/availability"
 
 			if ! mosquitto_pub -h "$MQTT_HOST" -u "$MQTT_USER" -P "$MQTT_PASSWORD" -p "$MQTT_PORT" -r \
-				  -i "dynu_updater_$(hostname)" \
+				  -i "$(hostname)" \
 				  -t "homeassistant/${component}/${entity_id}/config" \
 				  -m "{
 					\"name\": \"${name}\",
@@ -522,7 +523,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
 				-p "$MQTT_PORT" \
 				-u "$MQTT_USER" \
 				-P "$MQTT_PASSWORD" \
-				-i "dynu_updater_$(hostname)" \
+				-i "$(hostname)" \
 				-t "dynu_updater/$topic" \
 				-m "$payload" \
 				-r \
@@ -601,7 +602,7 @@ jq -n \
   --arg port "$MQTT_PORT" \
   --arg user "$MQTT_USER" \
   --arg mqtt_pass "$MQTT_PASSWORD" \
-  --arg client_id "dynu_updater_$(hostname)" \
+  --arg client_id "$(hostname)" \
   --argjson ip_domains "$ip_hostnames_json" \
   --argjson cert_domains "$cert_hostnames_json" \
   --argjson tls_flags "$tls_flags_json" \
