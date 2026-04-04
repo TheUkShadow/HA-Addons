@@ -8,6 +8,7 @@ if [[ -f "$DYNU_CONF" ]]; then
 	MQTT_PORT=$(jq -r '.mqtt.port' <<< "$API_DATA")
 	MQTT_USER=$(jq -r '.mqtt.user' <<< "$API_DATA")
 	MQTT_PASSWORD=$(jq -r '.mqtt.password' <<< "$API_DATA")
+	MQTT_CLIENT_ID=$(jq -r '.mqtt.client_id' <<< "$API_DATA")
 	readarray -t TLS_FLAGS < <(jq -r '.mqtt.tls_flags[]' <<< "$API_DATA")
 
 	# Publish offline availability
@@ -18,6 +19,7 @@ if [[ -f "$DYNU_CONF" ]]; then
 		  -u "$MQTT_USER" \
 		  -p "$MQTT_PORT" \
 		  -P "$MQTT_PASSWORD" \
+		  -i "$MQTT_CLIENT_ID" \
 		  -t "dynu_updater/availability" \
 		  -m "offline" \
 		  -r \
