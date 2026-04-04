@@ -25,35 +25,6 @@ fi
 
 bashio::log.info "Certificate Manager - Started"
 
-DYNU_HOSTNAME=$(bashio::config 'dynu_hostname' | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
-EMAIL=$(bashio::config 'cert.email' | xargs)
-KEYFILE=$(bashio::config 'cert.keyfile' | xargs)
-CERTFILE=$(bashio::config 'cert.certfile' | xargs)
-CAFILE=$(bashio::config 'cert.cafile' | xargs)
-CHECK_DAYS=$(bashio::config 'cert.update_cert_days')
-DYNU_API_KEY=$(bashio::config 'dynu_api_key' | xargs)
-
-if bashio::config.true 'verbose'; then
-    VERBOSE="true"
-else
-    VERBOSE="false"
-fi
-if bashio::config.true 'cert.force_renew'; then
-    FORCE_RENEW="true"
-else
-    FORCE_RENEW="false"
-fi
-if bashio::config.true 'cert.dry_run'; then
-    DRY_RUN="true"
-else
-    DRY_RUN="false"
-fi
-if bashio::config.true 'mqtt.enabled'; then
-    USE_MQTT="true"
-else
-    USE_MQTT="false"
-fi
-
 CERT_DIR=/data/letsencrypt
 WORK_DIR=/data/workdir
 DNS_MULTI_CREDS=/data/dns-multi.ini
@@ -66,16 +37,28 @@ LAST_CHECK="ok"
 PROPAGATION_SECONDS=300
 
 API_DATA=$(< "$DYNU_CONF")
-readarray -t DOMAIN_ARR < <(jq -r '.cert_domains[]' <<< "$API_DATA")
+
+DYNU_HOSTNAME=$(jq -r '.hostname' <<< "$API_DATA")
+VERBOSE=$(jq -r '.verbose' <<< "$API_DATA")
+
+DYNU_API_KEY=$(jq -r '.cert.api_key' <<< "$API_DATA")
+CHECK_DAYS=$(jq -r '.cert.cert_time' <<< "$API_DATA")
+EMAIL=$(jq -r '.cert.email' <<< "$API_DATA")
+KEYFILE=$(jq -r '.cert.keyfile' <<< "$API_DATA")
+CERTFILE=$(jq -r '.cert.certfile' <<< "$API_DATA")
+DRY_RUN=$(jq -r '.cert.dry_run' <<< "$API_DATA")
+FORCE_RENEW=$(jq -r '.cert.force_renew' <<< "$API_DATA")
+
+readarray -t DOMAIN_ARR < <(jq -r '.cert.domains[]' <<< "$API_DATA")
+
+USE_MQTT=$(jq -r '.mqtt.enabled' <<< "$API_DATA")
+
 if [[ "$USE_MQTT" == "true" ]]; then
-	USE_MQTT=$(jq -r '.mqtt.enabled' <<< "$API_DATA")
 	MQTT_HOST=$(jq -r '.mqtt.host' <<< "$API_DATA")
 	MQTT_PORT=$(jq -r '.mqtt.port' <<< "$API_DATA")
 	MQTT_USER=$(jq -r '.mqtt.user' <<< "$API_DATA")
 	MQTT_PASSWORD=$(jq -r '.mqtt.password' <<< "$API_DATA")
 	readarray -t TLS_FLAGS < <(jq -r '.mqtt.tls_flags[]' <<< "$API_DATA")
-else
-	USE_MQTT="false"
 fi
 
 mqtt_publish() {
@@ -130,69 +113,6 @@ fi
 # Set key-type
 KEY_ARGUMENTS+=("--key-type" "ecdsa")
 KEY_ARGUMENTS+=("--elliptic-curve" "secp256r1")
-
-restart_addons() {
-	if bashio::config.has_value 'cert.restart_addons'; then
-		RESTARTED=()
-		for index in $(bashio::config 'cert.restart_addons|keys'); do
-			sleep 1
-			RAW_ADDON=$(bashio::config "cert.restart_addons[${index}]")
-			ADDON="${RAW_ADDON//-/_}"
-
-			if ! INFO_OUTPUT=$(curl --fail -s \
-			  -H "Authorization: Bearer $HASSIO_TOKEN" \
-			  http://hassio/addons/${ADDON}/info 2>&1); then
-				bashio::log.warning "Certificate Manager - Failed to query state for App: ${ADDON}"
-				continue
-			fi
-
-			STATE=$(jq -r '.data.state' <<< "$INFO_OUTPUT")
-
-			if [[ "$STATE" == "started" ]]; then
-				if RESTART_OUTPUT=$(curl --fail -s -X POST \
-				  -H "Authorization: Bearer $HASSIO_TOKEN" \
-				  -H "Content-Type: application/json" \
-				  http://hassio/addons/${ADDON}/restart 2>&1); then
-					bashio::log.info "Certificate Manager - Restarting App ${ADDON}"
-					RESTARTED+=("$ADDON")
-				else
-					bashio::log.error "Certificate Manager - Unable to trigger restart for App $ADDON"
-				fi
-			else
-				bashio::log.warning "Certificate Manager - App $ADDON is not running (state: $STATE)"
-			fi
-		done
-		
-		bashio::log.info "Certificate Manager - Waiting for App(s) to start..."
-		sleep 10
-		
-		LOOP_COUNT=0
-		
-		while (( ${#RESTARTED[@]} > 0 )) && (( LOOP_COUNT < 20 )); do
-			for ADDON in "${RESTARTED[@]}"; do
-				if INFO_OUTPUT=$(curl --fail -s \
-				  -H "Authorization: Bearer $HASSIO_TOKEN" \
-				  http://hassio/addons/${ADDON}/info 2>&1); then
-					STATE=$(jq -r '.data.state' <<< "$INFO_OUTPUT")
-					if [[ "$STATE" == "started" ]]; then
-						NEW_LIST=()
-						for item in "${RESTARTED[@]}"; do
-							[[ "$item" == "$ADDON" ]] || NEW_LIST+=("$item")
-						done
-						RESTARTED=("${NEW_LIST[@]}")
-						bashio::log.info "Certificate Manager - App $ADDON started"
-					fi
-				fi
-			done
-			LOOP_COUNT=$((LOOP_COUNT + 1))
-			sleep 1
-		done
-		
-		for ADDON in "${RESTARTED[@]}"; do
-			bashio::log.error "Certificate Manager - App $ADDON failed to restart"
-		done
-	fi
-}
 
 check_connectivity() {
     # Try Dynu (IPv4 or IPv6)
@@ -250,12 +170,10 @@ renew_cert() {
 			cp "${CERT_DIR_LATEST}privkey.pem" "/ssl/$KEYFILE"
 			cp "${CERT_DIR_LATEST}fullchain.pem" "/ssl/$CERTFILE"
 			bashio::log.info "Certificate Manager - New certificates copied to /ssl"
-			restart_addons
 		elif echo "$CERTBOT_OUTPUT" | grep -q "Certificate not yet due for renewal"; then
 			bashio::log.info "Certificate Manager - Current certificate is valid"
 		elif [[ "$DRY_RUN" == "true" ]] && echo "$CERTBOT_OUTPUT" | grep -q "The dry run was successful"; then	
 			bashio::log.info "Certificate Manager - The dry-run was successful"
-			restart_addons
 		else
 			bashio::log.warning "Certificate Manager - Unexpected Certbot output:"
 		fi
@@ -267,9 +185,12 @@ check_cert_dates() {
 	LAST_CHECK="ok"
     CERT_PATH="/data/letsencrypt/live/$DYNU_HOSTNAME/cert.pem"
 
-	if [[ "$FORCE_RENEW" == "true" || "$DRY_RUN" == "true" ]]; then
-		bashio::log.info "Certificate Manager - Skipping certificate date check: Force Renew/Dry Run"
+	if [[ "$FORCE_RENEW" == "true" ]]; then
+		bashio::log.info "Certificate Manager - Skipping certificate date check: Force Renew"
         mqtt_publish "last_cert_status" "false"
+        renew_cert
+	elif [[ "$DRY_RUN" == "true" ]]; then
+		bashio::log.info "Certificate Manager - Skipping certificate date check: Test Run"
         renew_cert
     elif [[ -f "$CERT_PATH" ]]; then
 		bashio::log.info "Certificate Manager - Checking certificate dates"

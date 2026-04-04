@@ -6,130 +6,108 @@
 # ==============================================================================
 bashio::log.info "Dynu Updater Initialisation - Generating service configuration"
 
+DYNU_HOSTNAME=""
+EMAIL=""
+CERT_DOMAINS=""
+IP_DOMAINS=""
+DYNU_API_KEY=""
+PASSWORD=""
+KEYFILE=""
+CERTFILE=""
+MQTT_HOST=""
+MQTT_PORT=""
+MQTT_USER=""
+MQTT_PASSWORD=""
+MQTT_KEYFILE=""
+MQTT_CERTFILE=""
+MQTT_CAFILE=""
+
+CERT_TIME=5
+
+VERBOSE="false"
+FORCE_RENEW="false"
+DRY_RUN="false"
+CERT_VALID="false"
+DNS_VALID="false"
+USE_MQTT="false"
+MQTT_CORE="false"
+MQTT_USE_TLS="false"
+MQTT_VALIDATE="false"
+
 if bashio::config.has_value 'dynu_hostname'; then
 	DYNU_HOSTNAME=$(bashio::config 'dynu_hostname' | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
-else
-	DYNU_HOSTNAME=""
 fi
 if bashio::config.has_value 'cert.email'; then
 	EMAIL=$(bashio::config 'cert.email' | xargs)
-else
-	EMAIL=""
 fi
 if bashio::config.has_value 'cert.domains'; then
 	CERT_DOMAINS=$(bashio::config 'cert.domains' | tr '[:upper:]' '[:lower:]' | xargs)
-else
-	CERT_DOMAINS=""
 fi
 if bashio::config.has_value 'dns.domains'; then
 	IP_DOMAINS=$(bashio::config 'dns.domains' | tr '[:upper:]' '[:lower:]' | xargs)
-else
-	IP_DOMAINS=""
-fi
-if bashio::config.true 'verbose'; then
-    VERBOSE="true"
-else
-    VERBOSE="false"
-fi
-if bashio::config.true 'cert.force_renew'; then
-    FORCE_RENEW="true"
-else
-    FORCE_RENEW="false"
-fi
-if bashio::config.true 'cert.dry_run'; then
-    DRY_RUN="true"
-else
-    DRY_RUN="false"
 fi
 if bashio::config.has_value 'dynu_api_key'; then
 	DYNU_API_KEY=$(bashio::config 'dynu_api_key' | xargs)
-else
-	DYNU_API_KEY=""
 fi
 if bashio::config.has_value 'dns.dynu_update_password'; then
 	PASSWORD=$(bashio::config 'dns.dynu_update_password' | xargs)
-else
-	PASSWORD=""
 fi
 if bashio::config.has_value 'cert.keyfile'; then
 	KEYFILE=$(bashio::config 'cert.keyfile' | xargs)
-else
-	KEYFILE=""
 fi
 if bashio::config.has_value 'cert.certfile'; then
 	CERTFILE=$(bashio::config 'cert.certfile' | xargs)
-else
-	CERTFILE=""
 fi
 if bashio::config.has_value 'mqtt.host'; then
 	MQTT_HOST=$(bashio::config 'mqtt.host' | xargs)
-else
-	MQTT_HOST=""
 fi
 if bashio::config.has_value 'mqtt.port'; then
 	MQTT_PORT=$(bashio::config 'mqtt.port')
-else
-	MQTT_PORT=""
 fi
 if bashio::config.has_value 'mqtt.user'; then
 	MQTT_USER=$(bashio::config 'mqtt.user' | xargs)
-else
-	MQTT_USER=""
 fi
 if bashio::config.has_value 'mqtt.password'; then
 	MQTT_PASSWORD=$(bashio::config 'mqtt.password' | xargs)
-else
-	MQTT_PASSWORD=""
 fi
 if bashio::config.has_value 'mqtt.keyfile'; then
 	MQTT_KEYFILE=$(bashio::config 'mqtt.keyfile' | xargs)
-else
-	MQTT_KEYFILE=""
 fi
 if bashio::config.has_value 'mqtt.certfile'; then
 	MQTT_CERTFILE=$(bashio::config 'mqtt.certfile' | xargs)
-else
-	MQTT_CERTFILE=""
 fi
 if bashio::config.has_value 'mqtt.cafile'; then
 	MQTT_CAFILE=$(bashio::config 'mqtt.cafile' | xargs)
-else
-	MQTT_CAFILE=""
 fi
 if bashio::config.has_value 'cert.update_cert_days'; then
 	CERT_TIME=$(bashio::config 'cert.update_cert_days')
-else
-	CERT_TIME=5
+fi
+if bashio::config.true 'verbose'; then
+    VERBOSE="true"
+fi
+if bashio::config.true 'cert.force_renew'; then
+    FORCE_RENEW="true"
+fi
+if bashio::config.true 'cert.dry_run'; then
+    DRY_RUN="true"
 fi
 if bashio::config.true 'cert.update_cert'; then
     CERT_VALID="true"
-else
-    CERT_VALID="false"
 fi
 if bashio::config.true 'dns.update_ip'; then
     DNS_VALID="true"
-else
-    DNS_VALID="false"
 fi
 if bashio::config.true 'mqtt.enabled'; then
     USE_MQTT="true"
-else
-    USE_MQTT="false"
 fi
 if bashio::config.true 'mqtt.core'; then
     MQTT_CORE="true"
-else
-    MQTT_CORE="false"
 fi
 if bashio::config.true 'mqtt.tls'; then
     MQTT_USE_TLS="true"
-else
-    MQTT_USE_TLS="false"
 fi
 if bashio::config.true 'mqtt.server_cert'; then
     MQTT_VALIDATE="true"
-else
-    MQTT_VALIDATE="false"
 fi
 
 if [[ "$CERT_VALID" == "false" && "$DNS_VALID" == "false" ]]; then
@@ -605,28 +583,50 @@ tls_flags_json=$(json_array_from_bash_array TLS_FLAGS)
 mqtt_entities_json=$(json_array_from_bash_array MQTT_ENTITIES)
 
 jq -n \
+  --arg api_key "$DYNU_API_KEY" \
+  --arg hostname "$DYNU_HOSTNAME" \
+  --arg verbose "$VERBOSE" \
+  --arg email "$EMAIL" \
+  --arg keyfile "$KEYFILE" \
+  --arg certfile "$CERTFILE" \
+  --arg cert_time "$CERT_TIME" \
+  --arg dry_run "$DRY_RUN" \
+  --arg force_renew "$FORCE_RENEW" \
   --arg ipv6 "$DYNU_IPV6_ENABLED" \
-  --argjson ip_domains "$ip_hostnames_json" \
-  --argjson cert_domains "$cert_hostnames_json" \
+  --arg dynu_pass "$PASSWORD" \
   --arg mqtt "$USE_MQTT" \
   --arg host "$MQTT_HOST" \
   --arg port "$MQTT_PORT" \
   --arg user "$MQTT_USER" \
-  --arg password "$MQTT_PASSWORD" \
+  --arg mqtt_pass "$MQTT_PASSWORD" \
+  --argjson ip_domains "$ip_hostnames_json" \
+  --argjson cert_domains "$cert_hostnames_json" \
   --argjson tls_flags "$tls_flags_json" \
-  --argjson entities "$mqtt_entities_json" \
   '{
-      ipv6: $ipv6,
-      ip_domains: $ip_domains,
-	  cert_domains: $cert_domains,
+      hostname: $hostname,
+	  verbose: $verbose,
+	  dns: {
+        ipv6: $ipv6,
+        domains: $ip_domains,
+		password: $dynu_pass
+	  },
+	  cert: {
+	    api_key: $api_key,
+	    domains: $cert_domains,
+		email: $email,
+		cert_time: $cert_time,
+		certfile: $certfile,
+		keyfile: $keyfile,
+		dry_run: $dry_run,
+		force_renew: $force_renew
+	  },
 	  mqtt: {
 	    enabled: $mqtt,
 	    host: $host,
 	    port: $port,
 	    user: $user,
-	    password: $password,
-		tls_flags: $tls_flags,
-		entities: $entities
+	    password: $mqtt_pass,
+		tls_flags: $tls_flags
 	  }
    }' \
   > /run/dynu-updater.conf

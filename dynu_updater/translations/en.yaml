@@ -44,9 +44,6 @@ configuration:
       certfile:
         name: Certificate File
         description: Name of the Certificate File for the created certificate. This will be placed in /ssl
-      restart_addons:
-        name: Restart Apps
-        description: A list of apps to restart when the certificate is created/renewed (eg a0d7b954-nodered or core-nginx-proxy)
       force_renew:
         name: Force Renew
         description: Force certificate renewal even if it is not close to expiry.
