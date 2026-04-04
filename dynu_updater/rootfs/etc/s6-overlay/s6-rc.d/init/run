@@ -522,7 +522,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
 				-p "$MQTT_PORT" \
 				-u "$MQTT_USER" \
 				-P "$MQTT_PASSWORD" \
-				-i "dynu_updater_$(hostname)"
+				-i "dynu_updater_$(hostname)" \
 				-t "dynu_updater/$topic" \
 				-m "$payload" \
 				-r \
