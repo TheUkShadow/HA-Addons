@@ -13,7 +13,7 @@ if [[ -f "$DYNU_CONF" ]]; then
 
 	# Publish offline availability
 	if [[ "$USE_MQTT" == "true" ]]; then
-		bashio::log.info "Dynu Updater Stopping - Sending offline signal to MQTT"
+		bashio::log.info "Dynu Updater Stopping - Sending offline signal to MQTT."
 		mosquitto_pub \
 		  -h "$MQTT_HOST" \
 		  -u "$MQTT_USER" \
@@ -26,4 +26,4 @@ if [[ -f "$DYNU_CONF" ]]; then
 		  "${TLS_FLAGS[@]}"
 	fi
 fi
-bashio::log.info "Service init exited"
+bashio::log.info "Service init exited."

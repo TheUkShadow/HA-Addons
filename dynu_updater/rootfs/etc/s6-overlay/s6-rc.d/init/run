@@ -4,7 +4,7 @@
 # ==============================================================================
 # Init
 # ==============================================================================
-bashio::log.info "Dynu Updater Initialisation - Generating service configuration"
+bashio::log.info "Dynu Updater Initialisation - Generating service configuration."
 
 DYNU_HOSTNAME=""
 EMAIL=""
@@ -111,66 +111,66 @@ if bashio::config.true 'mqtt.server_cert'; then
 fi
 
 if [[ "$CERT_VALID" == "false" && "$DNS_VALID" == "false" ]]; then
-	bashio::log.error "Dynu Updater Initialisation - Options to Update IP Addresses and Generate Certificate are both disabled - Nothing to do"
+	bashio::log.error "Dynu Updater Initialisation - Options to Update IP Addresses and Generate Certificate are both disabled - Nothing to do."
 	exit 1
 fi
 
 if [[ -z "$DYNU_HOSTNAME" || ! "$DYNU_HOSTNAME" =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}(\.[A-Za-z]{2,})*$ ]]; then
-    bashio::log.error "Dynu Updater Initialisation - Invalid Dynu Hostname"
+    bashio::log.error "Dynu Updater Initialisation - Invalid Dynu Hostname."
 	exit 1
 fi
 
 if [[ -z "$DYNU_API_KEY" ]]; then
-    bashio::log.error "Dynu Updater Initialisation - Invalid Dynu API Key"
+    bashio::log.error "Dynu Updater Initialisation - Invalid Dynu API Key."
 	exit 1
 fi
 
 if [[ "$DNS_VALID" == "true" ]]; then
 	if [[ -z "$IP_DOMAINS" ]]; then
-		bashio::log.error "Dynu Updater Initialisation - no DNS Update Hostnames configured"
+		bashio::log.error "Dynu Updater Initialisation - no DNS Update Hostnames configured."
 		exit 1
 	fi
 
 	if [[ -z "$PASSWORD" ]]; then
-		bashio::log.error "Dynu Updater Initialisation - no Dynu Account/IP Update Password configured"
+		bashio::log.error "Dynu Updater Initialisation - no Dynu Account/IP Update Password configured."
 		exit 1
 	fi
 fi
 
 if [[ "$CERT_VALID" == "true" ]]; then
 	if [[ -z "$EMAIL" || ! "$EMAIL" =~ ^[^@]+@[^@]+\.[^@]+$ ]]; then
-		bashio::log.error "Dynu Updater Initialisation - invalid email address"
+		bashio::log.error "Dynu Updater Initialisation - invalid email address."
 		exit 1
 	fi
 
 	if [[ -z "$CERT_DOMAINS" ]]; then
-		bashio::log.error "Dynu Updater Initialisation - no Certificate Hostnames configured"
+		bashio::log.error "Dynu Updater Initialisation - no Certificate Hostnames configured."
 		exit 1
 	fi
 
 	if [[ -z "$CERTFILE" || ! "$CERTFILE" =~ ^[A-Za-z0-9._/-]+$ ]]; then
-		bashio::log.error "Dynu Updater Initialisation - Invalid Certificate File"
+		bashio::log.error "Dynu Updater Initialisation - Invalid Certificate File."
 		exit 1
 	fi
 
 	if [[ -z "$KEYFILE" || ! "$KEYFILE" =~ ^[A-Za-z0-9._/-]+$ ]]; then
-		bashio::log.error "Dynu Updater Initialisation - Invalid Private Key File"
+		bashio::log.error "Dynu Updater Initialisation - Invalid Private Key File."
 		exit 1
 	fi
 	
 	if [[ -z "$CERT_TIME" ]] || (( CERT_TIME < 1 || CERT_TIME > 30 )); then
-		bashio::log.error "Dynu Updater Initialisation - Invalid Certificate Check Time"
+		bashio::log.error "Dynu Updater Initialisation - Invalid Certificate Check Time."
 		exit 1
 	fi
 fi
 
-bashio::log.info "Dynu Updater Initialisation - Contacting Dynu API"
+bashio::log.info "Dynu Updater Initialisation - Contacting Dynu API."
 
 if DYNU_API_RESPONSE=$(curl -s --max-time 5 -H "API-Key: $DYNU_API_KEY" "https://api.dynu.com/v2/dns" 2>/dev/null); then
 	HTTP_STATUS=$(jq -r '.statusCode // empty' <<< "$DYNU_API_RESPONSE")
 	
 	if [[ -z "$HTTP_STATUS" ]]; then
-		bashio::log.error "Dynu Updater Initialisation - Invalid or empty JSON returned from Dynu Domain API"
+		bashio::log.error "Dynu Updater Initialisation - Invalid or empty JSON returned from Dynu Domain API."
 		exit 1
 	fi
 	
@@ -183,13 +183,13 @@ if DYNU_API_RESPONSE=$(curl -s --max-time 5 -H "API-Key: $DYNU_API_KEY" "https:/
 			bashio::log.info "Dynu Updater Initialisation - Dynu Domain API data retrieved."
 			;;
 		*)
-			bashio::log.error "Dynu Updater Initialisation - Dynu Domain API Error: status: $HTTP_STATUS, type: $EXCEPTION_TYPE, message: $EXCEPTION_MESSAGE"
+			bashio::log.error "Dynu Updater Initialisation - Dynu Domain API Error: status: $HTTP_STATUS, type: $EXCEPTION_TYPE, message: $EXCEPTION_MESSAGE."
 			exit 1
 			;;
 
 	esac
 else
-	bashio::log.error "Dynu Updater Initialisation - Dynu Domain API could not be loaded"
+	bashio::log.error "Dynu Updater Initialisation - Dynu Domain API could not be loaded."
 	exit 1
 fi
 
@@ -202,7 +202,7 @@ DYNU_DOMAIN_ID=$(
 	' <<< "$DYNU_API_RESPONSE")
 
 if [[ -z "$DYNU_DOMAIN_ID" ]]; then
-	bashio::log.error "Dynu Updater Initialisation - '$DYNU_HOSTNAME' not found in the Dynu Domain API response"
+	bashio::log.error "Dynu Updater Initialisation - '$DYNU_HOSTNAME' not found in the Dynu Domain API response."
 	exit 1
 fi
 
@@ -221,7 +221,7 @@ if DYNU_RECORDS=$(curl -s --max-time 5 -H "API-Key: $DYNU_API_KEY" "https://api.
 	HTTP_STATUS=$(jq -r '.statusCode // empty' <<< "$DYNU_RECORDS")
 	
 	if [[ -z "$HTTP_STATUS" ]]; then
-		bashio::log.error "Dynu Updater Initialisation - Invalid or empty JSON returned from Dynu Records API"
+		bashio::log.error "Dynu Updater Initialisation - Invalid or empty JSON returned from Dynu Records API."
 		exit 1
 	fi
 	
@@ -236,13 +236,13 @@ if DYNU_RECORDS=$(curl -s --max-time 5 -H "API-Key: $DYNU_API_KEY" "https://api.
 			bashio::log.info "Dynu Updater Initialisation - Dynu Records API data retrieved."
 			;;
 		*)
-			bashio::log.error "Dynu Updater Initialisation - Dynu Records API Error: status: $HTTP_STATUS, type: $EXCEPTION_TYPE, message: $EXCEPTION_MESSAGE"
+			bashio::log.error "Dynu Updater Initialisation - Dynu Records API Error: status: $HTTP_STATUS, type: $EXCEPTION_TYPE, message: $EXCEPTION_MESSAGE."
 			exit 1
 			;;
 
 	esac
 else
-	bashio::log.error "Dynu Updater Initialisation - Dynu Records API could not be loaded"
+	bashio::log.error "Dynu Updater Initialisation - Dynu Records API could not be loaded."
 	exit 1
 fi
 
@@ -259,7 +259,7 @@ readarray -t DYNU_HOSTNAMES < <(
 )
 
 if [[ ${#DYNU_HOSTNAMES[@]} -eq 0 ]]; then
-	bashio::log.error "Dynu Updater Initialisation - no valid hostnames returned by Dynu Records API"
+	bashio::log.error "Dynu Updater Initialisation - no valid hostnames returned by Dynu Records API."
 	exit 1
 fi
 
@@ -269,12 +269,12 @@ CERT_HOSTNAMES=()
 if [[ "$DNS_VALID" == "true" ]]; then
 	for DOMAIN in $IP_DOMAINS; do
 		if [[ "$DOMAIN" != "*.$DYNU_HOSTNAME" && ! " ${DYNU_HOSTNAMES[*]} " =~ " $DOMAIN " ]]; then
-			bashio::log.error "Dynu Updater Initialisation - DNS Update Hostname $DOMAIN is not valid for this account"
+			bashio::log.error "Dynu Updater Initialisation - DNS Update Hostname $DOMAIN is not valid for this account."
 			exit 1
 		elif [[ "$DOMAIN" == "*.$DYNU_HOSTNAME" ]]; then
 			# Warn if wildcard is not the only entry
 			if [[ "$IP_DOMAINS" != "$DOMAIN" ]]; then
-				bashio::log.warning "Dynu Updater Initialisation - Wildcard found, ignoring other DNS Update Hostnames"
+				bashio::log.warning "Dynu Updater Initialisation - Wildcard found, ignoring other DNS Update Hostnames."
 			fi
 
 			# Use all hostnames
@@ -284,19 +284,19 @@ if [[ "$DNS_VALID" == "true" ]]; then
 		IP_HOSTNAMES+=("$DOMAIN")
 	done
 	if [[ ${#IP_HOSTNAMES[@]} -eq 0 ]]; then
-		bashio::log.error "Dynu Updater Initialisation - no valid hostnames for DNS Updater"
+		bashio::log.error "Dynu Updater Initialisation - no valid hostnames for DNS Updater."
 		exit 1
 	fi
 fi
 if [[ "$CERT_VALID" == "true" ]]; then
 	for DOMAIN in $CERT_DOMAINS; do
 		if [[ "$DOMAIN" != "*.$DYNU_HOSTNAME" && ! " ${DYNU_HOSTNAMES[*]} " =~ " $DOMAIN " ]]; then
-			bashio::log.error "Dynu Updater Initialisation - Certificate Hostname $DOMAIN is not valid for this account"
+			bashio::log.error "Dynu Updater Initialisation - Certificate Hostname $DOMAIN is not valid for this account."
 			exit 1
 		elif [[ "$DOMAIN" == "*.$DYNU_HOSTNAME" ]]; then
 			# Warn if wildcard is not the only entry
 			if [[ "$CERT_DOMAINS" != "$DOMAIN" ]]; then
-				bashio::log.warning "Dynu Updater Initialisation - Wildcard found, ignoring other Certificate Hostnames"
+				bashio::log.warning "Dynu Updater Initialisation - Wildcard found, ignoring other Certificate Hostnames."
 			fi
 
 			# Use *.hostname only
@@ -306,12 +306,12 @@ if [[ "$CERT_VALID" == "true" ]]; then
 		CERT_HOSTNAMES+=("$DOMAIN")
 	done
 	if [[ ${#CERT_HOSTNAMES[@]} -eq 0 ]]; then
-		bashio::log.error "Dynu Updater Initialisation - no valid hostnames for Certificate Manager"
+		bashio::log.error "Dynu Updater Initialisation - no valid hostnames for Certificate Manager."
 		exit 1
 	fi
 fi
 
-bashio::log.info "Dynu Updater Initialisation - Generating MQTT Configuration"
+bashio::log.info "Dynu Updater Initialisation - Generating MQTT Configuration."
 # MQTT connection
 
 TLS_FLAGS=()
@@ -320,14 +320,14 @@ MQTT_ENTITIES=()
 if [[ "$USE_MQTT" == "true" ]]; then
 	if [[ -z "$MQTT_HOST" || ! "$MQTT_HOST" =~ ^([A-Za-z0-9._-]+|\[?[A-Fa-f0-9:]+\]?)$ \
 		  || -z "$MQTT_PORT" || ! "$MQTT_PORT" =~ ^[0-9]+$ ]]; then
-		bashio::log.error "Dynu Updater Initialisation - Invalid configuration for MQTT"
+		bashio::log.error "Dynu Updater Initialisation - Invalid configuration for MQTT."
 		if [[ -z "$MQTT_HOST" ]]; then
-			bashio::log.error "  Hostname missing from config"
+			bashio::log.error "  Hostname missing from config."
 		elif [[ ! "$MQTT_HOST" =~ ^([A-Za-z0-9._-]+|\[?[A-Fa-f0-9:]+\]?)$ ]]; then
-			bashio::log.error "  Hostname is not valid"
+			bashio::log.error "  Hostname is not valid."
 		fi
 		if [[ -z "$MQTT_PORT" ]]; then
-			bashio::log.error "  Port missing from config"
+			bashio::log.error "  Port missing from config."
 		elif [[ ! "$MQTT_PORT" =~ ^[0-9]+$ ]]; then
 			bashio::log.error "  Port is not valid"
 		fi
@@ -335,26 +335,26 @@ if [[ "$USE_MQTT" == "true" ]]; then
 	fi
 	if [[ "$MQTT_CORE" == "true" ]]; then
 		if bashio::services.available 'mqtt'; then
-			bashio::log.info "Dynu Updater Initialisation - Using Core Mosquitto Credentials"
+			bashio::log.info "Dynu Updater Initialisation - Using Core Mosquitto Credentials."
 			MQTT_USER=$(bashio::services mqtt username)
 			MQTT_PASSWORD=$(bashio::services mqtt password)
 		else
-			bashio::log.warning "Dynu Updater Initialisation - Core Mosquitto Addon not installed"
+			bashio::log.warning "Dynu Updater Initialisation - Core Mosquitto Addon not installed."
 		fi
 	fi
 	if [[ "$MQTT_CORE" == "false" ]] || ! bashio::services.available 'mqtt'; then
 		if [[ -z "$MQTT_USER" || ! "$MQTT_USER" =~ ^[A-Za-z0-9._-]+$ \
 			  || -z "$$MQTT_PASSWORD" || "$MQTT_PASSWORD" =~ [[:space:]] ]]; then
-			bashio::log.error "Dynu Updater Initialisation - Invalid configuration for MQTT"
+			bashio::log.error "Dynu Updater Initialisation - Invalid configuration for MQTT."
 			if [[ -z "$MQTT_USER" ]]; then
-				bashio::log.error "  User missing from config"
+				bashio::log.error "  User missing from config."
 			elif [[ ! "$MQTT_USER" =~ ^[A-Za-z0-9._-]+$ ]]; then
-				bashio::log.error "  User is not valid"
+				bashio::log.error "  User is not valid."
 			fi
 			if [[ -z "$MQTT_PASSWORD" ]]; then
-				bashio::log.error "  Password missing from config"
+				bashio::log.error "  Password missing from config."
 			elif [[ "$MQTT_PASSWORD" =~ [[:space:]] ]]; then
-				bashio::log.error "  Password is not valid"
+				bashio::log.error "  Password is not valid."
 			fi
 			exit 1
 		fi
@@ -364,15 +364,15 @@ if [[ "$USE_MQTT" == "true" ]]; then
 	
 	if [[ "$MQTT_USE_TLS" == "true" ]]; then
 		if [[ -n "$MQTT_CAFILE" && ! -f "$MQTT_CAFILE" ]]; then
-			bashio::log.error "Dynu Updater Initialisation - Specified CA File does not exist"
+			bashio::log.error "Dynu Updater Initialisation - Specified CA File does not exist."
 			exit 1
 		fi
 		if [[ -n "$MQTT_CERTFILE" && ! -f "$MQTT_CERTFILE" ]]; then
-			bashio::log.error "Dynu Updater Initialisation - Specified Certificate File does not exist"
+			bashio::log.error "Dynu Updater Initialisation - Specified Certificate File does not exist."
 			exit 1
 		fi
 		if [[ -n "$MQTT_KEYFILE" && ! -f "$MQTT_KEYFILE" ]]; then
-			bashio::log.error "Dynu Updater Initialisation - Specified Private Key File does not exist"
+			bashio::log.error "Dynu Updater Initialisation - Specified Private Key File does not exist."
 			exit 1
 		fi
 		if [[ -n "$MQTT_CAFILE" ]]; then
@@ -396,12 +396,12 @@ if [[ "$USE_MQTT" == "true" ]]; then
 		fi
 	fi
 	
-	bashio::log.info "Dynu Updater Initialisation - Testing MQTT connection to $MQTT_HOST"
+	bashio::log.info "Dynu Updater Initialisation - Testing MQTT connection to $MQTT_HOST."
 	TEST_TOPIC="dynu_updater/selftest"
     TEST_PAYLOAD="selftest_$(date +%s)"
 	
 	if ! timeout 2 bash -c "echo > /dev/tcp/$MQTT_HOST/$MQTT_PORT" 2>/dev/null; then
-		bashio::log.error "Dynu Updater Initialisation - Cannot reach MQTT Server at $MQTT_HOST:$MQTT_PORT"
+		bashio::log.error "Dynu Updater Initialisation - Cannot reach MQTT Server at $MQTT_HOST:$MQTT_PORT."
 		exit 1
 	elif ! OUTPUT=$(mosquitto_pub \
 		-h "$MQTT_HOST" \
@@ -415,7 +415,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
 		"${TLS_FLAGS[@]}" \
 		2>&1); then
 		
-		bashio::log.error "Dynu Updater Initialisation - Unable to connect to $MQTT_HOST: $OUTPUT"
+		bashio::log.error "Dynu Updater Initialisation - Unable to connect to $MQTT_HOST: $OUTPUT."
 		if [[ "$MQTT_USE_TLS" == "true" ]]; then
 			bashio::log.info "Dynu Updater Initialisation - Checking OpenSSL Connection."
 			if ! TLS_OUTPUT=$(openssl s_client -connect "${MQTT_HOST}:${MQTT_PORT}" \
@@ -424,14 +424,14 @@ if [[ "$USE_MQTT" == "true" ]]; then
 				-verify 10 -verify_return_error < /dev/null 2>&1); then
 				
 				REASON=$(echo "$TLS_OUTPUT" | grep -E "verify error|Verify return code|Hostname mismatch|expired|unable|self signed" | head -n 1)
-				bashio::log.error "Dynu Updater Initialisation - OpenSSL query returned: $REASON"
+				bashio::log.error "Dynu Updater Initialisation - OpenSSL query returned: $REASON."
 			else
-				bashio::log.error "Dynu Updater Initialisation - OpenSSL query returned: Success"
+				bashio::log.error "Dynu Updater Initialisation - OpenSSL query returned: Success."
 			fi
 		fi
 		exit 1
 	else
-		bashio::log.info "Dynu Updater Initialisation - Connected to $MQTT_HOST"	
+		bashio::log.info "Dynu Updater Initialisation - Connected to $MQTT_HOST."	
 	fi
 
 	MQTT_ENTITIES=(
@@ -508,7 +508,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
 				  }" \
 				  "${TLS_FLAGS[@]}"; then
 				
-				bashio::log.warning "Dynu Updater Initialisation - MQTT discovery failed for entity $entity_id"
+				bashio::log.warning "Dynu Updater Initialisation - MQTT discovery failed for entity $entity_id."
 			fi	
 		fi
 	}
@@ -529,12 +529,12 @@ if [[ "$USE_MQTT" == "true" ]]; then
 				-r \
 				"${TLS_FLAGS[@]}"; then
 
-				bashio::log.warning "Dynu Updater Initialisation - MQTT publish failed for topic $topic"
+				bashio::log.warning "Dynu Updater Initialisation - MQTT publish failed for topic $topic."
 			fi
 		fi
 	}
 
-	bashio::log.info "Dynu Updater Initialisation - Sending MQTT Discovery for Entities"
+	bashio::log.info "Dynu Updater Initialisation - Sending MQTT Discovery for Entities."
 	
 	for entry in "${MQTT_ENTITIES[@]}"; do
 		IFS="|" read -r entity_id name device_class state_topic component extra icon service <<< "$entry"
@@ -556,7 +556,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
 		fi
 		
 		if [[ "$VERBOSE" == "true" ]]; then
-			bashio::log.info "    - $name"
+			bashio::log.info "    - $name."
 		fi
 		mqtt_publish "${entity_id}/availability" "$STATE"
 		
@@ -639,4 +639,4 @@ jq -n \
 
 sleep 1
 
-bashio::log.info "Dynu Updater Initialisation - Complete"
+bashio::log.info "Dynu Updater Initialisation - Complete."

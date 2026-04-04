@@ -6,6 +6,9 @@ configuration:
   dynu_api_key:
     name: Dynu API Key
     description: Available from the dns control panel at dynu.com and used to retrieve IPv6 status and in the creation of certificates.
+  events:
+    name: Events
+    description: Send events to Home Assistant (certificate updated, ip address changed, etc)
   verbose:
     name: Verbose Mode
     description: Provides more detailed log output.

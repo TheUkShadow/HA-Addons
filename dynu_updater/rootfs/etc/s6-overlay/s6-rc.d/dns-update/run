@@ -6,7 +6,7 @@
 # ==============================================================================
 
 if ! bashio::config.true 'dns.update_ip'; then
-	bashio::log.info "Dynu DNS Updater - Not required"
+	bashio::log.info "Dynu DNS Updater - Not required."
 	touch /run/dynu-dns-update.ready
 	sleep infinity
 fi
@@ -16,7 +16,7 @@ DYNU_CONF="/run/dynu-updater.conf"
 sleep 1
 
 if [[ ! -f "$DYNU_CONF" ]]; then
-	bashio::log.error "Dynu DNS Updater - Dynu API Config not found"
+	bashio::log.error "Dynu DNS Updater - Dynu API Config not found."
 	exit 1
 fi
 
@@ -61,7 +61,7 @@ mqtt_publish() {
             -r \
 			"${TLS_FLAGS[@]}"; then
 
-            bashio::log.warning "Dynu DNS Updater - MQTT publish failed: Topic=$topic"
+            bashio::log.warning "Dynu DNS Updater - MQTT publish failed: Topic=$topic."
         fi
     fi
 }
@@ -83,7 +83,7 @@ LAST_CHECK="true"
 FIRST_RUN="true"
 
 update_host() {
-	bashio::log.info "Dynu DNS Updater - Updating $1"
+	bashio::log.info "Dynu DNS Updater - Updating $1."
 				
 	if [[ "$1" == "$DYNU_HOSTNAME" ]]; then
 		COMMAND="https://api.dynu.com/nic/update?hostname=$DYNU_HOSTNAME&password=$PASSWORD&myip=$2"
@@ -98,36 +98,36 @@ update_host() {
 	if RESPONSE=$(curl -s --max-time 5 "$COMMAND" 2>/dev/null); then
 		case "$RESPONSE" in
 			good*|nochg*)
-				bashio::log.info "Dynu DNS Updater - Success: $RESPONSE"
+				bashio::log.info "Dynu DNS Updater - Success: $RESPONSE."
 				return 0
 				;;
 			badauth)
-				bashio::log.error "Dynu DNS Updater - Authentication failed (badauth)"
+				bashio::log.error "Dynu DNS Updater - Authentication failed (badauth)."
 				return 1
 				;;
 			notfqdn)
-				bashio::log.error "Dynu DNS Updater - Invalid hostname (notfqdn)"
+				bashio::log.error "Dynu DNS Updater - Invalid hostname (notfqdn)."
 				return 1
 				;;
 			nohost)
-				bashio::log.error "Dynu DNS Updater - Host not found (nohost)"
+				bashio::log.error "Dynu DNS Updater - Host not found (nohost)."
 				return 1
 				;;
 			numhost)
-				bashio::log.error "Dynu DNS Updater - Too many hosts (numhost)"
+				bashio::log.error "Dynu DNS Updater - Too many hosts (numhost)."
 				return 1
 				;;
 			abuse)
-				bashio::log.error "Dynu DNS Updater - Account blocked (abuse)"
+				bashio::log.error "Dynu DNS Updater - Account blocked (abuse)."
 				return 1
 				;;
 			*)
-				bashio::log.error "Dynu DNS Updater - Updating failed"
+				bashio::log.error "Dynu DNS Updater - Updating failed."
 				return 1
 				;;
 		esac
 	else
-		bashio::log.error "Dynu DNS Updater - Updating failed"
+		bashio::log.error "Dynu DNS Updater - Updating failed."
 		return 1
 	fi
 }
@@ -201,9 +201,9 @@ while true; do
 	fi
 	
 	if [[ "$VERBOSE" == "true" ]]; then
-		bashio::log.info "Dynu DNS Updater - Current IPv4 address: $IPV4"
+		bashio::log.info "Dynu DNS Updater - Current IPv4 address: $IPV4."
 		if [[ "$DYNU_IPV6_ENABLED" == "true" ]]; then
-			bashio::log.info "Dynu DNS Updater - Current IPv6 address: $IPV6"
+			bashio::log.info "Dynu DNS Updater - Current IPv6 address: $IPV6."
 		fi
 	fi
 	
@@ -215,7 +215,7 @@ while true; do
 			if [[ "$LAST_CHECK" == "false" ]]; then
 				bashio::log.info "Dynu DNS Updater - Last update failed. Updating all hosts."
 			else
-				bashio::log.info "Dynu DNS Updater - IP address change detected. Updating all hosts"
+				bashio::log.info "Dynu DNS Updater - IP address change detected. Updating all hosts."
 			fi
 						  
 			UPDATED=${#DOMAIN_ARR[@]}
@@ -227,7 +227,7 @@ while true; do
 			done
 			
 			if (( UPDATED > 0 )); then
-				bashio::log.error "Dynu DNS Updater - $UPDATED Hosts/Aliases could not be updated. Delaying next check for 5 minutes"
+				bashio::log.error "Dynu DNS Updater - $UPDATED Hosts/Aliases could not be updated. Delaying next check for 5 minutes."
 				LAST_CHECK="false"
 				mqtt_publish "update_status" "false"
 			else
@@ -252,10 +252,10 @@ while true; do
 				   }' \
 				  > "$IP_CONF"
 				  
-				bashio::log.info "Dynu DNS Updater - All Hosts/Aliases were updated"
+				bashio::log.info "Dynu DNS Updater - All Hosts/Aliases were updated."
 			fi
 		elif [[ "$VERBOSE" == "true" || "$FIRST_RUN" == "true" ]]; then
-			bashio::log.info "Dynu DNS Updater - No IP address change detected"
+			bashio::log.info "Dynu DNS Updater - No IP address change detected."
 		fi
 
 	else

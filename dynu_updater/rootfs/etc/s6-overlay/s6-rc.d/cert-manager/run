@@ -10,7 +10,7 @@ while [[ ! -f /run/dynu-dns-update.ready ]]; do
 done
 
 if ! bashio::config.true 'cert.update_cert'; then
-	bashio::log.info "Certificate Manager - Not required"
+	bashio::log.info "Certificate Manager - Not required."
 	sleep infinity
 fi
 
@@ -19,11 +19,11 @@ DYNU_CONF="/run/dynu-updater.conf"
 sleep 1
 
 if [[ ! -f "$DYNU_CONF" ]]; then
-	bashio::log.error "Certificate Manager - Dynu API Config not found"
+	bashio::log.error "Certificate Manager - Dynu API Config not found."
 	exit 1
 fi
 
-bashio::log.info "Certificate Manager - Started"
+bashio::log.info "Certificate Manager - Started."
 
 CERT_DIR=/data/letsencrypt
 WORK_DIR=/data/workdir
@@ -78,7 +78,7 @@ mqtt_publish() {
             -r \
 			"${TLS_FLAGS[@]}"; then
 
-            bashio::log.warning "Certificate Manager - MQTT publish failed: Topic=$topic"
+            bashio::log.warning "Certificate Manager - MQTT publish failed: Topic=$topic."
         fi
     fi
 }
@@ -129,7 +129,7 @@ check_connectivity() {
 renew_cert() {
 	POST_CHECK="true"
 	until check_connectivity; do
-        bashio::log.warning "Certificate Manager - Dynu not reachable, delaying certificate renewal"
+        bashio::log.warning "Certificate Manager - Dynu not reachable, delaying certificate renewal."
         sleep 60
     done
 	
@@ -153,7 +153,7 @@ renew_cert() {
 	
 	# If certbot failed
 	if [[ "$CERTBOT_EXIT" -ne 0 ]]; then
-		bashio::log.error "Certificate Manager - Certbot failed with code $CERTBOT_EXIT"
+		bashio::log.error "Certificate Manager - Certbot failed with code $CERTBOT_EXIT."
 		LAST_CHECK="error"
 	else
 		# If certbot succeeded, check if certificate was updated
@@ -161,23 +161,23 @@ renew_cert() {
 		CERTBOT_OUTPUT=$(< "$TMP_OUTPUT")
 		
 		if echo "$CERTBOT_OUTPUT" | grep -q "Successfully received certificate"; then
-			bashio::log.info "Certificate Manager - New certificate received"
+			bashio::log.info "Certificate Manager - New certificate received."
 			
 			# Get the last modified cert directory and copy the cert and private key to store
 			CERT_DIR_LATEST=$(ls -td "$CERT_DIR"/live/*/ 2>/dev/null | head -1)
 			if [[ -z "$CERT_DIR_LATEST" ]]; then
-				bashio::log.error "Certificate Manager - Unable to locate latest certificate directory"
+				bashio::log.error "Certificate Manager - Unable to locate latest certificate directory."
 				return
 			fi
 			cp "${CERT_DIR_LATEST}privkey.pem" "/ssl/$KEYFILE"
 			cp "${CERT_DIR_LATEST}fullchain.pem" "/ssl/$CERTFILE"
-			bashio::log.info "Certificate Manager - New certificates copied to /ssl"
+			bashio::log.info "Certificate Manager - New certificates copied to /ssl."
 		elif echo "$CERTBOT_OUTPUT" | grep -q "Certificate not yet due for renewal"; then
-			bashio::log.info "Certificate Manager - Current certificate is valid"
+			bashio::log.info "Certificate Manager - Current certificate is valid."
 		elif [[ "$DRY_RUN" == "true" ]] && echo "$CERTBOT_OUTPUT" | grep -q "The dry run was successful"; then	
-			bashio::log.info "Certificate Manager - The dry-run was successful"
+			bashio::log.info "Certificate Manager - The dry-run was successful."
 		else
-			bashio::log.warning "Certificate Manager - Unexpected Certbot output:"
+			bashio::log.warning "Certificate Manager - Unexpected Certbot output"
 		fi
 	fi
 }
@@ -188,14 +188,14 @@ check_cert_dates() {
     CERT_PATH="/data/letsencrypt/live/$DYNU_HOSTNAME/cert.pem"
 
 	if [[ "$FORCE_RENEW" == "true" ]]; then
-		bashio::log.info "Certificate Manager - Skipping certificate date check: Force Renew"
+		bashio::log.info "Certificate Manager - Skipping certificate date check: Force Renew."
         mqtt_publish "last_cert_status" "false"
         renew_cert
 	elif [[ "$DRY_RUN" == "true" ]]; then
-		bashio::log.info "Certificate Manager - Skipping certificate date check: Test Run"
+		bashio::log.info "Certificate Manager - Skipping certificate date check: Test Run."
         renew_cert
     elif [[ -f "$CERT_PATH" ]]; then
-		bashio::log.info "Certificate Manager - Checking certificate dates"
+		bashio::log.info "Certificate Manager - Checking certificate dates."
 		mqtt_publish "last_cert_check" "$(date -Is)"
         if ! CREATED_RAW=$(openssl x509 -in "$CERT_PATH" -noout -startdate 2>/dev/null | cut -d= -f2); then
 			CREATED_RAW=""
@@ -206,7 +206,7 @@ check_cert_dates() {
 
         # If parsing fails, force renewal
         if [[ -z "$CREATED_RAW" || -z "$EXPIRY_RAW" ]]; then
-            bashio::log.warning "Certificate Manager - Unable to parse certificate dates"
+            bashio::log.warning "Certificate Manager - Unable to parse certificate dates."
             mqtt_publish "last_cert_status" "false"
             renew_cert
         else
@@ -220,16 +220,19 @@ check_cert_dates() {
             NOW_EPOCH=$(date +%s)
             MAX_DAYS=$(( NOW_EPOCH + (CHECK_DAYS * 86400) + 60 ))
 			
+			bashio::log.info "Certificate Manager - Certificate created $CREATED_ISO."
+			bashio::log.info "Certificate Manager - Certificate expires $EXPIRY_ISO."
+			
             if (( EXPIRY_EPOCH < NOW_EPOCH )); then
-                bashio::log.info "Certificate Manager - Certificate expired, renewing"
+                bashio::log.info "Certificate Manager - Certificate expired, renewing."
 				mqtt_publish "last_cert_status" "false"
                 renew_cert
             elif (( EXPIRY_EPOCH <= MAX_DAYS )); then
-				bashio::log.info "Certificate Manager - Certificate expires in less than $CHECK_DAYS days"
+				bashio::log.info "Certificate Manager - Certificate expires in less than $CHECK_DAYS days, renewing."
                 mqtt_publish "last_cert_status" "true"
                 renew_cert
             else
-				bashio::log.info "Certificate Manager - Certificate expires $EXPIRY_ISO"
+				bashio::log.info "Certificate Manager - Certificate does not require renewing."
                 RENEW_EPOCH=$(( EXPIRY_EPOCH - (CHECK_DAYS * 86400) ))
 				LOOP_SLEEP=$(( RENEW_EPOCH - NOW_EPOCH ))
 				if (( LOOP_SLEEP < 0 )); then
@@ -239,7 +242,7 @@ check_cert_dates() {
             fi
         fi
     else
-        bashio::log.warning "Certificate Manager - Certificate missing/not yet created"
+        bashio::log.warning "Certificate Manager - Certificate missing/not yet created."
         mqtt_publish "last_cert_status" "false"
         renew_cert
     fi
@@ -247,7 +250,7 @@ check_cert_dates() {
     # Post-renewal verification
     if [[ "$POST_CHECK" == "true" ]]; then
         if [[ "$LAST_CHECK" == "error" ]]; then
-			bashio::log.warning "Certificate Manager - Last renewal failed. Retrying in 10 minutes"
+			bashio::log.warning "Certificate Manager - Last renewal failed. Retrying in 10 minutes."
 			LOOP_SLEEP=600
 		elif [[ -f "$CERT_PATH" ]]; then
 			if ! CREATED_RAW=$(openssl x509 -in "$CERT_PATH" -noout -startdate 2>/dev/null | cut -d= -f2); then
@@ -284,7 +287,7 @@ check_cert_dates() {
 				LOOP_SLEEP=600
             fi
         else
-            bashio::log.warning "Certificate Manager - Certificate missing/not created after renewal. Check the logs for more information"
+            bashio::log.warning "Certificate Manager - Certificate missing/not created after renewal. Check the logs for more information."
             mqtt_publish "last_cert_status" "false"
 			LOOP_SLEEP=600
         fi
@@ -295,7 +298,7 @@ while true; do
 	check_cert_dates
 	
 	NEXT_RUN_ISO=$(date -Is -d "@$(( $(date +%s) + LOOP_SLEEP ))")
-	bashio::log.info "Certificate Manager - Next renewal check: $NEXT_RUN_ISO"
+	bashio::log.info "Certificate Manager - Next renewal check: $NEXT_RUN_ISO."
 	mqtt_publish "next_cert_check" "$NEXT_RUN_ISO"
 	
 	sleep "$LOOP_SLEEP"
