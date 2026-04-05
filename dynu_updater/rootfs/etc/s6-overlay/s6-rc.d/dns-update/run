@@ -55,12 +55,12 @@ mqtt_publish() {
             -u "$MQTT_USER" \
             -P "$MQTT_PASSWORD" \
 			-i "$MQTT_CLIENT_ID" \
-            -t "dynu_updater/$topic" \
+            -t "dynu_updater/${topic}" \
             -m "$payload" \
             -r \
 			"${TLS_FLAGS[@]}"; then
 
-            bashio::log.warning "Dynu DNS Updater - MQTT publish failed: Topic=$topic."
+            bashio::log.warning "Dynu DNS Updater - MQTT publish failed: Topic=${topic}."
         fi
     fi
 }
@@ -85,19 +85,19 @@ update_host() {
 	bashio::log.info "Dynu DNS Updater - Updating $1."
 				
 	if [[ "$1" == "$DYNU_HOSTNAME" ]]; then
-		COMMAND="https://api.dynu.com/nic/update?hostname=$DYNU_HOSTNAME&password=$PASSWORD&myip=$2"
+		COMMAND="https://api.dynu.com/nic/update?hostname=${DYNU_HOSTNAME}&password=${PASSWORD}&myip=${2}"
 	else
-		COMMAND="https://api.dynu.com/nic/update?hostname=$DYNU_HOSTNAME&alias=${1%.$DYNU_HOSTNAME}&password=$PASSWORD&myip=$2"
+		COMMAND="https://api.dynu.com/nic/update?hostname=${DYNU_HOSTNAME}&alias=${1%.$DYNU_HOSTNAME}&password=${PASSWORD}&myip=${2}"
 	fi
 
 	if [[ -n "$3" ]]; then
-		COMMAND="${COMMAND}&myipv6=$3"
+		COMMAND="${COMMAND}&myipv6=${3}"
 	fi
 	
-	if RESPONSE=$(curl -s --max-time 5 "$COMMAND" 2>/dev/null); then
+	if RESPONSE=$(curl -s --max-time 5 "${COMMAND}" 2>/dev/null); then
 		case "$RESPONSE" in
 			good*|nochg*)
-				bashio::log.info "Dynu DNS Updater - Success: $RESPONSE."
+				bashio::log.info "Dynu DNS Updater - Success: ${RESPONSE}."
 				return 0
 				;;
 			badauth)
@@ -226,7 +226,7 @@ while true; do
 			done
 			
 			if (( UPDATED > 0 )); then
-				bashio::log.error "Dynu DNS Updater - $UPDATED Hosts/Aliases could not be updated."
+				bashio::log.error "Dynu DNS Updater - ${UPDATED} Hosts/Aliases could not be updated."
 				LAST_CHECK="false"
 				mqtt_publish "update_status" "false"
 			else
