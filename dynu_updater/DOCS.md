@@ -17,7 +17,7 @@ Navigate in your Home Assistant frontend to the apps overview page at
 **Settings** > **Apps**, and pick the **Dynu Domain Update Tool** app. On the top,
 pick the **Configuration** page.
 
-**Dynu Hostname** (required) is the primary domain registerd at dynu.com. eg yourdomain.com.\n
+**Dynu Hostname** (required) is the primary domain registerd at dynu.com. eg yourdomain.com.
 **Dynu Update Passwrod** (required) is either the Dynu account password, or the IP Update Password - if one has been created for the account.
 **Dynu API Key** (required) is generated in the Dynu Control Panel and is required by Certbot to generate the certificate.
 **Domain Email** is the email address used by Certbot when generating the certificate eg admin@yourdomain.com.
