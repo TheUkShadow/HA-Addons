@@ -48,10 +48,9 @@ declare -A MQTT_RETRY_MAP=()
 MQTT_RETRY_PID=""
 
 mqtt_retry_worker() {
+	declare -A snapshot=()
+	
     while true; do
-
-		# Snapshot the current queue
-        declare -A snapshot=()
         for topic in "${!MQTT_RETRY_MAP[@]}"; do
             snapshot["$topic"]="${MQTT_RETRY_MAP[$topic]}"
         done

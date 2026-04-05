@@ -68,7 +68,6 @@ declare -A MQTT_RETRY_MAP=()
 MQTT_RETRY_PID=""
 
 mqtt_retry_worker() {
-	# Snapshot the current queue
     declare -A snapshot=()
 	
     while true; do
