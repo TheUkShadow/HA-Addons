@@ -44,6 +44,42 @@ if [[ "$USE_MQTT" == "true" ]]; then
 	readarray -t TLS_FLAGS < <(jq -r '.mqtt.tls_flags[]' <<< "$API_DATA")
 fi
 
+declare -A MQTT_RETRY_MAP=()
+MQTT_RETRY_PID=""
+
+mqtt_retry_worker() {
+    while true; do
+        # If queue is empty → exit
+        if [[ ${#MQTT_RETRY_MAP[@]} -eq 0 ]]; then
+            bashio::log.info "Dynu DNS Updater - MQTT retry worker exiting (queue empty)"
+            MQTT_RETRY_PID=""
+            return
+        fi
+
+        # Try resending all queued messages
+        for topic in "${!MQTT_RETRY_MAP[@]}"; do
+            local payload="${MQTT_RETRY_MAP[$topic]}"
+
+            if mosquitto_pub \
+                -h "$MQTT_HOST" \
+                -p "$MQTT_PORT" \
+                -u "$MQTT_USER" \
+                -P "$MQTT_PASSWORD" \
+                -i "$MQTT_CLIENT_ID" \
+                -t "dynu_updater/${topic}" \
+                -m "$payload" \
+                -r \
+                "${TLS_FLAGS[@]}"; then
+
+                bashio::log.info "Dynu DNS Updater - Resent MQTT message: ${topic}"
+                unset MQTT_RETRY_MAP["$topic"]
+            fi
+        done
+
+        sleep 5
+    done
+}
+
 mqtt_publish() {
     if [[ "$USE_MQTT" == "true" ]]; then
         local topic="$1"
@@ -61,6 +97,17 @@ mqtt_publish() {
 			"${TLS_FLAGS[@]}"; then
 
             bashio::log.warning "Dynu DNS Updater - MQTT publish failed: Topic=${topic}."
+			
+			# Store only the latest payload for this topic
+			MQTT_RETRY_MAP["$topic"]="$payload"
+
+			if [[ -n "$MQTT_RETRY_PID" ]] && kill -0 "$MQTT_RETRY_PID" 2>/dev/null; then
+				return
+			else
+				mqtt_retry_worker &
+				MQTT_RETRY_PID=$!
+				bashio::log.info "Dynu DNS Updater - Started MQTT retry worker (PID ${MQTT_RETRY_PID})."
+			fi
         fi
     fi
 }
