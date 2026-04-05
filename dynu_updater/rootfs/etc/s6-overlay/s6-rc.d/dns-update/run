@@ -141,7 +141,7 @@ NEXT_CHECK=$(date +%s)
 while true; do
 	if [[ ${#MQTT_RETRY_MAP[@]} -ne 0 ]]; then
 		for topic in "${!MQTT_RETRY_MAP[@]}"; do
-            local payload="${MQTT_RETRY_MAP[$topic]}"
+            payload="${MQTT_RETRY_MAP[$topic]}"
 
             if mosquitto_pub \
                 -h "$MQTT_HOST" \
