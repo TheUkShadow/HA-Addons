@@ -482,7 +482,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
 			# Per‑entity availability topic
 			local entity_avail_topic="dynu_updater/${entity_id}/availability"
 
-			if ! mosquitto_pub -h "$MQTT_HOST" -u "$MQTT_USER" -P "$MQTT_PASSWORD" -p "$MQTT_PORT" -r \
+			if ! mosquitto_pub -h "$MQTT_HOST" -u "$MQTT_USER" -P "$MQTT_PASSWORD" -p "$MQTT_PORT" -r --quiet \
 				  -i "$(hostname)" \
 				  -t "homeassistant/${component}/${entity_id}/config" \
 				  -m "{
@@ -519,6 +519,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
 			local payload="$2"
 
 			if ! mosquitto_pub \
+				--quiet \
 				-h "$MQTT_HOST" \
 				-p "$MQTT_PORT" \
 				-u "$MQTT_USER" \

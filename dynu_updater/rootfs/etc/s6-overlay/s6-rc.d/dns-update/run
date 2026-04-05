@@ -52,6 +52,7 @@ mqtt_publish() {
         local payload="$2"
 
         if ! mosquitto_pub \
+			--quiet \
             -h "$MQTT_HOST" \
             -p "$MQTT_PORT" \
             -u "$MQTT_USER" \
@@ -144,6 +145,7 @@ while true; do
             payload="${MQTT_RETRY_MAP[$topic]}"
 
             if mosquitto_pub \
+				--quiet \
                 -h "$MQTT_HOST" \
                 -p "$MQTT_PORT" \
                 -u "$MQTT_USER" \
