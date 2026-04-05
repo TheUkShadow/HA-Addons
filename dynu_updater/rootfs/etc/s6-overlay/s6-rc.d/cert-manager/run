@@ -204,6 +204,9 @@ check_cert_dates() {
 			EXPIRY_RAW=""
 		fi
 
+		bashio::log.warning "Created RAW: $CREATED_RAW"
+		bashio::log.warning "Expiry RAW: $EXPIRY_RAW"
+		
         # If parsing fails, force renewal
         if [[ -z "$CREATED_RAW" || -z "$EXPIRY_RAW" ]]; then
             bashio::log.warning "Certificate Manager - Unable to parse certificate dates."
