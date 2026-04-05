@@ -197,7 +197,10 @@ check_cert_dates() {
     elif [[ -f "$CERT_PATH" ]]; then
 		bashio::log.info "Certificate Manager - Checking certificate dates."
 		mqtt_publish "last_cert_check" "$(date -Is)"
-        if ! CREATED_RAW=$(openssl x509 -in "$CERT_PATH" -noout -startdate 2>/dev/null | cut -d= -f2); then
+        if ! VALID_FROM_RAW=$(openssl x509 -in "$CERT_PATH" -noout -startdate 2>/dev/null | cut -d= -f2); then
+			VALID_FROM_RAW=""
+		fi
+		if ! CREATED_RAW=$(stat -c %y "$CERT_PATH"); then
 			CREATED_RAW=""
 		fi
 		if ! EXPIRY_RAW=$(openssl x509 -in "$CERT_PATH" -noout -enddate 2>/dev/null | cut -d= -f2); then
@@ -208,15 +211,14 @@ check_cert_dates() {
 		bashio::log.warning "Expiry RAW: $EXPIRY_RAW"
 		
         # If parsing fails, force renewal
-        if [[ -z "$CREATED_RAW" || -z "$EXPIRY_RAW" ]]; then
+        if [[ -z "$VALID_FROM_RAW" || -z "$CREATED_RAW" || -z "$EXPIRY_RAW" ]]; then
             bashio::log.warning "Certificate Manager - Unable to parse certificate dates."
             mqtt_publish "last_cert_status" "false"
             renew_cert
         else
-			CREATED_ISO=$(date -u -d "TZ=\"UTC\" $CREATED_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
-			EXPIRY_ISO=$(date -u -d "TZ=\"UTC\" $EXPIRY_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
-            # CREATED_ISO=$(date -u -d "$CREATED_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
-            # EXPIRY_ISO=$(date -u -d "$EXPIRY_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
+			VALID_FROM_ISO=$(date -u -d "$CREATED_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
+			CREATED_ISO=$(date -u -d "$CREATED_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
+			EXPIRY_ISO=$(date -u -d "$EXPIRY_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
 
             mqtt_publish "cert_expires" "$EXPIRY_ISO"
             mqtt_publish "cert_created" "$CREATED_ISO"
@@ -258,21 +260,23 @@ check_cert_dates() {
 			bashio::log.warning "Certificate Manager - Last renewal failed. Retrying in 10 minutes."
 			LOOP_SLEEP=600
 		elif [[ -f "$CERT_PATH" ]]; then
-			if ! CREATED_RAW=$(openssl x509 -in "$CERT_PATH" -noout -startdate 2>/dev/null | cut -d= -f2); then
+			if ! VALID_FROM_RAW=$(openssl x509 -in "$CERT_PATH" -noout -startdate 2>/dev/null | cut -d= -f2); then
+				VALID_FROM_RAW=""
+			fi
+			if ! CREATED_RAW=$(stat -c %y "$CERT_PATH"); then
 				CREATED_RAW=""
 			fi
 			if ! EXPIRY_RAW=$(openssl x509 -in "$CERT_PATH" -noout -enddate 2>/dev/null | cut -d= -f2); then
 				EXPIRY_RAW=""
 			fi
 
-            if [[ -n "$CREATED_RAW" && -n "$EXPIRY_RAW" ]]; then
-				CREATED_ISO=$(date -u -d "TZ=\"UTC\" $CREATED_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
-				EXPIRY_ISO=$(date -u -d "TZ=\"UTC\" $EXPIRY_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
-                # CREATED_ISO=$(date -u -d "$CREATED_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
-                # EXPIRY_ISO=$(date -u -d "$EXPIRY_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
+            if [[ -n "$VALID_FROM_RAW" && -n "$CREATED_RAW" && -n "$EXPIRY_RAW" ]]; then
+				VALID_FROM_ISO=$(date -u -d "$CREATED_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
+				CREATED_ISO=$(date -u -d "$CREATED_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
+				EXPIRY_ISO=$(date -u -d "$EXPIRY_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
 
-                mqtt_publish "cert_expires" "$EXPIRY_ISO"
-                mqtt_publish "cert_created" "$CREATED_ISO"
+				mqtt_publish "cert_expires" "$EXPIRY_ISO"
+				mqtt_publish "cert_created" "$CREATED_ISO"
 
                 EXPIRY_EPOCH=$(date -d "$EXPIRY_RAW" +%s)
                 NOW_EPOCH=$(date +%s)
