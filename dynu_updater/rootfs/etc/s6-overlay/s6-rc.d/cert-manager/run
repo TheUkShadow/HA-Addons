@@ -59,54 +59,11 @@ DNS_MULTI_CREDS=/data/dns-multi.ini
 ACME_ARGUMENTS=()
 KEY_ARGUMENTS=()
 ADDITIONAL_ARGS=()
-LOOP_SLEEP=600
 POST_CHECK="false"
 LAST_CHECK="ok"
 PROPAGATION_SECONDS=300
 
 declare -A MQTT_RETRY_MAP=()
-MQTT_RETRY_PID=""
-
-mqtt_retry_worker() {
-    declare -A snapshot=()
-	
-    while true; do
-        for topic in "${!MQTT_RETRY_MAP[@]}"; do
-            snapshot["$topic"]="${MQTT_RETRY_MAP[$topic]}"
-        done
-		
-		# Clear the global queue BEFORE retrying
-        MQTT_RETRY_MAP=()
-		
-        # If queue is empty → exit
-        if [[ ${#snapshot[@]} -eq 0 ]]; then
-            bashio::log.info "Certificate Manager - MQTT retry worker exiting (queue empty)"
-            MQTT_RETRY_PID=""
-            return
-        fi
-
-        # Retry the snapshot
-        for topic in "${!snapshot[@]}"; do
-            payload="${snapshot[$topic]}"
-
-            if mosquitto_pub \
-                -h "$MQTT_HOST" \
-                -p "$MQTT_PORT" \
-                -u "$MQTT_USER" \
-                -P "$MQTT_PASSWORD" \
-                -i "$MQTT_CLIENT_ID" \
-                -t "dynu_updater/${topic}" \
-                -m "$payload" \
-                -r \
-                "${TLS_FLAGS[@]}"; then
-
-                bashio::log.info "Certificate Manager - Resent MQTT message: ${topic}"
-            fi
-        done
-
-        sleep 5
-    done
-}
 
 mqtt_publish() {
     if [[ "$USE_MQTT" == "true" ]]; then
@@ -128,14 +85,6 @@ mqtt_publish() {
 			
 			# Store only the latest payload for this topic
 			MQTT_RETRY_MAP["$topic"]="$payload"
-
-			if [[ -n "$MQTT_RETRY_PID" ]] && kill -0 "$MQTT_RETRY_PID" 2>/dev/null; then
-				return
-			else
-				mqtt_retry_worker &
-				MQTT_RETRY_PID=$!
-				bashio::log.info "Certificate Manager - Started MQTT retry worker (PID ${MQTT_RETRY_PID})."
-			fi
         fi
     fi
 }
@@ -275,20 +224,19 @@ check_cert_dates() {
 			bashio::log.info "Certificate Manager - Certificate valid from ${VALID_FROM_ISO}."
 			bashio::log.info "Certificate Manager - Certificate expires ${EXPIRY_ISO}."
 			
-            if (( EXPIRY_EPOCH < NOW_EPOCH )); then
+            if (( NOW_EPOCH >= EXPIRY_EPOCH )); then
                 bashio::log.info "Certificate Manager - Certificate expired, renewing."
 				mqtt_publish "last_cert_status" "false"
                 renew_cert
-            elif (( EXPIRY_EPOCH <= MAX_EPOCH )); then
+            elif (( MAX_EPOCH >= EXPIRY_EPOCH )); then
 				bashio::log.info "Certificate Manager - Certificate expires in less than ${CHECK_DAYS} days, renewing."
                 mqtt_publish "last_cert_status" "true"
                 renew_cert
             else
 				bashio::log.info "Certificate Manager - Certificate does not require renewing."
-                RENEW_EPOCH=$(( EXPIRY_EPOCH - (CHECK_DAYS * 86400) ))
-				LOOP_SLEEP=$(( RENEW_EPOCH - NOW_EPOCH ))
-				if (( LOOP_SLEEP < 0 )); then
-					LOOP_SLEEP=600
+                NEXT_CHECK=$(( EXPIRY_EPOCH - (CHECK_DAYS * 86400) ))
+				if (( NOW_EPOCH >= NEXT_CHECK )); then
+					NEXT_CHECK=$(( NOW_EPOCH + 600 ))
 				fi
 				mqtt_publish "last_cert_status" "true"
             fi
@@ -305,9 +253,10 @@ check_cert_dates() {
 
     # Post-renewal verification
     if [[ "$POST_CHECK" == "true" ]]; then
-        if [[ "$LAST_CHECK" == "error" ]]; then
+        NOW_EPOCH=$(date +%s)
+		if [[ "$LAST_CHECK" == "error" ]]; then
 			bashio::log.warning "Certificate Manager - Last renewal failed. Retrying in 10 minutes."
-			LOOP_SLEEP=600
+			NEXT_CHECK=$(( NOW_EPOCH + 600 ))
 		elif [[ -f "$CERT_FILE" ]]; then
 			if ! VALID_FROM_RAW=$(openssl x509 -in "${CERT_FILE}" -noout -startdate 2>/dev/null | cut -d= -f2); then
 				VALID_FROM_RAW=""
@@ -328,39 +277,65 @@ check_cert_dates() {
 				mqtt_publish "cert_created" "$CREATED_ISO"
 
                 EXPIRY_EPOCH=$(date -d "${EXPIRY_RAW}" +%s)
-                NOW_EPOCH=$(date +%s)
 
-                if (( EXPIRY_EPOCH < NOW_EPOCH )); then
+                if (( NOW_EPOCH >= EXPIRY_EPOCH )); then
                     mqtt_publish "last_cert_status" "false"
-					LOOP_SLEEP=600
-                else
-					RENEW_EPOCH=$(( EXPIRY_EPOCH - (CHECK_DAYS * 86400) ))
-					LOOP_SLEEP=$(( RENEW_EPOCH - NOW_EPOCH ))
-					if (( LOOP_SLEEP < 0 )); then
-						LOOP_SLEEP=60
+					NEXT_CHECK=$(( NOW_EPOCH + 600 ))
+					
+				else
+					NEXT_CHECK=$(( EXPIRY_EPOCH - (CHECK_DAYS * 86400) ))
+					if (( NOW_EPOCH >= NEXT_CHECK )); then
+						NEXT_CHECK=$(( NOW_EPOCH + 600 ))
 					fi
-                    mqtt_publish "last_cert_status" "true"
-                fi
+					mqtt_publish "last_cert_status" "true"
+				fi
             else
                 bashio::log.warning "Certificate Manager - Unable to parse renewed certificate dates. Recheking in 10 minutes"
                 mqtt_publish "last_cert_status" "false"
-				LOOP_SLEEP=600
+				NEXT_CHECK=$(( NOW_EPOCH + 600 ))
             fi
         else
             bashio::log.warning "Certificate Manager - Certificate missing/not created after renewal. Check the logs for more information. Recheking in 10 minutes"
             mqtt_publish "last_cert_status" "false"
-			LOOP_SLEEP=600
+			NEXT_CHECK=$(( NOW_EPOCH + 600 ))
         fi
     fi
 }
 
+NEXT_CHECK=$(date +%s)
+
 while true; do
-	check_cert_dates
+	if [[ ${#MQTT_RETRY_MAP[@]} -ne 0 ]]; then
+		for topic in "${!MQTT_RETRY_MAP[@]}"; do
+            local payload="${MQTT_RETRY_MAP[$topic]}"
+
+            if mosquitto_pub \
+                -h "$MQTT_HOST" \
+                -p "$MQTT_PORT" \
+                -u "$MQTT_USER" \
+                -P "$MQTT_PASSWORD" \
+                -i "$MQTT_CLIENT_ID" \
+                -t "dynu_updater/${topic}" \
+                -m "$payload" \
+                -r \
+                "${TLS_FLAGS[@]}"; then
+
+                bashio::log.info "Certificate Manager - Resent MQTT message: ${topic}"
+                unset MQTT_RETRY_MAP["$topic"]
+            fi
+        done
+	fi
+
+	NOW_EPOCH=$(date +%s)
 	
-	NEXT_RUN_ISO=$(date -Is -d "@$(( $(date +%s) + LOOP_SLEEP ))")
-	bashio::log.info "Certificate Manager - Next renewal check: ${NEXT_RUN_ISO}."
-	mqtt_publish "next_cert_check" "$NEXT_RUN_ISO"
+	if (( NOW_EPOCH >= NEXT_CHECK )); then
+		check_cert_dates
 	
-	sleep "$LOOP_SLEEP"
+		NEXT_RUN_ISO=$(date -u -d "@$NEXT_CHECK" +"%Y-%m-%dT%H:%M:%S+00:00")
+		bashio::log.info "Certificate Manager - Next renewal check: ${NEXT_RUN_ISO}."
+		mqtt_publish "next_cert_check" "$NEXT_RUN_ISO"
+	fi
+	
+	sleep 1
 done
 
