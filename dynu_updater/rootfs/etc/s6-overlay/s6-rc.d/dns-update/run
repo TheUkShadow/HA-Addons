@@ -29,7 +29,6 @@ API_DATA=$(< "$DYNU_CONF")
 
 DYNU_HOSTNAME=$(jq -r '.hostname' <<< "$API_DATA")
 VERBOSE=$(jq -r '.verbose' <<< "$API_DATA")
-
 PASSWORD=$(jq -r '.dns.password' <<< "$API_DATA")
 DYNU_IPV6_ENABLED=$(jq -r '.dns.ipv6' <<< "$API_DATA")
 readarray -t DOMAIN_ARR < <(jq -r '.dns.domains[]' <<< "$API_DATA")
@@ -231,6 +230,7 @@ while true; do
 				LAST_CHECK="false"
 				mqtt_publish "update_status" "false"
 			else
+				# bashio::event.fire "dynu_updater" '{"type": "ip_address", "action": "changed", "data": {"prev_ipv4": "$CURRENT_IPV4", "prev_ipv6": "$CURRENT_IPV6", "ipv4": "$IPV4", "ipv6": "$IPV6"}}'
 				CURRENT_IPV4="$IPV4"
 				CURRENT_IPV6="$IPV6"
 				LAST_IP_UPDATE="$(date -Is)"
@@ -240,6 +240,8 @@ while true; do
 				mqtt_publish "last_ip_update" "$(date -Is)"
 				mqtt_publish "current_ipv4" "$IPV4"
 				mqtt_publish "current_ipv6" "$IPV6"
+				
+				bashio::event.fire "dynu_updater" '{"type":"ip", "action": "changed", "data": {"ipv4":"$IPV4", "ipv6": "$IPV6"}}'
 				
 				jq -n \
 				  --arg js_ipv4 "$CURRENT_IPV4" \

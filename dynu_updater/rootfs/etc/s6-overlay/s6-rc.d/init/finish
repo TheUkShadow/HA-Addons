@@ -4,15 +4,14 @@ DYNU_CONF="/run/dynu-updater.conf"
 if [[ -f "$DYNU_CONF" ]]; then
 	API_DATA=$(< "$DYNU_CONF")
 	USE_MQTT=$(jq -r '.mqtt.enabled' <<< "$API_DATA")
-	MQTT_HOST=$(jq -r '.mqtt.host' <<< "$API_DATA")
-	MQTT_PORT=$(jq -r '.mqtt.port' <<< "$API_DATA")
-	MQTT_USER=$(jq -r '.mqtt.user' <<< "$API_DATA")
-	MQTT_PASSWORD=$(jq -r '.mqtt.password' <<< "$API_DATA")
-	MQTT_CLIENT_ID=$(jq -r '.mqtt.client_id' <<< "$API_DATA")
-	readarray -t TLS_FLAGS < <(jq -r '.mqtt.tls_flags[]' <<< "$API_DATA")
-
 	# Publish offline availability
 	if [[ "$USE_MQTT" == "true" ]]; then
+		MQTT_HOST=$(jq -r '.mqtt.host' <<< "$API_DATA")
+		MQTT_PORT=$(jq -r '.mqtt.port' <<< "$API_DATA")
+		MQTT_USER=$(jq -r '.mqtt.user' <<< "$API_DATA")
+		MQTT_PASSWORD=$(jq -r '.mqtt.password' <<< "$API_DATA")
+		MQTT_CLIENT_ID=$(jq -r '.mqtt.client_id' <<< "$API_DATA")
+		readarray -t TLS_FLAGS < <(jq -r '.mqtt.tls_flags[]' <<< "$API_DATA")
 		bashio::log.info "Dynu Updater Stopping - Sending offline signal to MQTT."
 		mosquitto_pub \
 		  -h "$MQTT_HOST" \

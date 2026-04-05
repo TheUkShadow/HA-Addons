@@ -1,5 +1,5 @@
 ---
-version: 1.0.1
+version: 1.0.0
 slug: dynu_updater
 name: Dynu Domain Update Tool
 description: Update dynamic DNS and generate certificates for a domain registerd with dynu.com
@@ -17,7 +17,6 @@ map:
   - ssl:rw
   - share
 options:
-  events: false
   dns:
     update_ip: true
   cert:
@@ -38,7 +37,6 @@ options:
 schema:
   dynu_hostname: str
   dynu_api_key: password
-  events: bool
   dns:
     update_ip: bool
     dynu_update_password: password?
