@@ -210,8 +210,10 @@ check_cert_dates() {
             mqtt_publish "last_cert_status" "false"
             renew_cert
         else
-            CREATED_ISO=$(date -u -d "$CREATED_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
-            EXPIRY_ISO=$(date -u -d "$EXPIRY_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
+			CREATED_ISO=$(date -u -d "TZ=\"UTC\" $CREATED_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
+			EXPIRY_ISO=$(date -u -d "TZ=\"UTC\" $EXPIRY_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
+            # CREATED_ISO=$(date -u -d "$CREATED_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
+            # EXPIRY_ISO=$(date -u -d "$EXPIRY_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
 
             mqtt_publish "cert_expires" "$EXPIRY_ISO"
             mqtt_publish "cert_created" "$CREATED_ISO"
@@ -261,8 +263,10 @@ check_cert_dates() {
 			fi
 
             if [[ -n "$CREATED_RAW" && -n "$EXPIRY_RAW" ]]; then
-                CREATED_ISO=$(date -u -d "$CREATED_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
-                EXPIRY_ISO=$(date -u -d "$EXPIRY_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
+				CREATED_ISO=$(date -u -d "TZ=\"UTC\" $CREATED_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
+				EXPIRY_ISO=$(date -u -d "TZ=\"UTC\" $EXPIRY_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
+                # CREATED_ISO=$(date -u -d "$CREATED_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
+                # EXPIRY_ISO=$(date -u -d "$EXPIRY_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
 
                 mqtt_publish "cert_expires" "$EXPIRY_ISO"
                 mqtt_publish "cert_created" "$CREATED_ISO"
