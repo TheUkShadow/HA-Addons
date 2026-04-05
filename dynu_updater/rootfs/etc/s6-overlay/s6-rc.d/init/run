@@ -449,7 +449,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
 	)
 
 	# MQTT Device metadata
-	DEVICE_ID="dynu_updater_$hostname"
+	DEVICE_ID="dynu_updater_$(hostname)"
 	DEVICE_NAME="Dynu Updater"
 	MANUFACTURER="TheUkShadow"
 	MODEL="Dynu Updater Companion Integration"
