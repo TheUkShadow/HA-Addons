@@ -50,21 +50,21 @@ MQTT_RETRY_PID=""
 mqtt_retry_worker() {
     while true; do
 
-        # If queue is empty → exit
-        if [[ ${#MQTT_RETRY_MAP[@]} -eq 0 ]]; then
-            bashio::log.info "Dynu DNS Updater - MQTT retry worker exiting (queue empty)"
-            MQTT_RETRY_PID=""
-            return
-        fi
-
-        # Snapshot the current queue
+		# Snapshot the current queue
         declare -A snapshot=()
         for topic in "${!MQTT_RETRY_MAP[@]}"; do
             snapshot["$topic"]="${MQTT_RETRY_MAP[$topic]}"
         done
-
-        # Clear the global queue BEFORE retrying
+		
+		# Clear the global queue BEFORE retrying
         MQTT_RETRY_MAP=()
+		
+        # If queue is empty → exit
+        if [[ ${#snapshot[@]} -eq 0 ]]; then
+            bashio::log.info "Dynu DNS Updater - MQTT retry worker exiting (queue empty)"
+            MQTT_RETRY_PID=""
+            return
+        fi
 
         # Retry the snapshot
         for topic in "${!snapshot[@]}"; do
@@ -82,10 +82,6 @@ mqtt_retry_worker() {
                 "${TLS_FLAGS[@]}"; then
 
                 bashio::log.info "Dynu DNS Updater - Resent MQTT message: ${topic}"
-
-            else
-                # Still failing → requeue
-                MQTT_RETRY_MAP["$topic"]="$payload"
             fi
         done
 
