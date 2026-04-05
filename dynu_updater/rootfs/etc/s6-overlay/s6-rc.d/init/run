@@ -452,7 +452,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
 	DEVICE_ID="dynu_updater_$(hostname)"
 	DEVICE_NAME="Dynu Updater"
 	MANUFACTURER="TheUkShadow"
-	MODEL="Dynu Updater Companion Integration"
+	MODEL="Dynu Updater"
 	SW_VERSION=$(bashio::addon.version)
 
 	# Shared availability topic
