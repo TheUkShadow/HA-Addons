@@ -445,7 +445,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
 	  "wan_connection|WAN Connection|connectivity|dynu_updater/wan_connection|binary_sensor|\"payload_on\": \"true\", \"payload_off\": \"false\",|mdi:wan|dns"
 	  "update_status|IP Update Status|problem|dynu_updater/update_status|binary_sensor|\"payload_on\": \"false\", \"payload_off\": \"true\",|mdi:sticker-check|dns"
 	  "cert_expires|Certificate Expires|timestamp|dynu_updater/cert_expires|sensor||mdi:calendar-alert|cert"
-	  "last_cert_renewal|Last Certificate Renewal|timestamp|dynu_updater/last_cert_renewal|sensor||mdi:certificate|cert"
+	  "cert_created|Last Certificate Renewal|timestamp|dynu_updater/cert_created|sensor||mdi:certificate|cert"
 	)
 
 	# MQTT Device metadata

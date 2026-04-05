@@ -214,7 +214,7 @@ check_cert_dates() {
             EXPIRY_ISO=$(date -u -d "$EXPIRY_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
 
             mqtt_publish "cert_expires" "$EXPIRY_ISO"
-            mqtt_publish "last_cert_renewal" "$CREATED_ISO"
+            mqtt_publish "cert_created" "$CREATED_ISO"
 
             EXPIRY_EPOCH=$(date -d "$EXPIRY_RAW" +%s)
             NOW_EPOCH=$(date +%s)
@@ -265,7 +265,7 @@ check_cert_dates() {
                 EXPIRY_ISO=$(date -u -d "$EXPIRY_RAW" +"%Y-%m-%dT%H:%M:%S+00:00")
 
                 mqtt_publish "cert_expires" "$EXPIRY_ISO"
-                mqtt_publish "last_cert_renewal" "$CREATED_ISO"
+                mqtt_publish "cert_created" "$CREATED_ISO"
 
                 EXPIRY_EPOCH=$(date -d "$EXPIRY_RAW" +%s)
                 NOW_EPOCH=$(date +%s)

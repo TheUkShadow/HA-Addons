@@ -226,22 +226,19 @@ while true; do
 			done
 			
 			if (( UPDATED > 0 )); then
-				bashio::log.error "Dynu DNS Updater - $UPDATED Hosts/Aliases could not be updated. Delaying next check for 5 minutes."
+				bashio::log.error "Dynu DNS Updater - $UPDATED Hosts/Aliases could not be updated."
 				LAST_CHECK="false"
 				mqtt_publish "update_status" "false"
 			else
-				# bashio::event.fire "dynu_updater" '{"type": "ip_address", "action": "changed", "data": {"prev_ipv4": "$CURRENT_IPV4", "prev_ipv6": "$CURRENT_IPV6", "ipv4": "$IPV4", "ipv6": "$IPV6"}}'
 				CURRENT_IPV4="$IPV4"
 				CURRENT_IPV6="$IPV6"
 				LAST_IP_UPDATE="$(date -Is)"
 				LAST_CHECK="true"
 				
 				mqtt_publish "update_status" "true"
-				mqtt_publish "last_ip_update" "$(date -Is)"
 				mqtt_publish "current_ipv4" "$IPV4"
 				mqtt_publish "current_ipv6" "$IPV6"
-				
-				bashio::event.fire "dynu_updater" '{"type":"ip", "action": "changed", "data": {"ipv4":"$IPV4", "ipv6": "$IPV6"}}'
+				mqtt_publish "last_ip_update" "$(date -Is)"
 				
 				jq -n \
 				  --arg js_ipv4 "$CURRENT_IPV4" \
@@ -277,9 +274,5 @@ while true; do
 		bashio::log.info "Dynu DNS Updater - Checking and updating complete."
 	fi
 
-	if [[ "LAST_CHECK" == "false" ]]; then
-		sleep 180
-	else
-		sleep 60
-	fi	
+	sleep 60
 done
