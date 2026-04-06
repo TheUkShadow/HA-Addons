@@ -208,9 +208,16 @@ check_cert_dates() {
 		if ! EXPIRY_RAW=$(openssl x509 -in "${CERT_FILE}" -noout -enddate 2>/dev/null | cut -d= -f2); then
 			EXPIRY_RAW=""
 		fi
+		if ! readarray -t CERT_DOMAINS < <(
+			  openssl x509 -in "$CERT_PATH" -noout -text \
+			  | grep -A1 "Subject Alternative Name" \
+			  | tail -n1 \
+			  | sed 's/DNS://g; s/,//g'); then
+			CERT_DOMAINS=()
+		fi
 		
         # If parsing fails, force renewal
-        if [[ -n "$VALID_FROM_RAW" && -n "$CREATED_RAW" && -n "$EXPIRY_RAW" ]]; then
+        if [[ -n "$VALID_FROM_RAW" && -n "$CREATED_RAW" && -n "$EXPIRY_RAW" && -n "$CERT_DOMAINS" ]]; then
 			VALID_FROM_ISO=$(date -u -d "${VALID_FROM_RAW}" +"%Y-%m-%dT%H:%M:%S+00:00")
 			CREATED_ISO=$(date -u -d "${CREATED_RAW}" +"%Y-%m-%dT%H:%M:%S+00:00")
 			EXPIRY_ISO=$(date -u -d "${EXPIRY_RAW}" +"%Y-%m-%dT%H:%M:%S+00:00")
@@ -226,7 +233,49 @@ check_cert_dates() {
 			bashio::log.info "Certificate Manager - Certificate valid from ${VALID_FROM_ISO}."
 			bashio::log.info "Certificate Manager - Certificate expires ${EXPIRY_ISO}."
 			
-            if (( NOW_EPOCH >= EXPIRY_EPOCH )); then
+			ALL_VALID="true"
+			
+			DOMAIN_COUNT="${#DOMAIN_ARR[@]}"
+			CERT_COUNT="${#CERT_DOMAINS[@]}"
+			
+			if [[ "$DOMAIN_COUNT" == "$CERT_COUNT" ]]; then
+			
+				for DOMAIN in "${DOMAIN_ARR[@]}"; do
+					MATCHED="false"
+					for CERT_DOMAIN = "${CERT_DOMAINS[@]}"; do
+						if [[ "$DOMAIN" == "$CERT_DOMAIN" ]]; then
+							MATCHED="true"
+							break
+						fi
+					done
+					if [[ "$MATCHED" == "false" ]]; then
+						ALL_VALID="false"
+						break
+					fi
+				done
+				
+				if [[ "$ALL_VALID" == "true" ]]; then
+					for CERT_DOMAIN = "${CERT_DOMAINS[@]}"; do
+						MATCHED="false"
+						for DOMAIN in "${DOMAIN_ARR[@]}"; do
+							if [[ "$DOMAIN" == "$CERT_DOMAIN" ]]; then
+								MATCHED="true"
+								break
+							fi
+						done
+						if [[ "$MATCHED" == "false" ]]; then
+							ALL_VALID="false"
+							break
+						fi
+					done
+				fi
+			fi
+			
+			if [[ "$ALL_VALID" == "false" ]]; then
+				bashio::log.info "Certificate Manager - Hostnames do not match, renewing."
+				mqtt_publish "last_cert_status" "false"
+                renew_cert
+            elif (( NOW_EPOCH >= EXPIRY_EPOCH )); then
                 bashio::log.info "Certificate Manager - Certificate expired, renewing."
 				mqtt_publish "last_cert_status" "false"
                 renew_cert
