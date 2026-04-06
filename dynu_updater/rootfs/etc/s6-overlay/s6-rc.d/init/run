@@ -321,7 +321,7 @@ if [[ "$DNS_VALID" == "true" ]]; then
 
 				# Apex is always covered
 				if [[ "$HOST" == "$BASE" ]]; then
-					IP_HOSTNAMES+=("$DOMAIN")
+					IP_HOSTNAMES+=("$HOST")
 					continue
 				fi
 
@@ -334,11 +334,13 @@ if [[ "$DNS_VALID" == "true" ]]; then
 				# Must be exactly one label (no dots)
 				[[ "$prefix" == *.* ]] && continue
 
-				IP_HOSTNAMES+=("$DOMAIN")
+				IP_HOSTNAMES+=("$HOST")
 
 			done
-		elif [[ "$HOST" == "$DOMAIN" ]]; then
-			IP_HOSTNAMES+=("$DOMAIN")
+		else
+			for HOST in "${DYNU_HOSTNAMES[@]}"; do
+				IP_HOSTNAMES+=("$DOMAIN")
+			done
 		fi
 
 	done
