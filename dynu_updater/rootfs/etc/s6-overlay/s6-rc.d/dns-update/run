@@ -138,20 +138,29 @@ update_host() {
 }
 
 mkfifo /tmp/mqtt_pipe
-mosquitto_sub \
-	-h "$MQTT_HOST" \
-	-p "$MQTT_PORT" \
-	-u "$MQTT_USER" \
-	-P "$MQTT_PASSWORD" \
-	-i "${MQTT_CLIENT_ID}_listener" \
-	-t "dynu_updater/ip/service" \
-	"${TLS_FLAGS[@]}" > /tmp/mqtt_pipe &
+start_mqtt_sub() {
+	mosquitto_sub \
+		-h "$MQTT_HOST" \
+		-p "$MQTT_PORT" \
+		-u "$MQTT_USER" \
+		-P "$MQTT_PASSWORD" \
+		-i "${MQTT_CLIENT_ID}_listener" \
+		-t "dynu_updater/ip/service" \
+		"${TLS_FLAGS[@]}" > /tmp/mqtt_pipe &
+		MQTT_SUB_PID=$!
+}
+	
+exec 3</tmp/mqtt_pipe
 
 bashio::log.info "Starting loop"
 
 NEXT_CHECK=$(date +%s)
 
 while true; do
+	if ! kill -0 "$MQTT_SUB_PID" 2>/dev/null; then
+        bashio::log.warning "MQTT listener disconnected — restarting"
+        start_mqtt_sub
+    fi
 	if [[ ${#MQTT_RETRY_MAP[@]} -ne 0 ]]; then
 		for topic in "${!MQTT_RETRY_MAP[@]}"; do
             payload="${MQTT_RETRY_MAP[$topic]}"
@@ -174,7 +183,7 @@ while true; do
         done
 	fi
 	
-	if read -t 0.1 -r line < /tmp/mqtt_pipe; then
+	if read -r -t 0.1 line <&3; then
         bashio::log.info "$line"
     fi
 	
