@@ -137,23 +137,24 @@ update_host() {
 	fi
 }
 
-mkfifo /tmp/mqtt_pipe
-read -t 0.001 < /tmp/mqtt_pipe || true
-exec 3</tmp/mqtt_pipe
+MQTT_FILE="/tmp/mqtt_events"
+: > "$MQTT_FILE"
 
 start_mqtt_sub() {
-	mosquitto_sub \
-		-h "$MQTT_HOST" \
-		-p "$MQTT_PORT" \
-		-u "$MQTT_USER" \
-		-P "$MQTT_PASSWORD" \
-		-i "${MQTT_CLIENT_ID}_listener" \
-		-t "dynu_updater/ip/service" \
-		"${TLS_FLAGS[@]}" > /tmp/mqtt_pipe &
-		MQTT_SUB_PID=$!
+    mosquitto_sub \
+        -h "$MQTT_HOST" \
+        -p "$MQTT_PORT" \
+        -u "$MQTT_USER" \
+        -P "$MQTT_PASSWORD" \
+        -i "${MQTT_CLIENT_ID}_listener" \
+        -t "dynu_updater/ip/service" \
+        "${TLS_FLAGS[@]}" >> "$MQTT_FILE" &
+    MQTT_SUB_PID=$!
 }
 
-start_mqtt_sub	
+start_mqtt_sub
+
+exec 3< <(tail -F "$MQTT_FILE")
 
 bashio::log.info "Starting loop"
 
