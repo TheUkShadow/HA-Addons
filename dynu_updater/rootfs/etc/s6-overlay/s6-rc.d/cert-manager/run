@@ -135,7 +135,6 @@ check_connectivity() {
 }
 
 renew_cert() {
-	return
 	POST_CHECK="true"
 	until check_connectivity; do
         bashio::log.warning "Certificate Manager - Dynu not reachable, delaying certificate renewal."
