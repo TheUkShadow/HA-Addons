@@ -312,6 +312,9 @@ if [[ "$DNS_VALID" == "true" ]]; then
 			break
 		elif [[ " ${DYNU_HOSTNAMES[*]} " =~ " $DOMAIN " ]]; then
 			IP_HOSTNAMES+=("$DOMAIN")
+		else
+			bashio::log.error "Dynu Updater Initialisation - IP Update Hostname ${DOMAIN} is not a valid hostname for ${DYNU_HOSTNAME}."
+			exit 1
 		fi
 	done
 	
@@ -392,7 +395,7 @@ if [[ "$CERT_VALID" == "true" ]]; then
 
 			# If we reach here → DOMAIN is redundant
 			INVALID="true"
-			bashio::log.warning "Dynu Updater Initialisation - Certificate Hostname ${DOMAIN} is already covered by wildcard *.{$BASE}."
+			bashio::log.warning "Dynu Updater Initialisation - Certificate Hostname ${DOMAIN} is already covered by wildcard *.${BASE}."
 
 		done
 		if [[ "$INVALID" == "false" ]]; then
