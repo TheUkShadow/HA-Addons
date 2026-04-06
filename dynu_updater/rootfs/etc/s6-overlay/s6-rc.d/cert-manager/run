@@ -218,9 +218,11 @@ check_cert_dates() {
 		bashio::log.debug "Certificate Manager - Checking Certificate Domains."
 		if ! readarray -t CERT_DOMAINS < <(
 				openssl x509 -in "$CERT_FILE" -noout -text \
-				| grep -A1 "Subject Alternative Name" \
-				| tail -n1 \
-				| sed 's/DNS://g; s/, /\n/g'
+				| awk '/Subject Alternative Name/{getline; print}' \
+				| sed 's/DNS://g' \
+				| tr ',' '\n' \
+				| sed 's/^[[:space:]]*//; s/[[:space:]]*$//' \
+				| sed '/^$/d'
 			); then
 			
 			bashio::log.debug "Certificate Manager - Checking Certificate Domains failed."
