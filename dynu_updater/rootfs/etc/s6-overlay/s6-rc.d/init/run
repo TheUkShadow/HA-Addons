@@ -115,7 +115,7 @@ if [[ "$CERT_VALID" == "false" && "$DNS_VALID" == "false" ]]; then
 	exit 1
 fi
 
-if [[ -z "$DYNU_HOSTNAME" || ! "$DYNU_HOSTNAME" =~ ^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$ ]]; then
+if [[ -z "$DYNU_HOSTNAME" || ! "$DYNU_HOSTNAME" =~ ^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$ ]]; then
     bashio::log.error "Dynu Updater Initialisation - Invalid Dynu Hostname."
 	exit 1
 fi
@@ -330,7 +330,7 @@ if [[ "$CERT_VALID" == "true" ]]; then
 		if [[ "$DOMAIN" != *"$DYNU_HOSTNAME" ]]; then
 			bashio::log.error "Dynu Updater Initialisation - Certificate Hostname ${DOMAIN} is not valid for ${DYNU_HOSTNAME}."
 			exit 1
-		elif [[ ! "$DOMAIN" =~ ^(\*\.)?([A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}$ ]]; then
+		elif [[ ! "$DOMAIN" =~ ^(\*\.)?([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}$ ]]; then
 			bashio::log.error "Dynu Updater Initialisation - Certificate Hostname ${DOMAIN} is not valid."
 			exit 1
 		fi
