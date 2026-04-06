@@ -328,8 +328,8 @@ if [[ "$DNS_VALID" == "true" ]]; then
 				
 				IP_HOSTNAMES+=("$HOST")
 			done
-		else
-			#IP_HOSTNAMES+=("$DOMAIN")
+		# else
+			# IP_HOSTNAMES+=("$DOMAIN")
 		fi
 	done
 	
