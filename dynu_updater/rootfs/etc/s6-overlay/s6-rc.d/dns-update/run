@@ -148,7 +148,7 @@ while true; do
 		for topic in "${!MQTT_RETRY_MAP[@]}"; do
             payload="${MQTT_RETRY_MAP[$topic]}"
 			
-			if mqtt_publish topic payload; then
+			if mqtt_publish "$topic" "$payload"; then
             # if mosquitto_pub \
 				# --quiet \
                 # -h "$MQTT_HOST" \
