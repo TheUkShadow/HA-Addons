@@ -210,7 +210,7 @@ check_cert_dates() {
 			EXPIRY_RAW=""
 		fi
 		if ! readarray -t CERT_DOMAINS < <(
-			  openssl x509 -in "$CERT_PATH" -noout -text \
+			  openssl x509 -in "${CERT_FILE}" -noout -text \
 			  | grep -A1 "Subject Alternative Name" \
 			  | tail -n1 \
 			  | sed 's/DNS://g; s/,//g'); then
