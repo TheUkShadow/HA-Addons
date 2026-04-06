@@ -138,6 +138,7 @@ update_host() {
 }
 
 mkfifo /tmp/mqtt_pipe
+exec 3</tmp/mqtt_pipe
 start_mqtt_sub() {
 	mosquitto_sub \
 		-h "$MQTT_HOST" \
@@ -151,7 +152,6 @@ start_mqtt_sub() {
 }
 
 start_mqtt_sub	
-exec 3</tmp/mqtt_pipe
 
 bashio::log.info "Starting loop"
 
@@ -161,6 +161,9 @@ while true; do
 	if ! kill -0 "$MQTT_SUB_PID" 2>/dev/null; then
         bashio::log.warning "MQTT listener disconnected — restarting"
         start_mqtt_sub
+    fi
+	if read -r -t 0.1 line <&3; then
+        bashio::log.info "$line"
     fi
 	if [[ ${#MQTT_RETRY_MAP[@]} -ne 0 ]]; then
 		for topic in "${!MQTT_RETRY_MAP[@]}"; do
@@ -183,10 +186,6 @@ while true; do
             fi
         done
 	fi
-	
-	if read -r -t 0.1 line <&3; then
-        bashio::log.info "$line"
-    fi
 	
 	NOW_EPOCH=$(date +%s)
 	
