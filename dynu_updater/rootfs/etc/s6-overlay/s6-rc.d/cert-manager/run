@@ -5,6 +5,9 @@
 # Certificate Manager
 # ==============================================================================
 
+LOG_LEVEL=$(bashio::config 'log_level')
+bashio::log.level "$LOG_LEVEL"
+
 while [[ ! -f /run/dynu-dns-update.ready ]]; do
 	sleep 1
 done
@@ -28,7 +31,6 @@ bashio::log.info "Certificate Manager - Started."
 API_DATA=$(< "$DYNU_CONF")
 
 DYNU_HOSTNAME=$(jq -r '.hostname' <<< "$API_DATA")
-VERBOSE=$(jq -r '.verbose' <<< "$API_DATA")
 
 DYNU_API_KEY=$(jq -r '.cert.api_key' <<< "$API_DATA")
 CHECK_DAYS=$(jq -r '.cert.cert_time' <<< "$API_DATA")
@@ -112,8 +114,12 @@ if [[ "$FORCE_RENEW" == "true" ]]; then
 	ADDITIONAL_ARGS+=("--force-renewal")
 fi
 
-if [[ "$VERBOSE" ==  "true" ]]; then
+if [[ "$LOG_LEVEL" ==  "debug" ]]; then
 	ADDITIONAL_ARGS+=("-vvv")
+elif [[ "$LOG_LEVEL" ==  "warning" ]]; then
+	ADDITIONAL_ARGS+=("-vv")
+elif [[ "$LOG_LEVEL" ==  "error" ]]; then
+	ADDITIONAL_ARGS+=("-v")
 fi
 
 if [[ "$DRY_RUN" == "true" ]]; then

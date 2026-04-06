@@ -1,5 +1,5 @@
 ---
-version: 1.0.28
+version: 1.0.29
 slug: dynu_updater
 name: Dynu Domain Update Tool
 description: Update dynamic DNS and generate certificates for a domain registerd with dynu.com
@@ -33,7 +33,7 @@ options:
     port: 1883
     tls: false
     server_cert: true
-  verbose: false
+  log_level: info
 schema:
   dynu_hostname: str
   dynu_api_key: password
@@ -64,6 +64,6 @@ schema:
     keyfile: str?
     certfile: str?
     cafile: str?
-  verbose: bool
+  log_level: list(info|debug|warning|error)
 
 startup: services

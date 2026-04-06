@@ -24,7 +24,6 @@ MQTT_CAFILE=""
 
 CERT_TIME=5
 
-VERBOSE="false"
 FORCE_RENEW="false"
 DRY_RUN="false"
 CERT_VALID="false"
@@ -33,6 +32,9 @@ USE_MQTT="false"
 MQTT_CORE="false"
 MQTT_USE_TLS="false"
 MQTT_VALIDATE="false"
+
+LOG_LEVEL=$(bashio::config 'log_level')
+bashio::log.level "$LOG_LEVEL"
 
 if bashio::config.has_value 'dynu_hostname'; then
 	DYNU_HOSTNAME=$(bashio::config 'dynu_hostname' | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
@@ -81,9 +83,6 @@ if bashio::config.has_value 'mqtt.cafile'; then
 fi
 if bashio::config.has_value 'cert.update_cert_days'; then
 	CERT_TIME=$(bashio::config 'cert.update_cert_days')
-fi
-if bashio::config.true 'verbose'; then
-    VERBOSE="true"
 fi
 if bashio::config.true 'cert.force_renew'; then
     FORCE_RENEW="true"
@@ -174,10 +173,8 @@ if DYNU_API_RESPONSE=$(curl -s --max-time 5 -H "API-Key: ${DYNU_API_KEY}" "https
 		exit 1
 	fi
 	
-	if [[ "$VERBOSE" == "true" ]]; then
-		bashio::log.info "Dynu Updater Initialisation - DYNU API Response"
-		bashio::log.info "$DYNU_API_RESPONSE"
-	fi
+	bashio::log.debug "Dynu Updater Initialisation - DYNU API Response"
+	bashio::log.debug "$DYNU_API_RESPONSE"
 	
 	EXCEPTION_TYPE=$(jq -r '.exception.type // empty' <<< "$DYNU_API_RESPONSE")
 	
@@ -254,10 +251,8 @@ if DYNU_RECORDS=$(curl -s --max-time 5 -H "API-Key: ${DYNU_API_KEY}" "https://ap
 		exit 1
 	fi
 	
-	if [[ "$VERBOSE" == "true" ]]; then
-		bashio::log.info "Dynu Updater Initialisation - DYNU Records"
-		bashio::log.info "$DYNU_RECORDS"
-	fi
+	bashio::log.debug "Dynu Updater Initialisation - DYNU Records"
+	bashio::log.debug "$DYNU_RECORDS"
 	
 	EXCEPTION_TYPE=$(
 	jq -r '.exception.type // empty' <<< "$DYNU_RECORDS")
@@ -323,12 +318,10 @@ if [[ "$DNS_VALID" == "true" ]]; then
 		exit 1
 	fi
 	
-	if [[ "$VERBOSE" == "true" ]]; then
-		bashio::log.info "Dynu Updater Initialisation - IP Update Hostnames:"
-		for DOMAIN in "${IP_HOSTNAMES[@]}"; do
-			bashio::log.info "    - $DOMAIN"
-		done
-	fi
+	bashio::log.debug "Dynu Updater Initialisation - IP Update Hostnames:"
+	for DOMAIN in "${IP_HOSTNAMES[@]}"; do
+		bashio::log.debug "    - $DOMAIN"
+	done
 fi
 
 CERT_HOSTNAMES=()
@@ -411,15 +404,12 @@ if [[ "$CERT_VALID" == "true" ]]; then
 		exit 1
 	fi
 	
-	if [[ "$VERBOSE" == "true" ]]; then
-		bashio::log.info "Dynu Updater Initialisation - Certificate Hostnames:"
-		for DOMAIN in "${CERT_HOSTNAMES[@]}"; do
-			bashio::log.info "    - $DOMAIN"
-		done
-	fi
-fi
+	bashio::log.debug "Dynu Updater Initialisation - Certificate Hostnames:"
+	for DOMAIN in "${CERT_HOSTNAMES[@]}"; do
+		bashio::log.debug "    - $DOMAIN"
+	done
 
-exit 1
+fi
 
 bashio::log.info "Dynu Updater Initialisation - Generating MQTT Configuration."
 # MQTT connection
@@ -667,9 +657,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
 			STATE="offline"
 		fi
 		
-		if [[ "$VERBOSE" == "true" ]]; then
-			bashio::log.info "    - $name."
-		fi
+		bashio::log.debug "    - $name."
 		mqtt_publish "${entity_id}/availability" "$STATE"
 		
 	done
@@ -700,7 +688,6 @@ mqtt_entities_json=$(json_array_from_bash_array MQTT_ENTITIES)
 jq -n \
   --arg api_key "$DYNU_API_KEY" \
   --arg dynu_host "$DYNU_HOSTNAME" \
-  --arg verbose "$VERBOSE" \
   --arg email "$EMAIL" \
   --arg keyfile "$KEYFILE" \
   --arg certfile "$CERTFILE" \
@@ -720,7 +707,6 @@ jq -n \
   --argjson tls_flags "$tls_flags_json" \
   '{
       hostname: $dynu_host,
-	  verbose: $verbose,
 	  dns: {
         ipv6: $ipv6,
         domains: $ip_domains,
