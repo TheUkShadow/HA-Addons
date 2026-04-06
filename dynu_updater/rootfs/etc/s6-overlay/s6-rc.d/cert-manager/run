@@ -245,6 +245,9 @@ check_cert_dates() {
 			DOMAIN_COUNT="${#DOMAIN_ARR[@]}"
 			CERT_COUNT="${#CERT_DOMAINS[@]}"
 			
+			bashio::log.debug "Certificate Manager - Domain Count: ${DOMAIN_COUNT}"
+			bashio::log.debug "Certificate Manager - Cert Count: ${CERT_COUNT}"
+
 			if [[ "$DOMAIN_COUNT" == "$CERT_COUNT" ]]; then
 			
 				for DOMAIN in "${DOMAIN_ARR[@]}"; do
@@ -257,6 +260,7 @@ check_cert_dates() {
 					done
 					if [[ "$MATCHED" == "false" ]]; then
 						ALL_VALID="false"
+						bashio::log.debug "Certificate Manager - Domain ${DOMAIN} not found in Certificate"
 						break
 					fi
 				done
@@ -272,6 +276,7 @@ check_cert_dates() {
 						done
 						if [[ "$MATCHED" == "false" ]]; then
 							ALL_VALID="false"
+							bashio::log.debug "Certificate Manager - Cert Domain ${CERT_DOMAIN} not found in Domain List"
 							break
 						fi
 					done
