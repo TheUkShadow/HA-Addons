@@ -19,14 +19,18 @@ pick the **Configuration** page.
 
 **Dynu Hostname** (required) is the primary domain registerd at dynu.com. eg yourdomain.com.
 
-**Dynu Update Passwrod** (required) is either the Dynu account password, or the IP Update Password - if one has been created for the account.
+**Dynu API Key** (required) is generated in the Dynu Control Panel.
 
-**Dynu API Key** (required) is generated in the Dynu Control Panel and is required by Certbot to generate the certificate.
+**IP Update**
+	**Dynu Update Passwrod** (required) is either the Dynu account password, or the IP Update Password - if one has been created for the account.
 
-**Domain Email** is the email address used by Certbot when generating the certificate eg admin@yourdomain.com.
+	**IP Update Hostnames** This is a list of hostnames to update IP addresses for. eg yourdomain.com, mx.yourdomain.com. These must match domain records created in the account. You can set *.yourdomain.com to update all domains for the account.
 
-**DNS Update Hostnames** This is a list of hostnames to update IP addresses for. eg yourdomain.com, mx.yourdomain.com.
+**Certificate**
+	**Certificate Email Address** is the email address used by Certbot when generating the certificate. eg admin@yourdomain.com.
 
-**Certificate Hostnames** This is a list of hostnames to add to the certificate. eg yourdomain.com, mx.yourdomain.com, *.yourdomain.com.
+	**Certificate Hostnames** This is a list of hostnames to add to the certificate. eg yourdomain.com, mx.yourdomain.com. If wildcards are enabled for IPv4/IPv6 in the Dynu Control Panel, any valid hostname can be added. If wildcards are not enabled, these must match domain records created in the account. This can also be set to *.yourdomain.com to create a wildcard certificate.
 
-The file names for **Private Key File** and **Certificate File** can be changed if required.
+	**Renew Days** This is the number of days before a certificate is due to expire, to generate the new Certificate.
+
+	The file names for **Private Key File** and **Certificate File** can be changed as required. These files are copied to the ssl directory for use by other addons/integrations.

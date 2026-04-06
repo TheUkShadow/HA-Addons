@@ -302,8 +302,11 @@ CERT_HOSTNAMES=()
 
 if [[ "$DNS_VALID" == "true" ]]; then
 	for DOMAIN in $IP_DOMAINS; do
-		if [[ "$DOMAIN" != "*.$DYNU_HOSTNAME" && ! " ${DYNU_HOSTNAMES[*]} " =~ " $DOMAIN " ]]; then
-			bashio::log.error "Dynu Updater Initialisation - DNS Update Hostname ${DOMAIN} is not valid for this account."
+		if [[ "$DOMAIN" != *"$DYNU_HOSTNAME" ]]; then
+			bashio::log.error "Dynu Updater Initialisation - DNS Update Hostname ${DOMAIN} is not valid for ${DYNU_HOSTNAME}."
+			exit 1
+		elif [[ "$DOMAIN" != "*.$DYNU_HOSTNAME" && ! " ${DYNU_HOSTNAMES[*]} " =~ " $DOMAIN " ]]; then
+			bashio::log.error "Dynu Updater Initialisation - DNS Update Hostname ${DOMAIN} is not a member of ${DYNU_HOSTNAME}."
 			exit 1
 		elif [[ "$DOMAIN" == "*.$DYNU_HOSTNAME" ]]; then
 			# Warn if wildcard is not the only entry
@@ -325,10 +328,10 @@ fi
 if [[ "$CERT_VALID" == "true" ]]; then
 	for DOMAIN in $CERT_DOMAINS; do
 		if [[ "$DOMAIN" != *"$DYNU_HOSTNAME" ]]; then
-			bashio::log.error "Dynu Updater Initialisation - Certificate Hostname ${DOMAIN} is not valid for this account (A)."
+			bashio::log.error "Dynu Updater Initialisation - Certificate Hostname ${DOMAIN} is not valid for ${DYNU_HOSTNAME}."
 			exit 1
-		elif [[ "$DOMAIN" != "*.$DYNU_HOSTNAME" ]] && { [[ ! " ${DYNU_HOSTNAMES[*]} " =~ " $DOMAIN " ]] || [[ "$WILDCARD_ENABLED" == "false" ]]; }; then
-			bashio::log.error "Dynu Updater Initialisation - Certificate Hostname ${DOMAIN} is not valid for this account."
+		elif [[ "$DOMAIN" != "*.$DYNU_HOSTNAME" ]] && [[ ! " ${DYNU_HOSTNAMES[*]} " =~ " $DOMAIN " ]] && [[ "$WILDCARD_ENABLED" == "false" ]]; then
+			bashio::log.error "Dynu Updater Initialisation - Certificate Hostname ${DOMAIN} is not a member of ${DYNU_HOSTNAME}."
 			exit 1
 		elif [[ "$DOMAIN" == "*.$DYNU_HOSTNAME" ]]; then
 			# Warn if wildcard is not the only entry
