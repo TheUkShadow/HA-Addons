@@ -149,7 +149,8 @@ start_mqtt_sub() {
 		"${TLS_FLAGS[@]}" > /tmp/mqtt_pipe &
 		MQTT_SUB_PID=$!
 }
-	
+
+start_mqtt_sub	
 exec 3</tmp/mqtt_pipe
 
 bashio::log.info "Starting loop"
