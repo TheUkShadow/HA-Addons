@@ -270,6 +270,8 @@ check_cert_dates() {
 						fi
 					done
 				fi
+			else
+				ALL_VALID="false"
 			fi
 			
 			if [[ "$ALL_VALID" == "false" ]]; then
