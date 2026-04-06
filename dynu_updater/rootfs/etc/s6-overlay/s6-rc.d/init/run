@@ -326,7 +326,7 @@ if [[ "$DNS_VALID" == "true" ]]; then
 				IP_HOSTNAMES+=("$HOST")
 			done
 		fi
-		IP_HOSTNAMES+=("$DOMAIN")
+		# IP_HOSTNAMES+=("$DOMAIN")
 	done
 	
 	for DOMAIN in "${IP_HOSTNAMES[@]}"; do
