@@ -220,6 +220,8 @@ check_cert_dates() {
 			  | grep -A1 "Subject Alternative Name" \
 			  | tail -n1 \
 			  | sed 's/DNS://g; s/,//g'); then
+			
+			bashio::log.debug "Certificate Manager - Checking Certificate Domains failed."
 			CERT_DOMAINS=()
 		fi
 		
