@@ -215,6 +215,7 @@ check_cert_dates() {
 		if ! EXPIRY_RAW=$(openssl x509 -in "${CERT_FILE}" -noout -enddate 2>/dev/null | cut -d= -f2); then
 			EXPIRY_RAW=""
 		fi
+		bashio::log.debug "Certificate Manager - Checking Certificate Domains."
 		if ! readarray -t CERT_DOMAINS < <(
 			  openssl x509 -in "${CERT_FILE}" -noout -text \
 			  | grep -A1 "Subject Alternative Name" \
@@ -224,6 +225,11 @@ check_cert_dates() {
 			bashio::log.debug "Certificate Manager - Checking Certificate Domains failed."
 			CERT_DOMAINS=()
 		fi
+		
+		for CERT_DOMAIN in "${CERT_DOMAINS[@]}"; do
+			bashio::log.debug "    - ${CERT_DOMAIN}."
+		done
+		
 		
         # If parsing fails, force renewal
         if [[ -n "$VALID_FROM_RAW" && -n "$CREATED_RAW" && -n "$EXPIRY_RAW" && "${#CERT_DOMAINS[@]}" -ne 0 ]]; then
