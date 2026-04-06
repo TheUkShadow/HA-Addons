@@ -404,6 +404,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
 		bashio::log.error "Dynu Updater Initialisation - Cannot reach MQTT Server at ${MQTT_HOST}:${MQTT_PORT}."
 		exit 1
 	elif ! OUTPUT=$(mosquitto_pub \
+		--quiet \
 		-h "${MQTT_HOST}" \
 		-u "${MQTT_USER}" \
 		-P "${MQTT_PASSWORD}" \

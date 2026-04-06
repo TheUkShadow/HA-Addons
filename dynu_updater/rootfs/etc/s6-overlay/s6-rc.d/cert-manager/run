@@ -62,6 +62,7 @@ ADDITIONAL_ARGS=()
 POST_CHECK="false"
 LAST_CHECK="ok"
 PROPAGATION_SECONDS=300
+FIRST_RUN="true"
 
 declare -A MQTT_RETRY_MAP=()
 
@@ -188,11 +189,11 @@ check_cert_dates() {
     POST_CHECK="false"
 	LAST_CHECK="ok"
 
-	if [[ "$FORCE_RENEW" == "true" ]]; then
+	if [[ "$FIRST_RUN" == "true" && "$FORCE_RENEW" == "true" ]]; then
 		bashio::log.info "Certificate Manager - Skipping certificate date check: Force Renew."
         mqtt_publish "last_cert_status" "false"
         renew_cert
-	elif [[ "$DRY_RUN" == "true" ]]; then
+	elif [[ "$FIRST_RUN" == "true" && "$DRY_RUN" == "true" ]]; then
 		bashio::log.info "Certificate Manager - Skipping certificate date check: Test Run."
         renew_cert
     elif [[ -f "$CERT_FILE" ]]; then
@@ -336,6 +337,7 @@ while true; do
 		NEXT_RUN_ISO=$(date -u -d "@$NEXT_CHECK" +"%Y-%m-%dT%H:%M:%S+00:00")
 		bashio::log.info "Certificate Manager - Next renewal check: ${NEXT_RUN_ISO}."
 		mqtt_publish "next_cert_check" "$NEXT_RUN_ISO"
+		FIRST_RUN="false"
 	fi
 	
 	sleep 1
