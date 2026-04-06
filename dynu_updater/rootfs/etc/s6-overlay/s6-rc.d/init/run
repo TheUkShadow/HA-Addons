@@ -325,7 +325,7 @@ fi
 if [[ "$CERT_VALID" == "true" ]]; then
 	for DOMAIN in $CERT_DOMAINS; do
 		if [[ "$DOMAIN" != *"$DYNU_HOSTNAME" ]]; then
-			bashio::log.error "Dynu Updater Initialisation - Certificate Hostname ${DOMAIN} is not valid for this account."
+			bashio::log.error "Dynu Updater Initialisation - Certificate Hostname ${DOMAIN} is not valid for this account (A)."
 			exit 1
 		elif [[ "$DOMAIN" != "*.$DYNU_HOSTNAME" ]] && { [[ ! " ${DYNU_HOSTNAMES[*]} " =~ " $DOMAIN " ]] || [[ "$WILDCARD_ENABLED" == "false" ]]; }; then
 			bashio::log.error "Dynu Updater Initialisation - Certificate Hostname ${DOMAIN} is not valid for this account."
