@@ -67,12 +67,8 @@ mqtt_publish() {
 			
 			# Store only the latest payload for this topic
 			MQTT_RETRY_MAP["$topic"]="$payload"
-			return 1
-		else
-			return 0
         fi
     fi
-	return 0
 }
 
 IP_CONF="/data/dynu-ip.conf"
@@ -141,6 +137,16 @@ update_host() {
 	fi
 }
 
+mkfifo /tmp/mqtt_pipe
+mosquitto_sub \
+	-h "$MQTT_HOST" \
+	-p "$MQTT_PORT" \
+	-u "$MQTT_USER" \
+	-P "$MQTT_PASSWORD" \
+	-i "$MQTT_CLIENT_ID" \
+	-t "dynu_updater/ip/service" \
+	"${TLS_FLAGS[@]}" > /tmp/mqtt_pipe &
+
 NEXT_CHECK=$(date +%s)
 
 while true; do
@@ -148,24 +154,27 @@ while true; do
 		for topic in "${!MQTT_RETRY_MAP[@]}"; do
             payload="${MQTT_RETRY_MAP[$topic]}"
 			
-			if mqtt_publish "$topic" "$payload"; then
-            # if mosquitto_pub \
-				# --quiet \
-                # -h "$MQTT_HOST" \
-                # -p "$MQTT_PORT" \
-                # -u "$MQTT_USER" \
-                # -P "$MQTT_PASSWORD" \
-                # -i "$MQTT_CLIENT_ID" \
-                # -t "dynu_updater/${topic}" \
-                # -m "$payload" \
-                # -r \
-                # "${TLS_FLAGS[@]}"; then
+            if mosquitto_pub \
+				--quiet \
+                -h "$MQTT_HOST" \
+                -p "$MQTT_PORT" \
+                -u "$MQTT_USER" \
+                -P "$MQTT_PASSWORD" \
+                -i "$MQTT_CLIENT_ID" \
+                -t "dynu_updater/${topic}" \
+                -m "$payload" \
+                -r \
+                "${TLS_FLAGS[@]}"; then
 
                 bashio::log.info "Dynu DNS Updater - Resent MQTT message: ${topic}"
                 unset MQTT_RETRY_MAP["$topic"]
             fi
         done
 	fi
+	
+	while read -r line < /tmp/mqtt_pipe; do
+		bashio::log.info "$line"
+	done
 	
 	NOW_EPOCH=$(date +%s)
 	
