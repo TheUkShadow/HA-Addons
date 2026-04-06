@@ -309,7 +309,7 @@ if [[ "$DNS_VALID" == "true" ]]; then
 			BASE="${DOMAIN#*.}"
 			for HOST in "${DYNU_HOSTNAMES[@]}"; do
 				# Skip wildcard itself
-				[[ "$HOST" == "$WILDCARD" ]] && continue
+				[[ "$HOST" == "*.${DOMAIN}" ]] && continue
 
 				# Skip apex
 				[[ "$HOST" == "$BASE" ]] && continue
