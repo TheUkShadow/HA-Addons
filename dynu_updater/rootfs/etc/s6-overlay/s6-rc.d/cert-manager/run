@@ -196,14 +196,14 @@ check_cert_dates() {
 	LAST_CHECK="ok"
 
 	if [[ "$FIRST_RUN" == "true" && "$FORCE_RENEW" == "true" ]]; then
-		bashio::log.info "Certificate Manager - Skipping certificate date check: Force Renew."
+		bashio::log.info "Certificate Manager - Skipping Certificate date check: Force Renew."
         mqtt_publish "last_cert_status" "false"
         renew_cert
 	elif [[ "$FIRST_RUN" == "true" && "$DRY_RUN" == "true" ]]; then
-		bashio::log.info "Certificate Manager - Skipping certificate date check: Test Run."
+		bashio::log.info "Certificate Manager - Skipping Certificate date check: Test Run."
         renew_cert
     elif [[ -f "$CERT_FILE" ]]; then
-		bashio::log.info "Certificate Manager - Checking certificate dates."
+		bashio::log.info "Certificate Manager - Checking Certificate dates."
 		mqtt_publish "last_cert_check" "$(date -Is)"
         if ! VALID_FROM_RAW=$(openssl x509 -in "${CERT_FILE}" -noout -startdate 2>/dev/null | cut -d= -f2); then
 			VALID_FROM_RAW=""
@@ -415,6 +415,6 @@ while true; do
 		FIRST_RUN="false"
 	fi
 	
-	sleep 1
+	sleep 10
 done
 

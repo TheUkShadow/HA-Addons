@@ -302,5 +302,5 @@ while true; do
 		check_ip_status
 	fi
 
-	sleep 1
+	sleep 10
 done
