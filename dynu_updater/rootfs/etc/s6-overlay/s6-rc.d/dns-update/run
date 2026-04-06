@@ -143,7 +143,7 @@ mosquitto_sub \
 	-p "$MQTT_PORT" \
 	-u "$MQTT_USER" \
 	-P "$MQTT_PASSWORD" \
-	-i "$MQTT_CLIENT_ID" \
+	-i "${MQTT_CLIENT_ID}_listener" \
 	-t "dynu_updater/ip/service" \
 	"${TLS_FLAGS[@]}" > /tmp/mqtt_pipe &
 
