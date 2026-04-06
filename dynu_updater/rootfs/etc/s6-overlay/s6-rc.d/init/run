@@ -341,7 +341,7 @@ if [[ "$CERT_VALID" == "true" ]]; then
 	UNIQUE_DOMAINS=()
 
 	for DOMAIN in "${CERT_HOSTNAMES[@]}"; do
-		if [[ -n "$DOMAIN" && -z "${SEEN[$DOMAIN]}" ]]; then
+		if [[ -n "$DOMAIN" && -z "${SEEN[$DOMAIN]+x}" ]]; then
 			SEEN[$DOMAIN]=1
 			UNIQUE_DOMAINS+=("$DOMAIN")
 		fi
