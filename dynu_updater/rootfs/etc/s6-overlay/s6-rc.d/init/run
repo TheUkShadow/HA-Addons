@@ -374,7 +374,7 @@ if [[ "$CERT_VALID" == "true" ]]; then
 	if [[ ${#CERT_HOSTNAMES[@]} -eq 0 ]]; then
 		bashio::log.error "Dynu Updater Initialisation - No valid hostnames for Certificate Manager."
 		exit 1
-	elif [[ ${#CERT_HOSTNAMES[@]} > 100 ]]; then
+	elif (( ${#CERT_HOSTNAMES[@]} > 100 )); then
 		bashio::log.error "Dynu Updater Initialisation - Too many hostnames for Certificate Manager. (Max 100)"
 		exit 1
 	fi
