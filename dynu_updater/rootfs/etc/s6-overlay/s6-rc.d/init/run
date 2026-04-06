@@ -218,6 +218,26 @@ DYNU_IPV6_ENABLED=$(jq -r --arg HOST "${DYNU_HOSTNAME}" '
 	| .ipv6 // "false"
 ' <<<"$DYNU_API_RESPONSE")
 
+# Retrieve IPv6 wildcard enabled status for domain
+DYNU_IPV4_WILDCARD=$(jq -r --arg HOST "${DYNU_HOSTNAME}" '
+	.domains[]
+	| select(.name == $HOST)
+	| .ipv4WildcardAlias // "false"
+' <<<"$DYNU_API_RESPONSE")
+
+# Retrieve IPv6 wildcard enabled status for domain
+DYNU_IPV6_WILDCARD=$(jq -r --arg HOST "${DYNU_HOSTNAME}" '
+	.domains[]
+	| select(.name == $HOST)
+	| .ipv6WildcardAlias // "false"
+' <<<"$DYNU_API_RESPONSE")
+
+if [[ "$DYNU_IPV4_WILDCARD" == "true" ]] || ( [[ "$DYNU_IPV6_ENABLED" == "true" ]] && [[ "$DYNU_IPV6_WILDCARD" == "true" ]] ); then
+	WILDCARD_ENABLED="true"
+else
+	WILDCARD_ENABLED="false"
+fi
+
 if [[ "$DYNU_IPV6_ENABLED" == "true" ]]; then
 	bashio::log.info "Dynu Updater Initialisation - IPv6 enabled for $DYNU_HOSTNAME."
 fi
@@ -231,7 +251,7 @@ if DYNU_RECORDS=$(curl -s --max-time 5 -H "API-Key: ${DYNU_API_KEY}" "https://ap
 	fi
 	
 	if [[ "$VERBOSE" == "true" ]]; then
-		bashio::log.info "Dynu Updater Initialisation - DYNU API Records"
+		bashio::log.info "Dynu Updater Initialisation - DYNU Records"
 		bashio::log.info "$DYNU_RECORDS"
 	fi
 	
@@ -300,7 +320,10 @@ if [[ "$DNS_VALID" == "true" ]]; then
 fi
 if [[ "$CERT_VALID" == "true" ]]; then
 	for DOMAIN in $CERT_DOMAINS; do
-		if [[ "$DOMAIN" != "*.$DYNU_HOSTNAME" && ! " ${DYNU_HOSTNAMES[*]} " =~ " $DOMAIN " ]]; then
+		if [[ "$DOMAIN" != *"$DYNU_HOSTNAME" ]]; then
+			bashio::log.error "Dynu Updater Initialisation - Certificate Hostname ${DOMAIN} is not valid for this account."
+			exit 1
+		elif [[ "$DOMAIN" != "*.$DYNU_HOSTNAME" ]] && { [[ ! " ${DYNU_HOSTNAMES[*]} " =~ " $DOMAIN " ]] || [[ "$WILDCARD_ENABLED" == "false" ]]; }; then
 			bashio::log.error "Dynu Updater Initialisation - Certificate Hostname ${DOMAIN} is not valid for this account."
 			exit 1
 		elif [[ "$DOMAIN" == "*.$DYNU_HOSTNAME" ]]; then
