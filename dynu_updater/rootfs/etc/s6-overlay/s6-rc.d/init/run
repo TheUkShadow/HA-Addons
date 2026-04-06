@@ -115,7 +115,7 @@ if [[ "$CERT_VALID" == "false" && "$DNS_VALID" == "false" ]]; then
 	exit 1
 fi
 
-if [[ -z "$DYNU_HOSTNAME" || ! "$DYNU_HOSTNAME" =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}(\.[A-Za-z]{2,})*$ ]]; then
+if [[ -z "$DYNU_HOSTNAME" || ! "$DYNU_HOSTNAME" =~ ^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$ ]]; then
     bashio::log.error "Dynu Updater Initialisation - Invalid Dynu Hostname."
 	exit 1
 fi
@@ -330,25 +330,59 @@ if [[ "$CERT_VALID" == "true" ]]; then
 		if [[ "$DOMAIN" != *"$DYNU_HOSTNAME" ]]; then
 			bashio::log.error "Dynu Updater Initialisation - Certificate Hostname ${DOMAIN} is not valid for ${DYNU_HOSTNAME}."
 			exit 1
-		elif [[ "$DOMAIN" != "*.$DYNU_HOSTNAME" ]] && [[ ! " ${DYNU_HOSTNAMES[*]} " =~ " $DOMAIN " ]] && [[ "$WILDCARD_ENABLED" == "false" ]]; then
-			bashio::log.error "Dynu Updater Initialisation - Certificate Hostname ${DOMAIN} is not a member of ${DYNU_HOSTNAME}."
+		elif [[ ! "$DOMAIN" =~ ^(\*\.)?([A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}$ ]]; then
+			bashio::log.error "Dynu Updater Initialisation - Certificate Hostname ${DOMAIN} is not valid."
 			exit 1
-		elif [[ "$DOMAIN" == "*.$DYNU_HOSTNAME" ]]; then
-			# Warn if wildcard is not the only entry
-			if [[ "$CERT_DOMAINS" != "$DOMAIN" ]]; then
-				bashio::log.warning "Dynu Updater Initialisation - Wildcard found, ignoring other Certificate Hostnames."
-			fi
-
-			# Use *.hostname only
-			CERT_HOSTNAMES=("$DOMAIN")
-			break
 		fi
 		CERT_HOSTNAMES+=("$DOMAIN")
 	done
+	
+	declare -A SEEN
+	UNIQUE_DOMAINS=()
+
+	for DOMAIN in "${CERT_HOSTNAMES[@]}"; do
+		if [[ -n "$D" && -z "${SEEN[$D]}" ]]; then
+			SEEN[$D]=1
+			UNIQUE_DOMAINS+=("$D")
+		fi
+	done
+	
+	WILDCARD_BASES=()
+
+	for CERT_DOMAIN in "${UNIQUE_DOMAINS[@]}"; do
+		if [[ "$CERT_DOMAIN" == \*.* ]]; then
+			WILDCARD_BASES+=( "${CERT_DOMAIN#*.}" )   # strip "*."
+		fi
+	done
+	
+	CERT_HOSTNAMES=()
+	
+	for DOMAIN in "${UNIQUE_DOMAINS[@]}"; do
+		INVALID="false"
+		for BASE in "${WILDCARD_BASES[@]}"; do
+			# If DOMAIN ends with .BASE → redundant
+			if [[ "$DOMAIN" == *".$BASE" ]]; then
+				INVALID="true"
+				bashio::log.warning "Hostname $DOMAIN is already covered by wildcard *.$BASE and is redundant."
+			fi
+		done
+		if [[ "$INVALID" == "false" ]]; then
+			CERT_HOSTNAMES+=("$DOMAIN")
+		fi
+	done
+	
 	if [[ ${#CERT_HOSTNAMES[@]} -eq 0 ]]; then
-		bashio::log.error "Dynu Updater Initialisation - no valid hostnames for Certificate Manager."
+		bashio::log.error "Dynu Updater Initialisation - No valid hostnames for Certificate Manager."
+		exit 1
+	elif [[ ${#CERT_HOSTNAMES[@]} > 100 ]]; then
+		bashio::log.error "Dynu Updater Initialisation - Too many hostnames for Certificate Manager. (Max 100)"
 		exit 1
 	fi
+	
+	for DOMAIN in "${CERT_HOSTNAMES[@]}"; do
+		bashio::log.warning "    - $DOMAIN"
+	done
+	exit 0
 fi
 
 bashio::log.info "Dynu Updater Initialisation - Generating MQTT Configuration."
