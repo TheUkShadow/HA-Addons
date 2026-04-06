@@ -175,7 +175,7 @@ while true; do
 	fi
 	
 	if read -t 0.1 -r line < /tmp/mqtt_pipe; then
-        handle_mqtt_message "$line"
+        bashio::log.info "$line"
     fi
 	
 	NOW_EPOCH=$(date +%s)
