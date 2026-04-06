@@ -138,7 +138,8 @@ update_host() {
 }
 
 mkfifo /tmp/mqtt_pipe
-exec 3</tmp/mqtt_pipe || true
+read -t 0.001 < /tmp/mqtt_pipe || true
+exec 3</tmp/mqtt_pipe
 
 start_mqtt_sub() {
 	mosquitto_sub \
