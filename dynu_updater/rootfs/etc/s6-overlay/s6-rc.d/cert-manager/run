@@ -242,7 +242,7 @@ check_cert_dates() {
 			
 				for DOMAIN in "${DOMAIN_ARR[@]}"; do
 					MATCHED="false"
-					for CERT_DOMAIN = "${CERT_DOMAINS[@]}"; do
+					for CERT_DOMAIN in "${CERT_DOMAINS[@]}"; do
 						if [[ "$DOMAIN" == "$CERT_DOMAIN" ]]; then
 							MATCHED="true"
 							break
@@ -255,7 +255,7 @@ check_cert_dates() {
 				done
 				
 				if [[ "$ALL_VALID" == "true" ]]; then
-					for CERT_DOMAIN = "${CERT_DOMAINS[@]}"; do
+					for CERT_DOMAIN in "${CERT_DOMAINS[@]}"; do
 						MATCHED="false"
 						for DOMAIN in "${DOMAIN_ARR[@]}"; do
 							if [[ "$DOMAIN" == "$CERT_DOMAIN" ]]; then
