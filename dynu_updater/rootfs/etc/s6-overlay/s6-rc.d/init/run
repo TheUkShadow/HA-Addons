@@ -301,6 +301,7 @@ IP_HOSTNAMES=()
 
 if [[ "$DNS_VALID" == "true" ]]; then
 	for DOMAIN in $IP_DOMAINS; do
+
 		if [[ "$DOMAIN" != *"$DYNU_HOSTNAME" ]]; then
 			bashio::log.error "Dynu Updater Initialisation - IP Update Hostname ${DOMAIN} is not valid for ${DYNU_HOSTNAME}."
 			exit 1
@@ -308,14 +309,21 @@ if [[ "$DNS_VALID" == "true" ]]; then
 			bashio::log.error "Dynu Updater Initialisation - IP Update Hostname ${DOMAIN} is not valid."
 			exit 1
 		fi
-		if [[ "$DOMAIN" == \*.* ]]; then
-			BASE="${DOMAIN#*.}"
-			for HOST in "${DYNU_HOSTNAMES[@]}"; do
-				# Skip wildcard itself
-				[[ "$HOST" == "*.${DOMAIN}" ]] && continue
 
-				# Skip apex
-				# [[ "$HOST" == "$BASE" ]] && continue
+		# 3. If wildcard, find covered hostnames
+		if [[ "$DOMAIN" == \*.* ]]; then
+			BASE="${DOMAIN#*.}"   # strip "*."
+
+			for HOST in "${DYNU_HOSTNAMES[@]}"; do
+
+				# Skip wildcard hostnames
+				[[ "$HOST" == \*.* ]] && continue
+
+				# Apex is always covered
+				if [[ "$HOST" == "$BASE" ]]; then
+					IP_HOSTNAMES+=("$DOMAIN")
+					continue
+				fi
 
 				# Must end with .BASE
 				[[ "$HOST" != *".$BASE" ]] && continue
@@ -325,13 +333,16 @@ if [[ "$DNS_VALID" == "true" ]]; then
 
 				# Must be exactly one label (no dots)
 				[[ "$prefix" == *.* ]] && continue
-				
-				IP_HOSTNAMES+=("$HOST")
+
+				IP_HOSTNAMES+=("$DOMAIN")
+
 			done
-		# else
-			# IP_HOSTNAMES+=("$DOMAIN")
+		elif [[ "$HOST" == "$DOMAIN" ]]; then
+			IP_HOSTNAMES+=("$DOMAIN")
 		fi
+
 	done
+
 	
 	for DOMAIN in "${IP_HOSTNAMES[@]}"; do
 		bashio::log.warning "    - $DOMAIN"
