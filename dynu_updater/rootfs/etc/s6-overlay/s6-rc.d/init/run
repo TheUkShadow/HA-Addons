@@ -301,62 +301,32 @@ IP_HOSTNAMES=()
 
 if [[ "$DNS_VALID" == "true" ]]; then
 	for DOMAIN in $IP_DOMAINS; do
-
 		if [[ "$DOMAIN" != *"$DYNU_HOSTNAME" ]]; then
 			bashio::log.error "Dynu Updater Initialisation - IP Update Hostname ${DOMAIN} is not valid for ${DYNU_HOSTNAME}."
 			exit 1
 		elif [[ ! "$DOMAIN" =~ ^(\*\.)?([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}$ ]]; then
 			bashio::log.error "Dynu Updater Initialisation - IP Update Hostname ${DOMAIN} is not valid."
 			exit 1
+		elif [[ "$DOMAIN" == "*.${DYNU_HOSTNAME}" ]]; then
+			IP_HOSTNAMES=("${DYNU_HOSTNAMES[@]}")
+			break
+		elif [[ " ${DYNU_HOSTNAMES[*]} " =~ " $DOMAIN " ]]; then
+			IP_HOSTNAMES+=("$DOMAIN")
 		fi
-
-		# 3. If wildcard, find covered hostnames
-		if [[ "$DOMAIN" == \*.* ]]; then
-			BASE="${DOMAIN#*.}"   # strip "*."
-
-			for HOST in "${DYNU_HOSTNAMES[@]}"; do
-
-				# Skip wildcard hostnames
-				[[ "$HOST" == \*.* ]] && continue
-
-				# Apex is always covered
-				if [[ "$HOST" == "$BASE" ]]; then
-					IP_HOSTNAMES+=("$HOST")
-					continue
-				fi
-
-				# Must end with .BASE
-				[[ "$HOST" != *".$BASE" ]] && continue
-
-				# Extract prefix before BASE
-				prefix="${HOST%.$BASE}"
-
-				# Must be exactly one label (no dots)
-				[[ "$prefix" == *.* ]] && continue
-
-				IP_HOSTNAMES+=("$HOST")
-
-			done
-		# else
-			# for HOST in "${DYNU_HOSTNAMES[@]}"; do
-				# IP_HOSTNAMES+=("$DOMAIN")
-			# done
-		fi
-
 	done
-
 	
-	for DOMAIN in "${IP_HOSTNAMES[@]}"; do
-		bashio::log.warning "    - $DOMAIN"
-	done
-		
 	if [[ ${#IP_HOSTNAMES[@]} -eq 0 ]]; then
 		bashio::log.error "Dynu Updater Initialisation - No valid IP Update hostnames."
 		exit 1
 	fi
+	
+	if [[ "$VERBOSE" == "true" ]]; then
+		bashio::log.info "Dynu Updater Initialisation - IP Update Hostnames:"
+		for DOMAIN in "${IP_HOSTNAMES[@]}"; do
+			bashio::log.info "    - $DOMAIN"
+		done
+	fi
 fi
-
-exit 1
 
 CERT_HOSTNAMES=()
 
@@ -438,10 +408,15 @@ if [[ "$CERT_VALID" == "true" ]]; then
 		exit 1
 	fi
 	
-	for DOMAIN in "${CERT_HOSTNAMES[@]}"; do
-		bashio::log.warning "    - $DOMAIN"
-	done
+	if [[ "$VERBOSE" == "true" ]]; then
+		bashio::log.info "Dynu Updater Initialisation - Certificate Hostnames:"
+		for DOMAIN in "${CERT_HOSTNAMES[@]}"; do
+			bashio::log.info "    - $DOMAIN"
+		done
+	fi
 fi
+
+exit 1
 
 bashio::log.info "Dynu Updater Initialisation - Generating MQTT Configuration."
 # MQTT connection
