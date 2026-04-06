@@ -313,7 +313,7 @@ if [[ "$DNS_VALID" == "true" ]]; then
 		elif [[ " ${DYNU_HOSTNAMES[*]} " =~ " $DOMAIN " ]]; then
 			IP_HOSTNAMES+=("$DOMAIN")
 		else
-			bashio::log.error "Dynu Updater Initialisation - IP Update Hostname ${DOMAIN} is not a valid hostname for ${DYNU_HOSTNAME}."
+			bashio::log.error "Dynu Updater Initialisation - IP Update Hostname ${DOMAIN%.$DYNU_HOSTNAME} is not valid for ${DYNU_HOSTNAME}."
 			exit 1
 		fi
 	done

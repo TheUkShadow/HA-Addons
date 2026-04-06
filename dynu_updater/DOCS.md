@@ -24,12 +24,12 @@ pick the **Configuration** page.
 **IP Update**
 	**Dynu Update Passwrod** (required) is either the Dynu account password, or the IP Update Password - if one has been created for the account.
 
-	**IP Update Hostnames** This is a list of hostnames to update IP addresses for. eg yourdomain.com, mx.yourdomain.com. These must match domain records created in the account. You can set *.yourdomain.com to update all domains for the account.
+	**IP Update Hostnames** This is a list of hostnames to update IP addresses for. eg yourdomain.com, mx.yourdomain.com. These must match domain records created in the account. You can use *.yourdomain.com to update all domains for the account.
 
 **Certificate**
 	**Certificate Email Address** is the email address used by Certbot when generating the certificate. eg admin@yourdomain.com.
 
-	**Certificate Hostnames** This is a list of hostnames to add to the certificate. eg yourdomain.com, mx.yourdomain.com. If wildcards are enabled for IPv4/IPv6 in the Dynu Control Panel, any valid hostname can be added. If wildcards are not enabled, these must match domain records created in the account. This can also be set to *.yourdomain.com to create a wildcard certificate.
+	**Certificate Hostnames** This is a list of hostnames to add to the certificate. eg yourdomain.com, mx.yourdomain.com. Any valid hostname for the account can be added. Wildcards are supported eg *.yourdomain.com, *.api.yourdomain.com. Wildcards do not add the base domain, this must be added separately.
 
 	**Renew Days** This is the number of days before a certificate is due to expire, to generate the new Certificate.
 
