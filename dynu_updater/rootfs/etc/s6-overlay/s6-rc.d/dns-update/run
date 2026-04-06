@@ -67,8 +67,12 @@ mqtt_publish() {
 			
 			# Store only the latest payload for this topic
 			MQTT_RETRY_MAP["$topic"]="$payload"
+			return 1
+		else
+			return 0
         fi
     fi
+	return 0
 }
 
 IP_CONF="/data/dynu-ip.conf"
@@ -143,18 +147,19 @@ while true; do
 	if [[ ${#MQTT_RETRY_MAP[@]} -ne 0 ]]; then
 		for topic in "${!MQTT_RETRY_MAP[@]}"; do
             payload="${MQTT_RETRY_MAP[$topic]}"
-
-            if mosquitto_pub \
-				--quiet \
-                -h "$MQTT_HOST" \
-                -p "$MQTT_PORT" \
-                -u "$MQTT_USER" \
-                -P "$MQTT_PASSWORD" \
-                -i "$MQTT_CLIENT_ID" \
-                -t "dynu_updater/${topic}" \
-                -m "$payload" \
-                -r \
-                "${TLS_FLAGS[@]}"; then
+			
+			if mqtt_publish topic payload; then
+            # if mosquitto_pub \
+				# --quiet \
+                # -h "$MQTT_HOST" \
+                # -p "$MQTT_PORT" \
+                # -u "$MQTT_USER" \
+                # -P "$MQTT_PASSWORD" \
+                # -i "$MQTT_CLIENT_ID" \
+                # -t "dynu_updater/${topic}" \
+                # -m "$payload" \
+                # -r \
+                # "${TLS_FLAGS[@]}"; then
 
                 bashio::log.info "Dynu DNS Updater - Resent MQTT message: ${topic}"
                 unset MQTT_RETRY_MAP["$topic"]
@@ -166,9 +171,9 @@ while true; do
 	
 	if (( NOW_EPOCH >= NEXT_CHECK )); then
 	
-		#if [[ "$VERBOSE" == "true" ]]; then
+		if [[ "$VERBOSE" == "true" ]]; then
 			bashio::log.info "Dynu DNS Updater - Checking current IP addresses."
-		#fi
+		fi
 		
 		IPV4=""
 		IPV6=""
