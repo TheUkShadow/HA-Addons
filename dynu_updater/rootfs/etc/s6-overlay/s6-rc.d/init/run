@@ -337,10 +337,10 @@ if [[ "$DNS_VALID" == "true" ]]; then
 				IP_HOSTNAMES+=("$HOST")
 
 			done
-		else
-			for HOST in "${DYNU_HOSTNAMES[@]}"; do
-				IP_HOSTNAMES+=("$DOMAIN")
-			done
+		# else
+			# for HOST in "${DYNU_HOSTNAMES[@]}"; do
+				# IP_HOSTNAMES+=("$DOMAIN")
+			# done
 		fi
 
 	done
