@@ -360,11 +360,28 @@ if [[ "$CERT_VALID" == "true" ]]; then
 	for DOMAIN in "${UNIQUE_DOMAINS[@]}"; do
 		INVALID="false"
 		for BASE in "${WILDCARD_BASES[@]}"; do
-			# If DOMAIN ends with .BASE → redundant
-			if [[ "$DOMAIN" == *".$BASE" ]]; then
-				INVALID="true"
-				bashio::log.warning "Hostname $DOMAIN is already covered by wildcard *.$BASE and is redundant."
+			# Skip if DOMAIN is a wildcard
+			if [[ "$DOMAIN" == \*.* ]]; then
+				continue
 			fi
+
+			# Extract the part before BASE
+			prefix="${DOMAIN%.$BASE}"
+
+			# If DOMAIN does not end with BASE → not redundant
+			if [[ "$prefix" == "$DOMAIN" ]]; then
+				continue
+			fi
+
+			# If prefix contains a dot → deeper than one label → not redundant
+			if [[ "$prefix" == *.* ]]; then
+				continue
+			fi
+
+			# If we reach here → DOMAIN is redundant
+			INVALID="true"
+			bashio::log.warning "Hostname $DOMAIN is already covered by wildcard *.$BASE and is redundant."
+
 		done
 		if [[ "$INVALID" == "false" ]]; then
 			CERT_HOSTNAMES+=("$DOMAIN")
