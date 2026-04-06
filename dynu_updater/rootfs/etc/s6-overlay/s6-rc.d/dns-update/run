@@ -147,6 +147,8 @@ mosquitto_sub \
 	-t "dynu_updater/ip/service" \
 	"${TLS_FLAGS[@]}" > /tmp/mqtt_pipe &
 
+bashio::log.info "Starting loop"
+
 NEXT_CHECK=$(date +%s)
 
 while true; do
