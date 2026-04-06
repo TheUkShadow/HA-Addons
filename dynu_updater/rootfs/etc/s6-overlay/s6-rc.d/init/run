@@ -302,7 +302,10 @@ IP_HOSTNAMES=()
 if [[ "$DNS_VALID" == "true" ]]; then
 	for DOMAIN in $IP_DOMAINS; do
 		if [[ "$DOMAIN" != *"$DYNU_HOSTNAME" ]]; then
-			bashio::log.error "Dynu Updater Initialisation - DNS Update Hostname ${DOMAIN} is not valid for ${DYNU_HOSTNAME}."
+			bashio::log.error "Dynu Updater Initialisation - IP Update Hostname ${DOMAIN} is not valid for ${DYNU_HOSTNAME}."
+			exit 1
+		elif [[ ! "$DOMAIN" =~ ^(\*\.)?([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}$ ]]; then
+			bashio::log.error "Dynu Updater Initialisation - IP Update Hostname ${DOMAIN} is not valid."
 			exit 1
 		fi
 		if [[ "$DOMAIN" == \*.* ]]; then
@@ -312,7 +315,7 @@ if [[ "$DNS_VALID" == "true" ]]; then
 				[[ "$HOST" == "*.${DOMAIN}" ]] && continue
 
 				# Skip apex
-				[[ "$HOST" == "$BASE" ]] && continue
+				# [[ "$HOST" == "$BASE" ]] && continue
 
 				# Must end with .BASE
 				[[ "$HOST" != *".$BASE" ]] && continue
@@ -325,8 +328,9 @@ if [[ "$DNS_VALID" == "true" ]]; then
 				
 				IP_HOSTNAMES+=("$HOST")
 			done
+		else
+			#IP_HOSTNAMES+=("$DOMAIN")
 		fi
-		# IP_HOSTNAMES+=("$DOMAIN")
 	done
 	
 	for DOMAIN in "${IP_HOSTNAMES[@]}"; do
