@@ -57,7 +57,7 @@ CERT_DIR=/data/letsencrypt
 CERT_PATH="${CERT_DIR}/live/$DYNU_HOSTNAME"
 CERT_FILE="${CERT_PATH}/cert.pem"
 WORK_DIR=/data/workdir
-DNS_MULTI_CREDS=/data/dns-multi.ini
+DNS_MULTI_CREDS=/run/dns-multi.ini
 ACME_ARGUMENTS=()
 KEY_ARGUMENTS=()
 ADDITIONAL_ARGS=()
@@ -107,7 +107,6 @@ echo "DYNU_PROPAGATION_TIMEOUT=${PROPAGATION_SECONDS}" >> "${DNS_MULTI_CREDS}"
 
 ACME_ARGUMENTS+=("--authenticator" "dns-multi" "--dns-multi-credentials" "${DNS_MULTI_CREDS}" "--dns-multi-propagation-seconds" "${PROPAGATION_SECONDS}")
 
-# Default Let's Encrypt servers.
 ACME_ARGUMENTS+=("--preferred-chain" "ISRG Root X2")
 
 if [[ "$FORCE_RENEW" == "true" ]]; then
@@ -116,10 +115,6 @@ fi
 
 if [[ "$LOG_LEVEL" ==  "debug" ]]; then
 	ADDITIONAL_ARGS+=("-vvv")
-elif [[ "$LOG_LEVEL" ==  "warning" ]]; then
-	ADDITIONAL_ARGS+=("-vv")
-elif [[ "$LOG_LEVEL" ==  "error" ]]; then
-	ADDITIONAL_ARGS+=("-v")
 fi
 
 if [[ "$DRY_RUN" == "true" ]]; then

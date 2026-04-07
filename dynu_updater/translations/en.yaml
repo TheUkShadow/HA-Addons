@@ -8,7 +8,7 @@ configuration:
     description: Available from the dns control panel at dynu.com and used to retrieve IPv6 status and in the creation of certificates.
   log_level:
     name: Log Detail
-    description: Provides more detailed log output.
+    description: The minimum detail to log.
   dns:
     name: IP Updater Options
     description: Options for updating IP addresses

@@ -1,5 +1,5 @@
 ---
-version: 1.0.1
+version: 1.0.0
 slug: dynu_updater
 name: Dynu Domain Update Tool
 description: Update dynamic DNS and generate certificates for a domain registerd with dynu.com
@@ -68,6 +68,6 @@ schema:
     keyfile: str?
     certfile: str?
     cafile: str?
-  log_level: list(info|debug|warning|error)
+  log_level: list(debug|info|warning|error)
 
 startup: services
