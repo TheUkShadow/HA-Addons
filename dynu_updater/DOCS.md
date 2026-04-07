@@ -59,3 +59,36 @@ The Certificate Manager will create an SSL certificate for all the hostnames in 
 Wildcards are supported (*.yourdomain.com or *.sub.yourdomain.com). The primary domain (yourdomain.com) is not automatically included and must be added to the list of hostnames, if required.
 Up to 100 hostnames can be added to the certificate.
 Hostnames which would be covered by a wildcard, are automatically ignored. If you specify \*.yourdomain.com and sub.yourdomain.com, then sub.yourdomain.com is not added to the certificate. Duplicate hostnames are also ignored.
+
+Example YAML Configuration
+'''yaml
+dns:
+  update_ip: true
+  update_interval: 1
+  disable_ipv6: false
+  dynu_update_password: DYNU_PASSWORD
+  domains:
+    - "*.yourdomain.com"
+cert:
+  update_cert: true
+  keyfile: privkey.pem
+  certfile: fullchain.pem
+  update_cert_days: 5
+  force_renew: false
+  dry_run: false
+  email: admin@yourdomain.com
+  domains:
+    - yourdomain.com
+    - homeassistant.yourdomain.com
+    - mx.yourdomain.com
+	- "*.api.yourdomain.com"
+mqtt:
+  enabled: true
+  core: true
+  host: core-mosquitto
+  port: 1883
+  tls: false
+  server_cert: false
+log_level: info
+dynu_hostname: yourdomain.com
+dynu_api_key: DYNU_API_KEY
