@@ -249,7 +249,6 @@ check_cert_dates() {
 		
         # If parsing fails, force renewal
         if [[ -n "$VALID_FROM_RAW" && -n "$CREATED_RAW" && -n "$EXPIRY_RAW" && "${#CERT_DOMAINS[@]}" -ne 0 ]]; then
-			fire_event '{"action": "certificate_check", "status": "ok"}'
 			VALID_FROM_ISO=$(date -u -d "${VALID_FROM_RAW}" +"%Y-%m-%dT%H:%M:%S+00:00")
 			CREATED_ISO=$(date -u -d "${CREATED_RAW}" +"%Y-%m-%dT%H:%M:%S+00:00")
 			EXPIRY_ISO=$(date -u -d "${EXPIRY_RAW}" +"%Y-%m-%dT%H:%M:%S+00:00")
