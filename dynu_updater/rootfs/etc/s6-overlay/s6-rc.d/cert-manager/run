@@ -94,13 +94,10 @@ mqtt_publish() {
 }
 
 fire_event() {
-    local event="$1"
-    local payload="$2"
-
     curl -s -X POST \
       -H "Authorization: Bearer $HASSIO_TOKEN" \
       -H "Content-Type: application/json" \
-      -d "$payload" \
+      -d "$1" \
       "http://hassio/homeassistant/api/events/dynu_updater" >/dev/null
 }
 
