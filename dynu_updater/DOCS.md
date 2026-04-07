@@ -29,38 +29,22 @@ At least one of **Update IP Addresses** or **Generate Certificate** must be enab
   - **Dynu Update Passwrod** (required) is either the Dynu account password, or the IP Update Password - if one has been created for the account.
   - **IP Update Hostnames** This is a list of hostnames to update IP addresses for. eg yourdomain.com, mx.yourdomain.com. These must match domain records created in the account. You can use *.yourdomain.com to update all hostnames for the account.
 
-**Certificate**
-
-	**Generate Certificate** If enabled, the app will generate a SSL certificate for all hosts listed in **Certificate Hostnames**
+- **Certificate**
+  - **Generate Certificate** If enabled, the app will generate a SSL certificate for all hosts listed in **Certificate Hostnames**
+  - **Certificate Email Address** is the email address used by Certbot when generating the certificate. eg admin@yourdomain.com.
+  - **Certificate Hostnames** This is a list of hostnames to add to the certificate. eg yourdomain.com, mx.yourdomain.com. Any valid hostname for the account can be added. Wildcards are supported eg *.yourdomain.com, *.api.yourdomain.com. Wildcards do not add the base domain, this must be added separately.
+  - **Renew Days** This is the number of days before a certificate is due to expire, to generate the new Certificate. If a certificate check or renewal fails, it will retry after 10 minutes.
+  - **Private Key File** and **Certificate File** can be changed as required. These files are copied to the ssl directory for use by other addons/integrations.
+  - **Force Renew** If enabled, this will cause the Certificate Manager to try and renew the current certificate.
+  - **Test Run** If enabled, this will prevent the Certificate Manager from generating/renewing certificats. Only testing with the current settings.
 	
-	**Certificate Email Address** is the email address used by Certbot when generating the certificate. eg admin@yourdomain.com.
-
-	**Certificate Hostnames** This is a list of hostnames to add to the certificate. eg yourdomain.com, mx.yourdomain.com. Any valid hostname for the account can be added. Wildcards are supported eg *.yourdomain.com, *.api.yourdomain.com. Wildcards do not add the base domain, this must be added separately.
-
-	**Renew Days** This is the number of days before a certificate is due to expire, to generate the new Certificate. If a certificate check or renewal fails, it will retry after 10 minutes.
-
-	**Private Key File** and **Certificate File** can be changed as required. These files are copied to the ssl directory for use by other addons/integrations.
-	
-	**Force Renew** If enabled, this will cause the Certificate Manager to try and renew the current certificate.
-	
-	**Test Run** If enabled, this will prevent the Certificate Manager from generating/renewing certificats. Only testing with the current settings.
-	
-**MQTT**
-
-	**Enabled** This enables MQTT and the app will create a Device with Entities in the MQTT integration.
-	
-	**Core** If this is enabled, the app will use the username and password supplied by the Default Mosquitto Broker app.
-	
-	**Host** (required) This is the hostname/ip address of the MQTT server. Set this to core-mosquitto if you have the Default Mosquitto Broker app installed.
-	
-	**Port** (required) Set this to the port for you MQTT server. This is usually 1883 for standard connections, or 8883 if using TLS.
-	
-	**User** This is the username for the MQTT server. If you enabled **Core**, this can be left blank.
-	
-	**Password** This is the password for the MQTT server. If you enabled **Core**, this can be left blank.
-	
-	**TLS** If enabled, MQTT will connect using a secured connection. Ensure you change the **Port** accordingly.
-	
-	**Validate Server Certificate** If enabled, the app will verify the MQTT server certificate is valid for the **Host**.
-	
-	**Private Key File**, **Certificate File**, and **CA File** may be required for the TLS connection, depending on how the MQTT server has been configured. These are not required if the MQTT server is using a SSL certificate provided by this app.
+- **MQTT**
+  - **Enabled** This enables MQTT and the app will create a Device with Entities in the MQTT integration.
+  - **Core** If this is enabled, the app will use the username and password supplied by the Default Mosquitto Broker app.
+  - **Host** (required) This is the hostname/ip address of the MQTT server. Set this to core-mosquitto if you have the Default Mosquitto Broker app installed.
+  - **Port** (required) Set this to the port for you MQTT server. This is usually 1883 for standard connections, or 8883 if using TLS.
+  - **User** This is the username for the MQTT server. If you enabled **Core**, this can be left blank.
+  - **Password** This is the password for the MQTT server. If you enabled **Core**, this can be left blank.
+  - **TLS** If enabled, MQTT will connect using a secured connection. Ensure you change the **Port** accordingly.
+  - **Validate Server Certificate** If enabled, the app will verify the MQTT server certificate is valid for the **Host**.
+  - **Private Key File**, **Certificate File**, and **CA File** may be required for the TLS connection, depending on how the MQTT server has been configured. These are not required if the MQTT server is using a SSL certificate provided by this app.
