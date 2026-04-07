@@ -61,7 +61,7 @@ Up to 100 hostnames can be added to the certificate.
 Hostnames which would be covered by a wildcard, are automatically ignored. If you specify \*.yourdomain.com and sub.yourdomain.com, then sub.yourdomain.com is not added to the certificate. Duplicate hostnames are also ignored.
 
 Example YAML Configuration
-'''yaml
+'yaml
 dns:
   update_ip: true
   update_interval: 1
