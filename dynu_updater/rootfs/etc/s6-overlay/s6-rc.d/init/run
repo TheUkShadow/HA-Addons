@@ -23,6 +23,7 @@ MQTT_CERTFILE=""
 MQTT_CAFILE=""
 
 CERT_TIME=5
+IP_TIME=1
 
 FORCE_RENEW="false"
 DRY_RUN="false"
@@ -32,6 +33,7 @@ USE_MQTT="false"
 MQTT_CORE="false"
 MQTT_USE_TLS="false"
 MQTT_VALIDATE="false"
+DISABLE_IPV6="false"
 
 LOG_LEVEL=$(bashio::config 'log_level')
 bashio::log.level "$LOG_LEVEL"
@@ -84,6 +86,9 @@ fi
 if bashio::config.has_value 'cert.update_cert_days'; then
 	CERT_TIME=$(bashio::config 'cert.update_cert_days')
 fi
+if bashio::config.has_value 'ip.update_interval'; then
+	IP_TIME=$(bashio::config 'ip.update_interval')
+fi
 if bashio::config.true 'cert.force_renew'; then
     FORCE_RENEW="true"
 fi
@@ -95,6 +100,9 @@ if bashio::config.true 'cert.update_cert'; then
 fi
 if bashio::config.true 'dns.update_ip'; then
     DNS_VALID="true"
+fi
+if bashio::config.true 'dns.disable_ipv6'; then
+    DISABLE_IPV6="true"
 fi
 if bashio::config.true 'mqtt.enabled'; then
     USE_MQTT="true"
@@ -208,39 +216,19 @@ if [[ -z "$DYNU_DOMAIN_ID" ]]; then
 	exit 1
 fi
 
-# Retrieve IPv6 enabled status for domain
-DYNU_IPV6_ENABLED=$(jq -r --arg HOST "${DYNU_HOSTNAME}" '
-	.domains[]
-	| select(.name == $HOST)
-	| .ipv6 // "false"
-' <<<"$DYNU_API_RESPONSE")
+if [[ "$DISABLE_IPV6" == "true" ]]; then
+	DYNU_IPV6_ENABLED="false"
+else
+	# Retrieve IPv6 enabled status for domain
+	DYNU_IPV6_ENABLED=$(jq -r --arg HOST "${DYNU_HOSTNAME}" '
+		.domains[]
+		| select(.name == $HOST)
+		| .ipv6 // "false"
+	' <<<"$DYNU_API_RESPONSE")
+fi
 
 if [[ "$DYNU_IPV6_ENABLED" == "true" ]]; then
 	bashio::log.info "Dynu Updater Initialisation - IPv6 enabled for $DYNU_HOSTNAME."
-fi
-
-# Retrieve IPv6 wildcard enabled status for domain
-DYNU_IPV4_WILDCARD=$(jq -r --arg HOST "${DYNU_HOSTNAME}" '
-	.domains[]
-	| select(.name == $HOST)
-	| .ipv4WildcardAlias // "false"
-' <<<"$DYNU_API_RESPONSE")
-
-# Retrieve IPv6 wildcard enabled status for domain
-DYNU_IPV6_WILDCARD=$(jq -r --arg HOST "${DYNU_HOSTNAME}" '
-	.domains[]
-	| select(.name == $HOST)
-	| .ipv6WildcardAlias // "false"
-' <<<"$DYNU_API_RESPONSE")
-
-if [[ "$DYNU_IPV4_WILDCARD" == "true" ]] || ( [[ "$DYNU_IPV6_ENABLED" == "true" ]] && [[ "$DYNU_IPV6_WILDCARD" == "true" ]] ); then
-	WILDCARD_ENABLED="true"
-else
-	WILDCARD_ENABLED="false"
-fi
-
-if [[ "$WILDCARD_ENABLED" == "true" ]]; then
-	bashio::log.info "Dynu Updater Initialisation - Wildcard enabled for $DYNU_HOSTNAME."
 fi
 
 if DYNU_RECORDS=$(curl -s --max-time 5 -H "API-Key: ${DYNU_API_KEY}" "https://api.dynu.com/v2/dns/${DYNU_DOMAIN_ID}/record" 2>/dev/null); then
@@ -275,10 +263,10 @@ else
 	exit 1
 fi
 
-readarray -t DYNU_HOSTNAMES < <(
+readarray -t DYNU_IPV4_HOSTNAMES < <(
   jq -r '
 	[.dnsRecords[]
-	  | select(.recordType | IN("SOA","A","AAAA"))
+	  | select(.recordType | IN("SOA","A"))
 	  | .hostname
 	]
 	| unique
@@ -287,41 +275,73 @@ readarray -t DYNU_HOSTNAMES < <(
   ' <<< "$DYNU_RECORDS"
 )
 
-if [[ ${#DYNU_HOSTNAMES[@]} -eq 0 ]]; then
+if [[ "$DYNU_IPV6_ENABLED" == "true" ]]; then
+	readarray -t DYNU_IPV6_HOSTNAMES < <(
+	  jq -r '
+		[.dnsRecords[]
+		  | select(.recordType | IN("SOA","AAAA"))
+		  | .hostname
+		]
+		| unique
+		| sort_by( (split(".") | length), . )
+		| .[]
+	  ' <<< "$DYNU_RECORDS"
+	)
+else
+	DYNU_IPV6_HOSTNAMES=()
+fi
+
+if [[ ${#DYNU_IPV4_HOSTNAMES[@]} -eq 0 ]] && [[ ${#DYNU_IPV6_HOSTNAMES[@]} -eq 0 ]]; then
 	bashio::log.error "Dynu Updater Initialisation - no valid hostnames returned by Dynu Records API."
 	exit 1
 fi
 
-IP_HOSTNAMES=()
+IPV4_HOSTNAMES=()
+IPV6_HOSTNAMES=()
 
 if [[ "$DNS_VALID" == "true" ]]; then
 	for DOMAIN in $IP_DOMAINS; do
 		if [[ "$DOMAIN" != *"$DYNU_HOSTNAME" ]]; then
-			bashio::log.error "Dynu Updater Initialisation - IP Update Hostname ${DOMAIN} is not valid for ${DYNU_HOSTNAME}."
+			bashio::log.error "Dynu Updater Initialisation - IP Update Hostname ${DOMAIN}, is not valid for ${DYNU_HOSTNAME}."
 			exit 1
 		elif [[ ! "$DOMAIN" =~ ^(\*\.)?([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}$ ]]; then
-			bashio::log.error "Dynu Updater Initialisation - IP Update Hostname ${DOMAIN} is not valid."
+			bashio::log.error "Dynu Updater Initialisation - IP Update Hostname ${DOMAIN}, is not valid."
 			exit 1
 		elif [[ "$DOMAIN" == "*.${DYNU_HOSTNAME}" ]]; then
-			IP_HOSTNAMES=("${DYNU_HOSTNAMES[@]}")
+			if [[ ${#DYNU_IPV4_HOSTNAMES[@]} -ne 0 ]]; then
+				IPV4_HOSTNAMES=("${DYNU_IPV4_HOSTNAMES[@]}")
+			fi
+			if [[ ${#DYNU_IPV6_HOSTNAMES[@]} -ne 0 ]]; then
+				IPV6_HOSTNAMES=("${DYNU_IPV6_HOSTNAMES[@]}")
+			fi
 			break
-		elif [[ " ${DYNU_HOSTNAMES[*]} " =~ " $DOMAIN " ]]; then
-			IP_HOSTNAMES+=("$DOMAIN")
 		else
-			bashio::log.error "Dynu Updater Initialisation - IP Update Hostname ${DOMAIN%.$DYNU_HOSTNAME} is not valid for ${DYNU_HOSTNAME}."
-			exit 1
+			if [[ " ${DYNU_IPV4_HOSTNAMES[*]} " =~ " $DOMAIN " ]]; then
+				IPV4_HOSTNAMES+=("$DOMAIN")
+			elif [[ " ${DYNU_IPV6_HOSTNAMES[*]} " =~ " $DOMAIN " ]]; then
+				IPV6_HOSTNAMES+=("$DOMAIN")
+			else
+				bashio::log.error "Dynu Updater Initialisation - IP Update Hostname ${DOMAIN%.$DYNU_HOSTNAME} is not valid for ${DYNU_HOSTNAME}."
+				exit 1
+			fi
 		fi
 	done
 	
-	if [[ ${#IP_HOSTNAMES[@]} -eq 0 ]]; then
+	if [[ ${#IPV4_HOSTNAMES[@]} -eq 0 ]] && [[ ${#IPV6_HOSTNAMES[@]} -eq 0 ]]; then
 		bashio::log.error "Dynu Updater Initialisation - No valid IP Update hostnames."
 		exit 1
 	fi
 	
-	bashio::log.debug "Dynu Updater Initialisation - IP Update Hostnames:"
-	for DOMAIN in "${IP_HOSTNAMES[@]}"; do
-		bashio::log.debug "    - $DOMAIN"
-	done
+	if [[ "$LOG_LEVEL" == "debug" ]]; then
+		bashio::log.debug "Dynu Updater Initialisation - IPv4 Update Hostnames:"
+		for DOMAIN in "${IPV4_HOSTNAMES[@]}"; do
+			bashio::log.debug "    - $DOMAIN"
+		done
+		bashio::log.debug "Dynu Updater Initialisation - IPv6 Update Hostnames:"
+		for DOMAIN in "${IPV6_HOSTNAMES[@]}"; do
+			bashio::log.debug "    - $DOMAIN"
+		done
+	fi
 fi
 
 CERT_HOSTNAMES=()
@@ -680,7 +700,8 @@ json_array_from_bash_array() {
 }
 
 # Convert arrays
-ip_hostnames_json=$(json_array_from_bash_array IP_HOSTNAMES)
+ipv4_hostnames_json=$(json_array_from_bash_array IPV4_HOSTNAMES)
+ipv6_hostnames_json=$(json_array_from_bash_array IPV6_HOSTNAMES)
 cert_hostnames_json=$(json_array_from_bash_array CERT_HOSTNAMES)
 tls_flags_json=$(json_array_from_bash_array TLS_FLAGS)
 mqtt_entities_json=$(json_array_from_bash_array MQTT_ENTITIES)
@@ -691,10 +712,10 @@ jq -n \
   --arg email "$EMAIL" \
   --arg keyfile "$KEYFILE" \
   --arg certfile "$CERTFILE" \
+  --arg ip_time "IP_TIME" \
   --arg cert_time "$CERT_TIME" \
   --arg dry_run "$DRY_RUN" \
   --arg force_renew "$FORCE_RENEW" \
-  --arg ipv6 "$DYNU_IPV6_ENABLED" \
   --arg dynu_pass "$PASSWORD" \
   --arg mqtt "$USE_MQTT" \
   --arg host "$MQTT_HOST" \
@@ -702,15 +723,17 @@ jq -n \
   --arg user "$MQTT_USER" \
   --arg mqtt_pass "$MQTT_PASSWORD" \
   --arg client_id "$(hostname)" \
-  --argjson ip_domains "$ip_hostnames_json" \
+  --argjson ipv4_domains "$ipv4_hostnames_json" \
+  --argjson ipv6_domains "$ipv6_hostnames_json" \
   --argjson cert_domains "$cert_hostnames_json" \
   --argjson tls_flags "$tls_flags_json" \
   '{
       hostname: $dynu_host,
 	  dns: {
-        ipv6: $ipv6,
-        domains: $ip_domains,
-		password: $dynu_pass
+        ipv4_domains: $ipv4_domains,
+		ipv6_domains: $ipv6_domains,
+		password: $dynu_pass,
+		ip_time: $ip_time
 	  },
 	  cert: {
 	    api_key: $api_key,

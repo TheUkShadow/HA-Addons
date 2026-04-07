@@ -10,18 +10,24 @@ configuration:
     name: Log Detail
     description: Provides more detailed log output.
   dns:
-    name: IP Update Options
+    name: IP Updater Options
     description: Options for updating IP addresses
     fields:
       update_ip:
         name: Update IP Addresses
         description: The addon will monitor and update IP addresses for the hostnames listed in IP Update Hostnames
+      update_interval:
+        name: Update Interval
+        description: The number of minutes to wait between each IP address check (1 - 60)
+      disable_ipv6:
+        name: Disable IPv6
+        description: This prevents the IP Updater from trying to determine the current IPv6 address and updating AAAA records. If IPv6 is disabled in the Dynu control panel, or no AAAA records exist, IPv6 checking is automatically disabled.
       dynu_update_password:
         name: Dynu Account Password
         description: This is either the account password, or the IP Update password
       domains:
         name: Hostnames
-        description: Hostnames listed here will have their IP address information updated (eg yourdomain.com, example.yourdomain.com, *.yourdomain.com)
+        description: Hostnames listed here will have their IP address information updated (eg yourdomain.com, example.yourdomain.com. Use *.yourdomain.com to update all registered hostnames)
   cert:
     name: Certificate Options
     description: Options for the Certificate Request using Let's Encrypt

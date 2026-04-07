@@ -1,5 +1,5 @@
 ---
-version: 1.0.1
+version: 1.0.2
 slug: dynu_updater
 name: Dynu Domain Update Tool
 description: Update dynamic DNS and generate certificates for a domain registerd with dynu.com
@@ -19,6 +19,8 @@ map:
 options:
   dns:
     update_ip: true
+    update_interval: 1
+    disable_ipv6: false
   cert:
     update_cert: true
     keyfile: privkey.pem
@@ -32,7 +34,7 @@ options:
     host: core-mosquitto
     port: 1883
     tls: false
-    server_cert: true
+    server_cert: false
   log_level: info
 schema:
   dynu_hostname: str
@@ -40,8 +42,10 @@ schema:
   dns:
     update_ip: bool
     dynu_update_password: password?
+    update_interval: int(1,60)
     domains:
       - str?
+    disable_ipv6: bool
   cert:
     update_cert: bool
     email: email?

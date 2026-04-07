@@ -318,7 +318,7 @@ check_cert_dates() {
 				mqtt_publish "last_cert_status" "true"
             fi
 		else
-			bashio::log.warning "Certificate Manager - Unable to parse certificate data."
+			bashio::log.warning "Certificate Manager - Unable to parse current certificate data."
             mqtt_publish "last_cert_status" "false"
             renew_cert
         fi

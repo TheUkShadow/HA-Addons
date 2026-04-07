@@ -1,14 +1,16 @@
 # Dynu Domain Update Tool
 
-This tool allows Dynamic DNS updates and SSL certificates to be generated for a domian registered with dynu.com.
+This app can update IP addresses and create a SSL certificate for a domain registered at dynu.com.
 
-Uses Let's Encrypt to create and update certificates, and Dynu's API to update dynamic DNS records.
+Uses Let's Encrypt to create and update the certificate, and Dynu's API to update dynamic DNS records.
 
-The certificate generation/renewal check runs each day at 00:00. The DNS update check runs every 60 seconds.
+By default, the IP updater checks the current IP address every minute. If a change is detected, all configured hostnames are updated. The time between checks is adjustable from 1 minute to 60 minutes.
+
+The Certificate Manager will automatically renew the certiifcate before the old one expires.
 
 ![Supports aarch64 Architecture][aarch64-shield] ![Supports amd64 Architecture][amd64-shield]
 
-The generated certificate can be used within others addons. By default the path and file for the certificates within other addons will refer to the files generated within this addon.
+The generated certificate can be used by other addons and integrations.
 
 [aarch64-shield]: https://img.shields.io/badge/aarch64-yes-green.svg
 [amd64-shield]: https://img.shields.io/badge/amd64-yes-green.svg
