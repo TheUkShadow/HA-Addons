@@ -254,6 +254,8 @@ check_cert_dates() {
 			CREATED_ISO=$(date -u -d "${CREATED_RAW}" +"%Y-%m-%dT%H:%M:%S+00:00")
 			EXPIRY_ISO=$(date -u -d "${EXPIRY_RAW}" +"%Y-%m-%dT%H:%M:%S+00:00")
 
+			fire_event "{\"action\": \"certificate_check\", \"status\": \"ok\", \"data\": {\"created\": \"${CREATED_ISO}\", \"expires\": \"${EXPIRY_ISO}\"}}"
+			
             mqtt_publish "cert_expires" "$EXPIRY_ISO"
             mqtt_publish "cert_created" "$CREATED_ISO"
 
@@ -360,10 +362,11 @@ check_cert_dates() {
 			fi
 
             if [[ -n "$VALID_FROM_RAW" && -n "$CREATED_RAW" && -n "$EXPIRY_RAW" ]]; then
-				fire_event '{"action": "certificate_check", "status": "ok"}'
 				VALID_FROM_ISO=$(date -u -d "${VALID_FROM_RAW}" +"%Y-%m-%dT%H:%M:%S+00:00")
 				CREATED_ISO=$(date -u -d "${CREATED_RAW}" +"%Y-%m-%dT%H:%M:%S+00:00")
 				EXPIRY_ISO=$(date -u -d "${EXPIRY_RAW}" +"%Y-%m-%dT%H:%M:%S+00:00")
+				
+				fire_event "{\"action\": \"certificate_check\", \"status\": \"ok\", \"data\": {\"created\": \"${CREATED_ISO}\", \"expires\": \"${EXPIRY_ISO}\"}}"
 
 				mqtt_publish "cert_expires" "$EXPIRY_ISO"
 				mqtt_publish "cert_created" "$CREATED_ISO"
