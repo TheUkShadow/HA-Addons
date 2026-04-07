@@ -229,7 +229,7 @@ check_ip_status() {
 	if [[ ${#IPV4_DOMAIN_ARR[@]} -eq 0 || -n "$IPV4" ]] && [[ ${#IPV6_DOMAIN_ARR[@]} -eq 0 || -n "$IPV6" ]]; then
 		mqtt_publish "wan_connection" "true"
 		mqtt_publish "last_ip_check" "$(date -Is)"
-		fire_event '{"action": "ip_check", "status": "ok", "data": {"ipv4": "${IPV4}", "ipv6": "${IPV6}"}}'
+		fire_event "{\"action\": \"ip_check\", \"status\": \"ok\", \"data\": {\"ipv4\": \"${IPV4}\", \"ipv6\": \"${IPV6}\"}}"
 		
 		if [[ "$LAST_CHECK" == "false" || "$IPV4" != "$CURRENT_IPV4" || "$IPV6" != "$CURRENT_IPV6" ]]; then
 			if [[ "$LAST_CHECK" == "false" ]]; then
