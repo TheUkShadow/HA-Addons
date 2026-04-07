@@ -76,11 +76,16 @@ mqtt_publish() {
 }
 
 fire_event() {
-    curl -s -X POST \
+    if ! RESPONSE=$(curl -s --max-time 5 -X POST \
       -H "Authorization: Bearer $HASSIO_TOKEN" \
       -H "Content-Type: application/json" \
       -d "$1" \
-      "http://hassio/homeassistant/api/events/dynu_updater" >/dev/null
+      "http://hassio/homeassistant/api/events/dynu_updater" >/dev/null); then
+	  
+		bashio::log.error "Dynu IP Updater - Could not send ${1} to Home Assistant Events"
+	else
+		bashio::log.debug "Dynu IP Updater - Sent ${1} to Home Assistant Events. Response: ${RESPONSE}"
+	fi
 }
 
 IP_CONF="/data/dynu-ip.conf"
