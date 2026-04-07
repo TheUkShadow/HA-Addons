@@ -60,7 +60,7 @@ Wildcards are supported (*.yourdomain.com or *.sub.yourdomain.com). The primary 
 Up to 100 hostnames can be added to the certificate.
 Hostnames which would be covered by a wildcard, are automatically ignored. If you specify \*.yourdomain.com and sub.yourdomain.com, then sub.yourdomain.com is not added to the certificate. Duplicate hostnames are also ignored.
 
-''yml
+'''yaml
 # Example YAML Configuration
 dns:
   update_ip: true
@@ -92,4 +92,4 @@ mqtt:
 log_level: info
 dynu_hostname: yourdomain.com
 dynu_api_key: DYNU_API_KEY
-''
+'''
