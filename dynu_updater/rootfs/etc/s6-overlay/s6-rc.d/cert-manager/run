@@ -93,6 +93,17 @@ mqtt_publish() {
     fi
 }
 
+fire_event() {
+    local event="$1"
+    local payload="$2"
+
+    curl -s -X POST \
+      -H "Authorization: Bearer $HASSIO_TOKEN" \
+      -H "Content-Type: application/json" \
+      -d "$payload" \
+      "http://hassio/homeassistant/api/events/dynu_updater" >/dev/null
+}
+
 mkdir -p "${WORK_DIR}"
 mkdir -p "${CERT_DIR}"
 
@@ -164,6 +175,7 @@ renew_cert() {
 	if [[ "$CERTBOT_EXIT" -ne 0 ]]; then
 		bashio::log.error "Certificate Manager - Certbot failed with code ${CERTBOT_EXIT}."
 		LAST_CHECK="error"
+		fire_event '{"type": "certificate", "action": "certificate_opdate", "status": "fail"}'
 	else
 		# If certbot succeeded, check if certificate was updated
 		# Load output into a variable
@@ -176,12 +188,15 @@ renew_cert() {
 			cp "${CERT_PATH}/privkey.pem" "/ssl/$KEYFILE"
 			cp "${CERT_PATH}/fullchain.pem" "/ssl/$CERTFILE"
 			bashio::log.info "Certificate Manager - New certificates copied to /ssl."
+			fire_event '{"type": "certificate", "action": "certificate_opdate", "status": "success"}'
 		elif echo "$CERTBOT_OUTPUT" | grep -q "Certificate not yet due for renewal"; then
 			bashio::log.info "Certificate Manager - Current certificate is valid."
+			fire_event '{"type": "certificate", "action": "certificate_opdate", "status": "no_change"}'
 		elif [[ "$DRY_RUN" == "true" ]] && echo "$CERTBOT_OUTPUT" | grep -q "The dry run was successful"; then	
 			bashio::log.info "Certificate Manager - The dry-run was successful."
 		else
 			bashio::log.warning "Certificate Manager - Unexpected Certbot output"
+			fire_event '{"type": "certificate", "action": "certificate_opdate", "status": "fail"}'
 		fi
 	fi
 }
@@ -232,6 +247,7 @@ check_cert_dates() {
 		
         # If parsing fails, force renewal
         if [[ -n "$VALID_FROM_RAW" && -n "$CREATED_RAW" && -n "$EXPIRY_RAW" && "${#CERT_DOMAINS[@]}" -ne 0 ]]; then
+			fire_event '{"type": "certificate", "action": "certificate_check", "status": "success"}'
 			VALID_FROM_ISO=$(date -u -d "${VALID_FROM_RAW}" +"%Y-%m-%dT%H:%M:%S+00:00")
 			CREATED_ISO=$(date -u -d "${CREATED_RAW}" +"%Y-%m-%dT%H:%M:%S+00:00")
 			EXPIRY_ISO=$(date -u -d "${EXPIRY_RAW}" +"%Y-%m-%dT%H:%M:%S+00:00")
@@ -315,6 +331,7 @@ check_cert_dates() {
 		else
 			bashio::log.warning "Certificate Manager - Unable to parse current certificate data."
             mqtt_publish "last_cert_status" "false"
+			fire_event '{"type": "certificate", "action": "certificate_check", "status": "fail"}'
             renew_cert
         fi
     else
@@ -341,6 +358,7 @@ check_cert_dates() {
 			fi
 
             if [[ -n "$VALID_FROM_RAW" && -n "$CREATED_RAW" && -n "$EXPIRY_RAW" ]]; then
+				fire_event '{"type": "certificate", "action": "certificate_check", "status": "success"}'
 				VALID_FROM_ISO=$(date -u -d "${VALID_FROM_RAW}" +"%Y-%m-%dT%H:%M:%S+00:00")
 				CREATED_ISO=$(date -u -d "${CREATED_RAW}" +"%Y-%m-%dT%H:%M:%S+00:00")
 				EXPIRY_ISO=$(date -u -d "${EXPIRY_RAW}" +"%Y-%m-%dT%H:%M:%S+00:00")
@@ -365,11 +383,13 @@ check_cert_dates() {
                 bashio::log.warning "Certificate Manager - Unable to parse renewed certificate dates. Recheking in 10 minutes"
                 mqtt_publish "last_cert_status" "false"
 				NEXT_CHECK=$(( NOW_EPOCH + 600 ))
+				fire_event '{"type": "certificate", "action": "certificate_check", "status": "fail"}'
             fi
         else
             bashio::log.warning "Certificate Manager - Certificate missing/not created after renewal. Check the logs for more information. Recheking in 10 minutes"
             mqtt_publish "last_cert_status" "false"
 			NEXT_CHECK=$(( NOW_EPOCH + 600 ))
+			fire_event '{"type": "certificate", "action": "certificate_check", "status": "fail"}'
         fi
     fi
 }
