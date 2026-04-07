@@ -19,22 +19,18 @@ pick the **Configuration** page.
 
 At least one of **Update IP Addresses** or **Generate Certificate** must be enabled.
 
-**Dynu Hostname** (required) is the primary domain registerd at dynu.com. eg yourdomain.com.
+- **Dynu Hostname** (required) is the primary domain registerd at dynu.com. eg yourdomain.com.
+- **Dynu API Key** (required) is generated in the Dynu Control Panel under API Credentials.
 
-**Dynu API Key** (required) is generated in the Dynu Control Panel under API Credentials.
-
-**IP Update**
-	**Update IP Addresses** If enabled, the app will update the IP addresses for any hosts listed in **IP Update Hostnames**.
-	
-	**Update Interval** This is the number of minutes to wait between each IP address check. If an IP address check or update fails, it will retry after 1 minute.
-	
-	**Disable IPv6** If enabled, this will prevent the app from trying to resolve the server IPv6 address and updating any AAAA records in the Dynu account.
-	
-	**Dynu Update Passwrod** (required) is either the Dynu account password, or the IP Update Password - if one has been created for the account.
-
-	**IP Update Hostnames** This is a list of hostnames to update IP addresses for. eg yourdomain.com, mx.yourdomain.com. These must match domain records created in the account. You can use *.yourdomain.com to update all hostnames for the account.
+- **IP Update**
+  - **Update IP Addresses** If enabled, the app will update the IP addresses for any hosts listed in **IP Update Hostnames**.
+  - **Update Interval** This is the number of minutes to wait between each IP address check. If an IP address check or update fails, it will retry after 1 minute.
+  - **Disable IPv6** If enabled, this will prevent the app from trying to resolve the server IPv6 address and updating any AAAA records in the Dynu account.
+  - **Dynu Update Passwrod** (required) is either the Dynu account password, or the IP Update Password - if one has been created for the account.
+  - **IP Update Hostnames** This is a list of hostnames to update IP addresses for. eg yourdomain.com, mx.yourdomain.com. These must match domain records created in the account. You can use *.yourdomain.com to update all hostnames for the account.
 
 **Certificate**
+
 	**Generate Certificate** If enabled, the app will generate a SSL certificate for all hosts listed in **Certificate Hostnames**
 	
 	**Certificate Email Address** is the email address used by Certbot when generating the certificate. eg admin@yourdomain.com.
@@ -50,6 +46,7 @@ At least one of **Update IP Addresses** or **Generate Certificate** must be enab
 	**Test Run** If enabled, this will prevent the Certificate Manager from generating/renewing certificats. Only testing with the current settings.
 	
 **MQTT**
+
 	**Enabled** This enables MQTT and the app will create a Device with Entities in the MQTT integration.
 	
 	**Core** If this is enabled, the app will use the username and password supplied by the Default Mosquitto Broker app.
