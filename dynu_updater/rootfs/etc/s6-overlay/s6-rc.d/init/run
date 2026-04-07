@@ -712,7 +712,7 @@ jq -n \
   --arg email "$EMAIL" \
   --arg keyfile "$KEYFILE" \
   --arg certfile "$CERTFILE" \
-  --arg ip_time "IP_TIME" \
+  --arg ip_time "$IP_TIME" \
   --arg cert_time "$CERT_TIME" \
   --arg dry_run "$DRY_RUN" \
   --arg force_renew "$FORCE_RENEW" \

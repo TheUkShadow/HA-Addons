@@ -11,7 +11,7 @@ Follow these steps to get the app installed on your system:
 ## How to use
 
 The app can be configured via the interface.
-The configuration via YAML is also possible, see the examples below.
+The configuration via YAML is also possible, see the example below.
 
 Navigate in your Home Assistant frontend to the apps overview page at
 **Settings** > **Apps**, and pick the **Dynu Domain Update Tool** app. On the top,
@@ -60,7 +60,7 @@ Wildcards are supported (*.yourdomain.com or *.sub.yourdomain.com). The primary 
 Up to 100 hostnames can be added to the certificate.
 Hostnames which would be covered by a wildcard, are automatically ignored. If you specify \*.yourdomain.com and sub.yourdomain.com, then sub.yourdomain.com is not added to the certificate. Duplicate hostnames are also ignored.
 
-# Example YAML Configuration
+## Example YAML Configuration
 ```yaml
 dns:
   update_ip: true
