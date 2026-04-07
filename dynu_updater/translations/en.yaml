@@ -57,7 +57,7 @@ configuration:
         name: Test Run
         description: Performs a test of the Certificate creation/renewal without changing/updating any certificates. 
   mqtt:
-    name: MQTT
+    name: MQTT Options
     description: Creates MQTT Sensors for use in automations, etc.
     fields:
       enabled:

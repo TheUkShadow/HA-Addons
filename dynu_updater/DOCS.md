@@ -17,28 +17,28 @@ Navigate in your Home Assistant frontend to the apps overview page at
 **Settings** > **Apps**, and pick the **Dynu Domain Update Tool** app. On the top,
 pick the **Configuration** page.
 
-At least one of **Update IP Addresses** or **Generate Certificate** must be enabled.
+At least one of **Update IP Addresses** or **Generate Certificate** options must be enabled.
 
 - **Dynu Hostname** (required) is the primary domain registerd at dynu.com. eg yourdomain.com.
 - **Dynu API Key** (required) is generated in the Dynu Control Panel under API Credentials.
 
-- **IP Update**
+- **IP Updater Options**
   - **Update IP Addresses** If enabled, the app will update the IP addresses for any hosts listed in **IP Update Hostnames**.
   - **Update Interval** This is the number of minutes to wait between each IP address check. If an IP address check or update fails, it will retry after 1 minute.
   - **Disable IPv6** If enabled, this will prevent the app from trying to resolve the server IPv6 address and updating any AAAA records in the Dynu account.
   - **Dynu Update Passwrod** (required) is either the Dynu account password, or the IP Update Password - if one has been created for the account.
   - **IP Update Hostnames** This is a list of hostnames to update IP addresses for. eg yourdomain.com, mx.yourdomain.com. These must match domain records created in the account. You can use *.yourdomain.com to update all hostnames for the account.
 
-- **Certificate**
+- **Certificate Options**
   - **Generate Certificate** If enabled, the app will generate a SSL certificate for all hosts listed in **Certificate Hostnames**
   - **Certificate Email Address** is the email address used by Certbot when generating the certificate. eg admin@yourdomain.com.
-  - **Certificate Hostnames** This is a list of hostnames to add to the certificate. eg yourdomain.com, mx.yourdomain.com. Any valid hostname for the account can be added. Wildcards are supported eg *.yourdomain.com, *.api.yourdomain.com. Wildcards do not add the base domain, this must be added separately.
+  - **Certificate Hostnames** This is a list of hostnames to add to the certificate. eg yourdomain.com, mx.yourdomain.com. Any valid hostname for the account can be added. Wildcards are supported.
   - **Renew Days** This is the number of days before a certificate is due to expire, to generate the new Certificate. If a certificate check or renewal fails, it will retry after 10 minutes.
   - **Private Key File** and **Certificate File** can be changed as required. These files are copied to the ssl directory for use by other addons/integrations.
   - **Force Renew** If enabled, this will cause the Certificate Manager to try and renew the current certificate.
   - **Test Run** If enabled, this will prevent the Certificate Manager from generating/renewing certificats. Only testing with the current settings.
 	
-- **MQTT**
+- **MQTT Options**
   - **Enabled** This enables MQTT and the app will create a Device with Entities in the MQTT integration.
   - **Core** If this is enabled, the app will use the username and password supplied by the Default Mosquitto Broker app.
   - **Host** (required) This is the hostname/ip address of the MQTT server. Set this to core-mosquitto if you have the Default Mosquitto Broker app installed.
@@ -48,3 +48,14 @@ At least one of **Update IP Addresses** or **Generate Certificate** must be enab
   - **TLS** If enabled, MQTT will connect using a secured connection. Ensure you change the **Port** accordingly.
   - **Validate Server Certificate** If enabled, the app will verify the MQTT server certificate is valid for the **Host**.
   - **Private Key File**, **Certificate File**, and **CA File** may be required for the TLS connection, depending on how the MQTT server has been configured. These are not required if the MQTT server is using a SSL certificate provided by this app.
+
+All options are checked before the main services run. If any options are found to be invalid, an error message is logged and the app stopped. Do not enable the Watchdog option, until the app has successfully run once.
+
+By default, the IP Updater service will check and update the IP address of all hostnames in **IP Update Hostnames**. If IPv6 is enabled in the Dynu control panel and AAAA records exist in the domain, then the service will update both IPv4 and IPv6 addresses.
+IPv6 can be disabled manually in the Configuration using **Disable IPv6**.
+If you want to update the IP address for every A/AAAA record in the Dynu domain, add a single hostname to **IP Update Hostnames** with \*.yourdomain.com.
+
+The Certificate Manager will create an SSL certificate for all the hostnames in **Certificate Hostnames**. These must be valid for your Dynu domain or an error is raised.
+Wildcards are supported (*.yourdomain.com or *.sub.yourdomain.com). The primary domain (yourdomain.com) is not automatically included and must be added to the list of hostnames, if required.
+Up to 100 hostnames can be added to the certificate.
+Hostnames which would be covered by a wildcard, are automatically ignored. If you specify \*.yourdomain.com and sub.yourdomain.com, then sub.yourdomain.com is not added to the certificate. Duplicate hostnames are also ignored.
