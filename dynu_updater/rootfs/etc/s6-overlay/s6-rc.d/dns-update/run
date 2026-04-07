@@ -216,6 +216,7 @@ check_ip_status() {
 	if [[ ${#IPV4_DOMAIN_ARR[@]} -eq 0 || -n "$IPV4" ]] && [[ ${#IPV6_DOMAIN_ARR[@]} -eq 0 || -n "$IPV6" ]]; then
 		mqtt_publish "wan_connection" "true"
 		mqtt_publish "last_ip_check" "$(date -Is)"
+		bashio::event.fire "dynu_updater" '{"type": "ip", "action": "ip_check", "status": "success"}'
 		
 		if [[ "$LAST_CHECK" == "false" || "$IPV4" != "$CURRENT_IPV4" || "$IPV6" != "$CURRENT_IPV6" ]]; then
 			if [[ "$LAST_CHECK" == "false" ]]; then
@@ -253,6 +254,7 @@ check_ip_status() {
 				mqtt_publish "update_status" "false"
 				NOW_EPOCH=$(date +%s)
 				NEXT_CHECK=$(( NOW_EPOCH + 60 ))
+				bashio::event.fire "dynu_updater" '{"type": "ip", "action": "ip_update", "status": "fail"}'
 			else
 				CURRENT_IPV4="$IPV4"
 				CURRENT_IPV6="$IPV6"
@@ -278,11 +280,13 @@ check_ip_status() {
 				bashio::log.info "Dynu IP Updater - All Hosts/Aliases were updated."
 				NOW_EPOCH=$(date +%s)
 				NEXT_CHECK=$(( NOW_EPOCH + (IP_TIME * 60) ))
+				bashio::event.fire "dynu_updater" '{"type": "ip", "action": "ip_update", "status": "success"}'
 			fi
 		else
 			bashio::log.debug "Dynu IP Updater - No IP address change detected."
 			NOW_EPOCH=$(date +%s)
 			NEXT_CHECK=$(( NOW_EPOCH + (IP_TIME * 60) ))
+			bashio::event.fire "dynu_updater" '{"type": "ip", "action": "ip_update", "status": "no_change"}'
 		fi
 
 	else
@@ -290,6 +294,7 @@ check_ip_status() {
 		bashio::log.error "Dynu IP Updater - Unable to retrieve current IP address data."
 		NOW_EPOCH=$(date +%s)
 		NEXT_CHECK=$(( NOW_EPOCH + 60 ))
+		bashio::event.fire "dynu_updater" '{"type": "ip", "action": "ip_check", "status": "failed"}'
 	fi
 	
 	if [[ "$FIRST_RUN" == "true" ]]; then
