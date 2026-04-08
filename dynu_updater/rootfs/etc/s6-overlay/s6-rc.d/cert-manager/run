@@ -336,13 +336,13 @@ check_cert_dates() {
 		else
 			bashio::log.warning "Certificate Manager - Unable to parse current certificate data."
             mqtt_publish "last_cert_status" "false"
-			fire_event '{"certificate_check", "status": "fail"}'
+			fire_event '{"action": "certificate_check", "status": "fail"}'
             renew_cert
         fi
     else
         bashio::log.warning "Certificate Manager - Certificate missing/not yet created."
         mqtt_publish "last_cert_status" "false"
-		fire_event '{"certificate_check", "status": "fail"}'
+		fire_event '{"action": "certificate_check", "status": "fail"}'
         renew_cert
     fi
 

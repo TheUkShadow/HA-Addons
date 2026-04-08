@@ -57,15 +57,28 @@ IPv6 can be disabled manually in the Configuration using **Disable IPv6**.
 If you want to update the IP address for every A/AAAA record in the Dynu domain, add a single hostname to **IP Update Hostnames** with \*.yourdomain.com.
 
 The Certificate Manager will create an SSL certificate for all the hostnames in **Certificate Hostnames**. These must be valid for your Dynu domain or an error is raised.
-Wildcards are supported (*.yourdomain.com or *.sub.yourdomain.com). The primary domain (yourdomain.com) is not automatically included and must be added to the list of hostnames, if required.
+Wildcards are supported (\*.yourdomain.com or \*.sub.yourdomain.com). The primary domain (yourdomain.com) is not automatically included and must be added to the list of hostnames, if required.
 Up to 100 hostnames can be added to the certificate.
 Hostnames which would be covered by a wildcard, are automatically ignored. If you specify \*.yourdomain.com and sub.yourdomain.com, then sub.yourdomain.com is not added to the certificate. Duplicate hostnames are also ignored.
 
 ## Events
-If **Events** are enabled, the app will publish Events on the Home Assistant Event Bus. All Events are published at 'dynu_updater'. The following JSON lists the Event payloads:
+If **Events** are enabled, the app will publish events on the Home Assistant Event Bus. All events are published at 'dynu_updater'. The following JSON lists the possible event payloads:
 ```JSON
+{"action": "ip_check", "status": "ok", "data": {"ipv4": "--Current IPv4 Address--", "ipv6": "--Current IPv6 Address--"}}
+{"action": "ip_check", "status": "fail"}
+
+{"action": "ip_update", "status": "updated"}
+{"action": "ip_update", "status": "no_change"}
 {"action": "ip_update", "status": "fail"}
 
+{"action": "certificate_check", "status": "ok", "data": {"created": "--Certificate Creation Date--", "expires": "--Certificate Expiry Date--"}}
+{"action": "certificate_check", "status": "fail"}
+
+{"action": "certificate_update", "status": "updated"}
+{"action": "certificate_update", "status": "no_change"}
+{"action": "certificate_update", "status": "fail"}
+```
+All dates are published in ISO Format
 
 ## Example YAML Configuration
 ```yaml
