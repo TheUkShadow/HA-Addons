@@ -232,6 +232,9 @@ check_cert() {
 
 	if [[ "$LOG_LEVEL" ==  "debug" ]]; then
 		ADDITIONAL_ARGS+=("-vvv")
+		COMMAND_OUTPUT="2>&1 | tee $TMP_OUTPUT"
+	else
+		COMMAND_OUTPUT="> $TMP_OUTPUT 2>&1"
 	fi
 
 	if [[ "$DRY_RUN" == "true" ]]; then
@@ -246,7 +249,7 @@ check_cert() {
 		  --config-dir "${CERT_DIR}" --work-dir "${WORK_DIR}" \
 		  --preferred-challenges dns \
 		  "${ACME_ARGUMENTS[@]}" \
-		  2>&1 | tee "$TMP_OUTPUT"; then
+		  "COMMAND_OUTPUT"; then
 		CERTBOT_EXIT=0
 	else
 		CERTBOT_EXIT=$?
