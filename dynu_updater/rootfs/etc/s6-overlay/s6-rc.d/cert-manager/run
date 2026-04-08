@@ -232,27 +232,40 @@ check_cert() {
 
 	if [[ "$LOG_LEVEL" ==  "debug" ]]; then
 		ADDITIONAL_ARGS+=("-vvv")
-		REDIRECT=( ">" "$TMP_OUTPUT" "2>&1" )
-	else
-		REDIRECT=( "2>&1" "|" "tee" "$TMP_OUTPUT" )
 	fi
 
 	if [[ "$DRY_RUN" == "true" ]]; then
 		ADDITIONAL_ARGS+=("--dry-run")
 	fi
 	
-	if certbot certonly --non-interactive --keep-until-expiring --expand \
-		  --email "${EMAIL}" --agree-tos \
-		  "${KEY_ARGUMENTS[@]}" \
-		  "${ADDITIONAL_ARGS[@]}" \
-		  --cert-name "${DYNU_HOSTNAME}" "${DOMAIN_ARR[@]/#/-d }" \
-		  --config-dir "${CERT_DIR}" --work-dir "${WORK_DIR}" \
-		  --preferred-challenges dns \
-		  "${ACME_ARGUMENTS[@]}" \
-		  "${REDIRECT[@]}"; then
-		CERTBOT_EXIT=0
+	if [[ "$LOG_LEVEL" == "debug" ]]; then
+		if certbot certonly --non-interactive --keep-until-expiring --expand \
+			  --email "${EMAIL}" --agree-tos \
+			  "${KEY_ARGUMENTS[@]}" \
+			  "${ADDITIONAL_ARGS[@]}" \
+			  --cert-name "${DYNU_HOSTNAME}" "${DOMAIN_ARR[@]/#/-d }" \
+			  --config-dir "${CERT_DIR}" --work-dir "${WORK_DIR}" \
+			  --preferred-challenges dns \
+			  "${ACME_ARGUMENTS[@]}" \
+			  2>&1 | tee "$TMP_OUTPUT"; then
+			CERTBOT_EXIT=0
+		else
+			CERTBOT_EXIT=$?
+		fi
 	else
-		CERTBOT_EXIT=$?
+		if certbot certonly --non-interactive --keep-until-expiring --expand \
+			  --email "${EMAIL}" --agree-tos \
+			  "${KEY_ARGUMENTS[@]}" \
+			  "${ADDITIONAL_ARGS[@]}" \
+			  --cert-name "${DYNU_HOSTNAME}" "${DOMAIN_ARR[@]/#/-d }" \
+			  --config-dir "${CERT_DIR}" --work-dir "${WORK_DIR}" \
+			  --preferred-challenges dns \
+			  "${ACME_ARGUMENTS[@]}" \
+			  >"$TMP_OUTPUT" 2>&1; then
+			CERTBOT_EXIT=0
+		else
+			CERTBOT_EXIT=$?
+		fi
 	fi
 	
 	NOW_EPOCH=$(date +%s)
