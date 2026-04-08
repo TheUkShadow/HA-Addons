@@ -249,7 +249,7 @@ check_cert() {
 		  --config-dir "${CERT_DIR}" --work-dir "${WORK_DIR}" \
 		  --preferred-challenges dns \
 		  "${ACME_ARGUMENTS[@]}" \
-		  "COMMAND_OUTPUT"; then
+		  "$COMMAND_OUTPUT"; then
 		CERTBOT_EXIT=0
 	else
 		CERTBOT_EXIT=$?
