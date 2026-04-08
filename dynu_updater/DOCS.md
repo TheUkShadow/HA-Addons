@@ -64,13 +64,16 @@ Hostnames which would be covered by a wildcard, are automatically ignored. If yo
 ## Events
 If **Events** are enabled, the app will publish events on the Home Assistant Event Bus. All events are published to 'dynu_updater'. The following JSON lists the possible events:
 ```JSON
-{"event_type": "dynu_updater", "data": {"action": "ip_update", "status": "updated", "info": {"ipv4": "--New IPv4 Address--", "ipv6": "--New IPv6 Address--"}}}
-{"event_type": "dynu_updater", "data": {"action": "ip_update", "status": "no_change", "info": {"ipv4": "--Current IPv4 Address--", "ipv6": "--Current IPv6 Address--"}}}
+{"event_type": "dynu_updater", "data": {"action": "ip_update", "status": "updated", "ipv4": "--New IPv4 Address--", "ipv6": "--New IPv6 Address--"}}
+{"event_type": "dynu_updater", "data": {"action": "ip_update", "status": "no_change", "ipv4": "--Current IPv4 Address--", "ipv6": "--Current IPv6 Address--"}}
 {"event_type": "dynu_updater", "data": {"action": "ip_update", "status": "fail"}}
 
-{"event_type": "dynu_updater", "data": {"action": "certificate_update", "status": "updated", "info": {"created": "--Certificate Creation Date--", "expires": "--Certificate Expiry Date--"}}}
-{"event_type": "dynu_updater", "data": {"action": "certificate_update", "status": "no_change", "info": {"created": "--Certificate Creation Date--", "expires": "--Certificate Expiry Date--"}}}
+{"event_type": "dynu_updater", "data": {"action": "certificate_update", "status": "updated", "created": "--Certificate Creation Date--", "expires": "--Certificate Expiry Date--"}}
+{"event_type": "dynu_updater", "data": {"action": "certificate_update", "status": "no_change", "created": "--Certificate Creation Date--", "expires": "--Certificate Expiry Date--"}}
 {"event_type": "dynu_updater", "data": {"action": "certificate_update", "status": "fail"}}
+
+{"event_type": "dynu_updater", "data": {"action": "wan_connection", "status": "ok"}}
+{"event_type": "dynu_updater", "data": {"action": "wan_connection", "status": "fail"}}
 ```
 All dates are published in ISO Format
 

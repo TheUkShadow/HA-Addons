@@ -230,16 +230,12 @@ check_cert() {
 		ADDITIONAL_ARGS+=("--force-renewal")
 	fi
 
-	if [[ "$LOG_LEVEL" ==  "debug" ]]; then
-		ADDITIONAL_ARGS+=("-vvv")
-	fi
-
 	if [[ "$DRY_RUN" == "true" ]]; then
 		ADDITIONAL_ARGS+=("--dry-run")
 	fi
 	
 	if [[ "$LOG_LEVEL" == "debug" ]]; then
-		if certbot certonly --non-interactive --keep-until-expiring --expand \
+		if certbot certonly --non-interactive --keep-until-expiring --expand -vvv \
 			  --email "${EMAIL}" --agree-tos \
 			  "${KEY_ARGUMENTS[@]}" \
 			  "${ADDITIONAL_ARGS[@]}" \
@@ -286,20 +282,20 @@ check_cert() {
 			cp "${CERT_PATH}/privkey.pem" "/ssl/$KEYFILE"
 			cp "${CERT_PATH}/fullchain.pem" "/ssl/$CERTFILE"
 			if check_dates; then
-				fire_event "{\"action\": \"certificate_update\", \"status\": \"updated\", \"info\": {\"created\": \"${CREATED_ISO}\", \"expires\": \"${EXPIRY_ISO}\"}}"
+				fire_event "{\"action\": \"certificate_update\", \"status\": \"updated\", \"created\": \"${CREATED_ISO}\", \"expires\": \"${EXPIRY_ISO}\"}"
 			else
 				fire_event '{"action": "certificate_update", "status": "fail"}'
 			fi
 		elif echo "$CERTBOT_OUTPUT" | grep -q "Certificate not yet due for renewal"; then
 			if check_dates; then
-				fire_event "{\"action\": \"certificate_update\", \"status\": \"no_change\", \"info\": {\"created\": \"${CREATED_ISO}\", \"expires\": \"${EXPIRY_ISO}\"}}"
+				fire_event "{\"action\": \"certificate_update\", \"status\": \"no_change\", \"created\": \"${CREATED_ISO}\", \"expires\": \"${EXPIRY_ISO}\"}"
 			else
 				fire_event '{"action": "certificate_update", "status": "fail"}'
 			fi
 		elif [[ "$DRY_RUN" == "true" ]] && echo "$CERTBOT_OUTPUT" | grep -q "The dry run was successful"; then	
 			bashio::log.info "Certificate Manager - The dry-run was successful."
 			if check_dates; then
-				fire_event "{\"action\": \"certificate_update\", \"status\": \"no_change\", \"info\": {\"created\": \"${CREATED_ISO}\", \"expires\": \"${EXPIRY_ISO}\"}}"
+				fire_event "{\"action\": \"certificate_update\", \"status\": \"no_change\", \"created\": \"${CREATED_ISO}\", \"expires\": \"${EXPIRY_ISO}\"}"
 			else
 				fire_event '{"action": "certificate_update", "status": "fail"}'
 			fi
