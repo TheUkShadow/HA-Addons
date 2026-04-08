@@ -169,6 +169,7 @@ check_dates() {
 				bashio::log.warning "Certificate Manager - Certificate will require renewing soon."
 				mqtt_publish "last_cert_status" "true"
 				NEXT_CHECK=$(( NOW_EPOCH + 600 ))
+				return 0
 			else
 				bashio::log.info "Certificate Manager - Certificate valid."
 				mqtt_publish "last_cert_status" "true"
@@ -204,23 +205,10 @@ check_dates() {
 	fi
 }
 
-check_connectivity() {
-    # Try Dynu (IPv4 or IPv6)
-    if curl -4 -s --fail --max-time 5 https://checkip.dynu.com >/dev/null \
-	  || curl -6 -s --fail --max-time 5 https://checkip.dynu.com >/dev/null; then
-        return 0
-    fi
-
-    return 1
-}
-
 check_cert() {
-	until check_connectivity; do
-        bashio::log.warning "Certificate Manager - Dynu not reachable, delaying certificate check."
-        sleep 60
-    done
-	
 	set -o pipefail
+	
+	bashio::log.info "Certificate Manager - Running Certbot."
 	
 	TMP_OUTPUT=$(mktemp)
 	
