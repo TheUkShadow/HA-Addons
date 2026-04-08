@@ -232,16 +232,16 @@ check_cert() {
 
 	if [[ "$LOG_LEVEL" ==  "debug" ]]; then
 		ADDITIONAL_ARGS+=("-vvv")
-		COMMAND_OUTPUT=2>&1 | tee "$TMP_OUTPUT"
+		REDIRECT=">\"$TMP_OUTPUT\" 2>&1"
 	else
-		COMMAND_OUTPUT=> "$TMP_OUTPUT" 2>&1
+		REDIRECT="2>&1 | tee \"$TMP_OUTPUT\""
 	fi
 
 	if [[ "$DRY_RUN" == "true" ]]; then
 		ADDITIONAL_ARGS+=("--dry-run")
 	fi
 
-	if certbot certonly --non-interactive --keep-until-expiring --expand \
+	if eval certbot certonly --non-interactive --keep-until-expiring --expand \
 		  --email "${EMAIL}" --agree-tos \
 		  "${KEY_ARGUMENTS[@]}" \
 		  "${ADDITIONAL_ARGS[@]}" \
@@ -249,7 +249,8 @@ check_cert() {
 		  --config-dir "${CERT_DIR}" --work-dir "${WORK_DIR}" \
 		  --preferred-challenges dns \
 		  "${ACME_ARGUMENTS[@]}" \
-		  "$COMMAND_OUTPUT"; then
+		  $REDIRECT; then
+		  
 		CERTBOT_EXIT=0
 	else
 		CERTBOT_EXIT=$?
