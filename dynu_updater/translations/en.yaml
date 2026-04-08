@@ -6,6 +6,9 @@ configuration:
   dynu_api_key:
     name: Dynu API Key
     description: Available from the dns control panel at dynu.com and used to retrieve IPv6 status and in the creation of certificates.
+  events:
+    name: Events
+    description: The app will generate Events in Home Assistant
   log_level:
     name: Log Detail
     description: The minimum detail to log.
@@ -15,7 +18,7 @@ configuration:
     fields:
       update_ip:
         name: Update IP Addresses
-        description: The addon will monitor and update IP addresses for the hostnames listed in IP Update Hostnames
+        description: The app will monitor and update IP addresses for the hostnames listed in IP Update Hostnames
       update_interval:
         name: Update Interval
         description: The number of minutes to wait between each IP address check (1 - 60)
@@ -34,7 +37,7 @@ configuration:
     fields:
       update_cert:
         name: Generate Certificate
-        description: The addon will generate a certificate for the hostnames listed in Certificate Hostnames
+        description: The app will generate a certificate for the hostnames listed in Certificate Hostnames
       email:
         name: Email Address
         description: The email address that will be used to register the certificate (eg admin@yourdomain.com).
@@ -65,7 +68,7 @@ configuration:
         description: Enables MQTT
       core:
         name: Core Mosquitto Credentials
-        description: The User and Password from the Mosquitto Addon will be used, if it is installed.
+        description: The User and Password from the Mosquitto app will be used, if it is installed.
       host:
         name: Hostname
         description: The hostname for the MQTT server (eg core-mosquitto, localhost, yourdomain.com, 192.168.4.10).

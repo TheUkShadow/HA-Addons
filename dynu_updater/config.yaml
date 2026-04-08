@@ -1,14 +1,11 @@
 ---
-version: 1.0.1
+version: 1.0.0
 slug: dynu_updater
 name: Dynu Domain Update Tool
 description: Update dynamic DNS and generate certificates for a domain registerd with dynu.com
-url: https://github.com/TheUkShadow/HA-Addons/tree/main/dynu-updater
+url: https://github.com/TheUkShadow/HA-Addons/blob/main/dynu_updater
 
 homeassistant_api: true
-
-hassio_api: true
-hassio_role: manager
 
 services:
   - mqtt:need
@@ -44,6 +41,7 @@ options:
     port: 1883
     tls: false
     server_cert: false
+  events: false
   log_level: info
   
 schema:
@@ -78,6 +76,7 @@ schema:
     keyfile: str?
     certfile: str?
     cafile: str?
+  events: bool
   log_level: list(debug|info|warning|error)
 
 startup: application

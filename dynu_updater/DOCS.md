@@ -21,6 +21,7 @@ At least one of **Update IP Addresses** or **Generate Certificate** options must
 
 - **Dynu Hostname** (required) is the primary domain registerd at dynu.com. eg yourdomain.com.
 - **Dynu API Key** (required) is generated in the Dynu Control Panel under API Credentials.
+- **Events** If enabled, the app will generate Events on the Home Assistant Event Bus.
 
 - **IP Updater Options**
   - **Update IP Addresses** If enabled, the app will update the IP addresses for any hosts listed in **IP Update Hostnames**.
@@ -59,6 +60,12 @@ The Certificate Manager will create an SSL certificate for all the hostnames in 
 Wildcards are supported (*.yourdomain.com or *.sub.yourdomain.com). The primary domain (yourdomain.com) is not automatically included and must be added to the list of hostnames, if required.
 Up to 100 hostnames can be added to the certificate.
 Hostnames which would be covered by a wildcard, are automatically ignored. If you specify \*.yourdomain.com and sub.yourdomain.com, then sub.yourdomain.com is not added to the certificate. Duplicate hostnames are also ignored.
+
+## Events
+If **Events** are enabled, the app will publish Events on the Home Assistant Event Bus. All Events are published at 'dynu_updater'. The following JSON lists the Event payloads:
+```JSON
+{"action": "ip_update", "status": "fail"}
+
 
 ## Example YAML Configuration
 ```yaml
