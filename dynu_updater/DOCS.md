@@ -36,8 +36,8 @@ At least one of **Update IP Addresses** or **Generate Certificate** options must
   - **Certificate Hostnames** This is a list of hostnames to add to the certificate. eg yourdomain.com, mx.yourdomain.com. Any valid hostname for the account can be added. Wildcards are supported.
   - **Renew Days** This is the number of days before a certificate is due to expire, to generate the new Certificate. If a certificate check or renewal fails, it will retry after 10 minutes.
   - **Private Key File** and **Certificate File** can be changed as required. These files are copied to the ssl directory for use by other addons/integrations.
-  - **Force Renew** If enabled, this will cause the Certificate Manager to try and renew the current certificate.
-  - **Test Run** If enabled, this will prevent the Certificate Manager from generating/renewing certificats. Only testing with the current settings.
+  - **Force Renew** If enabled, this will cause the Certificate Manager to try and renew the current certificate on the first check.
+  - **Test Run** If enabled, this will prevent the Certificate Manager from generating/renewing certificats on the first run.
 	
 - **MQTT Options**
   - **Enabled** This enables MQTT and the app will create a Device with Entities in the MQTT integration.
@@ -64,15 +64,9 @@ Hostnames which would be covered by a wildcard, are automatically ignored. If yo
 ## Events
 If **Events** are enabled, the app will publish events on the Home Assistant Event Bus. All events are published to 'dynu_updater'. The following JSON lists the possible events:
 ```JSON
-{"event_type": "dynu_updater", "data": {"action": "ip_check", "status": "ok", "info": {"ipv4": "--Current IPv4 Address--", "ipv6": "--Current IPv6 Address--"}}}
-{"event_type": "dynu_updater", "data": {"action": "ip_check", "status": "fail"}}
-
 {"event_type": "dynu_updater", "data": {"action": "ip_update", "status": "updated", "info": {"ipv4": "--New IPv4 Address--", "ipv6": "--New IPv6 Address--"}}}
 {"event_type": "dynu_updater", "data": {"action": "ip_update", "status": "no_change", "info": {"ipv4": "--Current IPv4 Address--", "ipv6": "--Current IPv6 Address--"}}}
 {"event_type": "dynu_updater", "data": {"action": "ip_update", "status": "fail"}}
-
-{"event_type": "dynu_updater", "data": {"action": "certificate_check", "status": "ok", "info": {"created": "--Certificate Creation Date--", "expires": "--Certificate Expiry Date--"}}}
-{"event_type": "dynu_updater", "data": {"action": "certificate_check", "status": "fail"}}
 
 {"event_type": "dynu_updater", "data": {"action": "certificate_update", "status": "updated", "info": {"created": "--Certificate Creation Date--", "expires": "--Certificate Expiry Date--"}}}
 {"event_type": "dynu_updater", "data": {"action": "certificate_update", "status": "no_change", "info": {"created": "--Certificate Creation Date--", "expires": "--Certificate Expiry Date--"}}}

@@ -128,26 +128,13 @@ ACME_ARGUMENTS+=("--authenticator" "dns-multi" "--dns-multi-credentials" "${DNS_
 
 ACME_ARGUMENTS+=("--preferred-chain" "ISRG Root X2")
 
-if [[ "$FORCE_RENEW" == "true" ]]; then
-	ADDITIONAL_ARGS+=("--force-renewal")
-fi
-
-if [[ "$LOG_LEVEL" ==  "debug" ]]; then
-	ADDITIONAL_ARGS+=("-vvv")
-fi
-
-if [[ "$DRY_RUN" == "true" ]]; then
-	ADDITIONAL_ARGS+=("--dry-run")
-fi
-
 # Set key-type
 KEY_ARGUMENTS+=("--key-type" "ecdsa")
 KEY_ARGUMENTS+=("--elliptic-curve" "secp256r1")
 
-CERT_CONF="/data/dynu-cert.conf"
-
 check_dates() {
 	bashio::log.info "Certificate Manager - Checking Certificate dates."
+	NOW_EPOCH=$(date +%s)
 	if [[ -f "$CERT_FILE" ]]; then
 		if ! VALID_FROM_RAW=$(openssl x509 -in "${CERT_FILE}" -noout -startdate 2>/dev/null | cut -d= -f2); then
 			VALID_FROM_RAW=""
@@ -163,20 +150,33 @@ check_dates() {
 			CREATED_ISO=$(date -u -d "${CREATED_RAW}" +"%Y-%m-%dT%H:%M:%S+00:00")
 			EXPIRY_ISO=$(date -u -d "${EXPIRY_RAW}" +"%Y-%m-%dT%H:%M:%S+00:00")
 			EXPIRY_EPOCH=$(date -d "${EXPIRY_RAW}" +%s)
+			
+			MAX_EPOCH=$(( NOW_EPOCH + (CHECK_DAYS * 86400) + 60 ))
+			
 			bashio::log.info "Certificate Manager - Certificate created ${CREATED_ISO}."
 			bashio::log.info "Certificate Manager - Certificate valid from ${VALID_FROM_ISO}."
 			bashio::log.info "Certificate Manager - Certificate expires ${EXPIRY_ISO}."
 			mqtt_publish "cert_expires" "$EXPIRY_ISO"
             mqtt_publish "cert_created" "$CREATED_ISO"
 			mqtt_publish "last_cert_check" "$(date -Is)"
-			if (( NOW_EPOCH < EXPIRY_EPOCH )); then
-				bashio::log.info "Certificate Manager - Certificate valid."
-				mqtt_publish "last_cert_status" "true"
-				return 0
-			else
+			
+			if (( NOW_EPOCH >= EXPIRY_EPOCH )); then
 				bashio::log.warning "Certificate Manager - Certificate expired."
 				mqtt_publish "last_cert_status" "false"
+				NEXT_CHECK=$(( NOW_EPOCH + 600 ))
 				return 1
+			elif (( MAX_EPOCH >= EXPIRY_EPOCH )); then
+				bashio::log.warning "Certificate Manager - Certificate will require renewing soon."
+				mqtt_publish "last_cert_status" "true"
+				NEXT_CHECK=$(( NOW_EPOCH + 600 ))
+			else
+				bashio::log.info "Certificate Manager - Certificate valid."
+				mqtt_publish "last_cert_status" "true"
+				NEXT_CHECK=$(( EXPIRY_EPOCH - (CHECK_DAYS * 86400) ))
+				if (( NOW_EPOCH >= NEXT_CHECK )); then
+					NEXT_CHECK=$(( NOW_EPOCH + 600 ))
+				fi
+				return 0
 			fi
 		else
 			VALID_FROM_RAW=""
@@ -187,6 +187,7 @@ check_dates() {
 			EXPIRY_ISO=""
 			bashio::log.error "Certificate Manager - Unable to parse certificate dates."
 			mqtt_publish "last_cert_status" "false"
+			NEXT_CHECK=$(( NOW_EPOCH + 600 ))
 			return 1
 		fi
 	else
@@ -198,6 +199,7 @@ check_dates() {
 		EXPIRY_ISO=""
 		bashio::log.error "Certificate Manager - Certificate file does not exist."
 		mqtt_publish "last_cert_status" "false"
+		NEXT_CHECK=$(( NOW_EPOCH + 600 ))
 		return 1
 	fi
 }
@@ -221,6 +223,20 @@ check_cert() {
 	set -o pipefail
 	
 	TMP_OUTPUT=$(mktemp)
+	
+	ADDITIONAL_ARGS=()
+	
+	if [[ "$FORCE_RENEW" == "true" ]]; then
+		ADDITIONAL_ARGS+=("--force-renewal")
+	fi
+
+	if [[ "$LOG_LEVEL" ==  "debug" ]]; then
+		ADDITIONAL_ARGS+=("-vvv")
+	fi
+
+	if [[ "$DRY_RUN" == "true" ]]; then
+		ADDITIONAL_ARGS+=("--dry-run")
+	fi
 
 	if certbot certonly --non-interactive --keep-until-expiring --expand \
 		  --email "${EMAIL}" --agree-tos \
@@ -255,24 +271,24 @@ check_cert() {
 			cp "${CERT_PATH}/fullchain.pem" "/ssl/$CERTFILE"
 			if check_dates; then
 				fire_event "{\"action\": \"certificate_update\", \"status\": \"updated\", \"info\": {\"created\": \"${CREATED_ISO}\", \"expires\": \"${EXPIRY_ISO}\"}}"
-				NEXT_CHECK=$(( NOW_EPOCH + 3600 ))
 			else
 				fire_event '{"action": "certificate_update", "status": "fail"}'
-				NEXT_CHECK=$(( NOW_EPOCH + 600 ))
 			fi
 		elif echo "$CERTBOT_OUTPUT" | grep -q "Certificate not yet due for renewal"; then
 			if check_dates; then
 				fire_event "{\"action\": \"certificate_update\", \"status\": \"no_change\", \"info\": {\"created\": \"${CREATED_ISO}\", \"expires\": \"${EXPIRY_ISO}\"}}"
-				NEXT_CHECK=$(( NOW_EPOCH + 3600 ))
 			else
 				fire_event '{"action": "certificate_update", "status": "fail"}'
-				NEXT_CHECK=$(( NOW_EPOCH + 600 ))
 			fi
 		elif [[ "$DRY_RUN" == "true" ]] && echo "$CERTBOT_OUTPUT" | grep -q "The dry run was successful"; then	
 			bashio::log.info "Certificate Manager - The dry-run was successful."
-			NEXT_CHECK=$(( NOW_EPOCH + 3600 ))
+			if check_dates; then
+				fire_event "{\"action\": \"certificate_update\", \"status\": \"no_change\", \"info\": {\"created\": \"${CREATED_ISO}\", \"expires\": \"${EXPIRY_ISO}\"}}"
+			else
+				fire_event '{"action": "certificate_update", "status": "fail"}'
+			fi
 		else
-			bashio::log.warning "Certificate Manager - Unexpected Certbot output"
+			bashio::log.error "Certificate Manager - Unexpected Certbot output"
 			NEXT_CHECK=$(( NOW_EPOCH + 600 ))
 		fi
 	fi
