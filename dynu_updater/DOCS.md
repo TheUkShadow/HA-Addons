@@ -109,6 +109,7 @@ mqtt:
   port: 1883
   tls: false
   server_cert: false
+events: true
 log_level: info
 dynu_hostname: yourdomain.com
 dynu_api_key: DYNU_API_KEY

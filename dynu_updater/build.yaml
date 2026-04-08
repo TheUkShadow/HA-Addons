@@ -1,10 +1,10 @@
 ---
 build_from:
-  aarch64: ghcr.io/home-assistant/aarch64-base-debian:trixie-2025.12.2
-  amd64: ghcr.io/home-assistant/amd64-base-debian:trixie-2025.12.2
+  aarch64: ghcr.io/home-assistant/aarch64-base-debian:trixie-2026.03.1
+  amd64: ghcr.io/home-assistant/amd64-base-debian:trixie-2026.03.1
 args:
   ACME_VERSION: 3.3.0
   # certbot-dns-multi replaces most individual DNS plugins using lego
-  CERTBOT_DNS_MULTI_VERSION: 4.30.1
+  CERTBOT_DNS_MULTI_VERSION: 4.33.0
   CERTBOT_VERSION: 3.3.0
   CRYPTOGRAPHY_VERSION: 44.0.2
