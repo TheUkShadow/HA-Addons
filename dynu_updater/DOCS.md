@@ -62,21 +62,21 @@ Up to 100 hostnames can be added to the certificate.
 Hostnames which would be covered by a wildcard, are automatically ignored. If you specify \*.yourdomain.com and sub.yourdomain.com, then sub.yourdomain.com is not added to the certificate. Duplicate hostnames are also ignored.
 
 ## Events
-If **Events** are enabled, the app will publish events on the Home Assistant Event Bus. All events are published at 'dynu_updater'. The following JSON lists the possible event payloads:
+If **Events** are enabled, the app will publish events on the Home Assistant Event Bus. All events are published to 'dynu_updater'. The following JSON lists the possible events:
 ```JSON
-{"action": "ip_check", "status": "ok", "data": {"ipv4": "--Current IPv4 Address--", "ipv6": "--Current IPv6 Address--"}}
-{"action": "ip_check", "status": "fail"}
+{"event_type": "dynu_updater", "data": {"action": "ip_check", "status": "ok", "info": {"ipv4": "--Current IPv4 Address--", "ipv6": "--Current IPv6 Address--"}}}
+{"event_type": "dynu_updater", "data": {"action": "ip_check", "status": "fail"}}
 
-{"action": "ip_update", "status": "updated"}
-{"action": "ip_update", "status": "no_change"}
-{"action": "ip_update", "status": "fail"}
+{"event_type": "dynu_updater", "data": {"action": "ip_update", "status": "updated", "info": {"ipv4": "--New IPv4 Address--", "ipv6": "--New IPv6 Address--"}}}
+{"event_type": "dynu_updater", "data": {"action": "ip_update", "status": "no_change", "info": {"ipv4": "--Current IPv4 Address--", "ipv6": "--Current IPv6 Address--"}}}
+{"event_type": "dynu_updater", "data": {"action": "ip_update", "status": "fail"}}
 
-{"action": "certificate_check", "status": "ok", "data": {"created": "--Certificate Creation Date--", "expires": "--Certificate Expiry Date--"}}
-{"action": "certificate_check", "status": "fail"}
+{"event_type": "dynu_updater", "data": {"action": "certificate_check", "status": "ok", "info": {"created": "--Certificate Creation Date--", "expires": "--Certificate Expiry Date--"}}}
+{"event_type": "dynu_updater", "data": {"action": "certificate_check", "status": "fail"}}
 
-{"action": "certificate_update", "status": "updated"}
-{"action": "certificate_update", "status": "no_change"}
-{"action": "certificate_update", "status": "fail"}
+{"event_type": "dynu_updater", "data": {"action": "certificate_update", "status": "updated"}}
+{"event_type": "dynu_updater", "data": {"action": "certificate_update", "status": "no_change"}}
+{"event_type": "dynu_updater", "data": {"action": "certificate_update", "status": "fail"}}
 ```
 All dates are published in ISO Format
 
