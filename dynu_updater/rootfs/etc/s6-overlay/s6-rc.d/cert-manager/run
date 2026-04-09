@@ -213,8 +213,8 @@ check_cert() {
 	# Start the dot-printer in the background
 	(
 		while true; do
-			printf "."
-			sleep 5
+			sleep 10
+			printf "\033[32m.\033[0m"
 		done
 	) &
 	PROGRESS_PID=$!
