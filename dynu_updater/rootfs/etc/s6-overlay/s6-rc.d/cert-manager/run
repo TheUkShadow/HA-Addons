@@ -161,17 +161,17 @@ check_dates() {
 			mqtt_publish "last_cert_check" "$(date -Is)"
 			
 			if (( NOW_EPOCH >= EXPIRY_EPOCH )); then
-				bashio::log.warning "Certificate Manager - Certificate expired."
+				bashio::log.warning "Certificate Manager - Certificate has expired."
 				mqtt_publish "last_cert_status" "false"
 				NEXT_CHECK=$(( NOW_EPOCH + 600 ))
 				return 1
 			elif (( MAX_EPOCH >= EXPIRY_EPOCH )); then
-				bashio::log.warning "Certificate Manager - Certificate will require renewing soon."
+				bashio::log.warning "Certificate Manager - Certificate requires renewing soon."
 				mqtt_publish "last_cert_status" "true"
 				NEXT_CHECK=$(( NOW_EPOCH + 600 ))
 				return 0
 			else
-				bashio::log.info "Certificate Manager - Certificate valid."
+				bashio::log.info "Certificate Manager - Certificate is valid."
 				mqtt_publish "last_cert_status" "true"
 				NEXT_CHECK=$(( EXPIRY_EPOCH - (CHECK_DAYS * 86400) ))
 				if (( NOW_EPOCH >= NEXT_CHECK )); then
@@ -235,7 +235,6 @@ check_cert() {
 	else
 		# If certbot succeeded, check if certificate was updated
 		if [[ $CERTBOT_OUTPUT == *"Successfully received certificate"* ]]; then
-		#if echo "$CERTBOT_OUTPUT" | grep -q "Successfully received certificate"; then
 			bashio::log.info "Certificate Manager - New certificate received."
 			
 			# Copy the cert and private key to store
@@ -247,7 +246,6 @@ check_cert() {
 				fire_event '{"action": "certificate_update", "status": "fail"}'
 			fi
 		elif [[ $CERTBOT_OUTPUT == *"Certificate not yet due for renewal"* ]]; then
-		#elif echo "$CERTBOT_OUTPUT" | grep -q "Certificate not yet due for renewal"; then
 			bashio::log.info "Certificate Manager - Current certificate did not require renewing."
 			if check_dates; then
 				fire_event "{\"action\": \"certificate_update\", \"status\": \"no_change\", \"created\": \"${CREATED_ISO}\", \"expires\": \"${EXPIRY_ISO}\"}"
@@ -255,7 +253,6 @@ check_cert() {
 				fire_event '{"action": "certificate_update", "status": "fail"}'
 			fi
 		elif [[ $CERTBOT_OUTPUT == *"The dry run was successful"* ]]; then
-		#elif [[ "$DRY_RUN" == "true" ]] && echo "$CERTBOT_OUTPUT" | grep -q "The dry run was successful"; then	
 			bashio::log.info "Certificate Manager - The test-run was successful."
 			if check_dates; then
 				fire_event "{\"action\": \"certificate_update\", \"status\": \"no_change\", \"created\": \"${CREATED_ISO}\", \"expires\": \"${EXPIRY_ISO}\"}"

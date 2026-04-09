@@ -172,7 +172,8 @@ check_ip_status() {
 		# --- Detect IPv4 ---
 		bashio::log.debug "Dynu IP Updater - Retrieving current IPv4 address from Dynu."
 		if RAW=$(curl -4 -s --fail --max-time 5 https://checkip.dynu.com 2>/dev/null); then
-			IPV4=$(echo "$RAW" | awk -F': ' '{print $2}' | tr -d '[:space:]')
+			IPV4="${RAW#*: }"
+			IPV4="${IPV4//[[:space:]]/}"
 			if [[ -z "$IPV4" || ! "$IPV4" =~ $IPV4_REGEX ]]; then
 				bashio::log.warning "Dynu IP Updater - dynu.com returned an invalid IPv4 address."
 				IPV4=""
@@ -184,7 +185,7 @@ check_ip_status() {
 		if [[ -z "$IPV4" || ! "$IPV4" =~ $IPV4_REGEX ]]; then
 			bashio::log.debug "Dynu IP Updater - Retrieving current IPv4 address from Icanhazip."
 			if RAW=$(curl -4 -s --fail --max-time 5 https://icanhazip.com 2>/dev/null); then
-				IPV4=$(echo "$RAW" | tr -d '[:space:]')
+				IPV4="${RAW//[[:space:]]/}"
 				if [[ -z "$IPV4" || ! "$IPV4" =~ $IPV4_REGEX ]]; then
 					bashio::log.warning "Dynu IP Updater - icanhazip.com returned an invalid IPv4 address."
 					IPV4=""
@@ -202,7 +203,8 @@ check_ip_status() {
 	if [[ ${#IPV6_DOMAIN_ARR[@]} -ne 0 ]]; then
 		bashio::log.debug "Dynu IP Updater - Retrieving current IPv6 address from Dynu."
 		if RAW=$(curl -6 -s --fail --max-time 5 https://checkipv6.dynu.com 2>/dev/null); then
-			IPV6=$(echo "$RAW" | awk -F': ' '{print $2}' | tr -d '[:space:]')
+			IPV6="${RAW#*: }"
+			IPV6="${IPV6//[[:space:]]/}"
 			if [[ -z "$IPV6" || ! "$IPV6" =~ $IPV6_REGEX ]]; then
 				bashio::log.warning "Dynu IP Updater - dynu.com returned an invalid IPv6 address."
 				IPV6=""
@@ -214,7 +216,7 @@ check_ip_status() {
 		if [[ -z "$IPV6" || ! "$IPV6" =~ $IPV6_REGEX ]]; then
 			bashio::log.debug "Dynu IP Updater - Retrieving current IPv6 address from Icanhazip."
 			if RAW=$(curl -6 -s --fail --max-time 5 https://icanhazip.com 2>/dev/null); then
-				IPV6=$(echo "$RAW" | tr -d '[:space:]')
+				IPV6="${IPV6//[[:space:]]/}"
 				if [[ -z "$IPV6" || ! "$IPV6" =~ $IPV6_REGEX ]]; then
 					bashio::log.warning "Dynu IP Updater - icanhazip.com returned an invalid IPv6 address."
 					IPV6=""
