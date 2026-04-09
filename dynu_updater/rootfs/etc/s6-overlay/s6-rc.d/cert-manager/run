@@ -194,11 +194,7 @@ check_dates() {
 }
 
 check_cert() {
-	# set -o pipefail
-	
-	bashio::log.info "Certificate Manager - Running Certbot. This can take up to ${PROPAGATION_SECONDS} seconds to complete, if a new certificate is being generated."
-	
-	# TMP_OUTPUT=$(mktemp)
+	bashio::log.info "Certificate Manager - Running Certbot. This can take up to ${PROPAGATION_SECONDS} seconds to complete if a new certificate is required."
 	
 	ADDITIONAL_ARGS=()
 	
@@ -214,19 +210,14 @@ check_cert() {
 		ADDITIONAL_ARGS+=("-vvv")
 	fi
 	
-	# if certbot certonly --non-interactive --keep-until-expiring --expand \
-		  # --email "${EMAIL}" --agree-tos \
-		  # "${KEY_ARGUMENTS[@]}" \
-		  # "${ADDITIONAL_ARGS[@]}" \
-		  # --cert-name "${DYNU_HOSTNAME}" "${DOMAIN_ARR[@]/#/-d }" \
-		  # --config-dir "${CERT_DIR}" --work-dir "${WORK_DIR}" \
-		  # --preferred-challenges dns \
-		  # "${ACME_ARGUMENTS[@]}" \
-		  # 2>&1 | tee "$TMP_OUTPUT"; then
-		# CERTBOT_EXIT=0
-	# else
-		# CERTBOT_EXIT=$?
-	# fi
+	# Start the dot-printer in the background
+	(
+		while true; do
+			printf "."
+			sleep 5
+		done
+	) &
+	PROGRESS_PID=$!
 	
 	if CERTBOT_OUTPUT=$(certbot certonly --non-interactive --keep-until-expiring --expand \
 		  --email "${EMAIL}" --agree-tos \
@@ -242,6 +233,12 @@ check_cert() {
 		CERTBOT_EXIT=$?
 	fi
 	
+	# Stop the dot-printer
+	kill "$PROGRESS_PID" 2>/dev/null
+	echo ""
+
+	bashio::log.debug "Certbot Output: ${CERTBOT_OUTPUT}"
+	
 	NOW_EPOCH=$(date +%s)
 	
 	# If certbot failed
@@ -250,9 +247,6 @@ check_cert() {
 		NEXT_CHECK=$(( NOW_EPOCH + 600 ))
 	else
 		# If certbot succeeded, check if certificate was updated
-		# Load output into a variable
-		# CERTBOT_OUTPUT=$(< "$TMP_OUTPUT")
-		
 		if echo "$CERTBOT_OUTPUT" | grep -q "Successfully received certificate"; then
 			bashio::log.info "Certificate Manager - New certificate received."
 			
@@ -265,6 +259,7 @@ check_cert() {
 				fire_event '{"action": "certificate_update", "status": "fail"}'
 			fi
 		elif echo "$CERTBOT_OUTPUT" | grep -q "Certificate not yet due for renewal"; then
+			bashio::log.info "Certificate Manager - Current certificate did not require renewing."
 			if check_dates; then
 				fire_event "{\"action\": \"certificate_update\", \"status\": \"no_change\", \"created\": \"${CREATED_ISO}\", \"expires\": \"${EXPIRY_ISO}\"}"
 			else
