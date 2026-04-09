@@ -212,10 +212,12 @@ check_cert() {
 	
 	# Start the dot-printer in the background
 	(
-		while true; do
-			sleep 10
-			printf "."
-		done
+		stdbuf -oL -eL bash -c '
+			while true; do
+				sleep 5
+				printf "\033[32m.\033[0m\n"
+			done
+		'
 	) &
 	PROGRESS_PID=$!
 	
