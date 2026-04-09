@@ -210,18 +210,6 @@ check_cert() {
 		ADDITIONAL_ARGS+=("-vvv")
 	fi
 	
-	# Start the dot-printer in the background
-	(
-		stdbuf -o0 -e0 bash -c '
-			while true; do
-				printf "\033[32m.\033[0m"
-				printf "\r"
-				sleep 5
-			done
-		'
-	) &
-	PROGRESS_PID=$!
-	
 	if CERTBOT_OUTPUT=$(certbot certonly --non-interactive --keep-until-expiring --expand \
 		  --email "${EMAIL}" --agree-tos \
 		  "${KEY_ARGUMENTS[@]}" \
@@ -236,10 +224,6 @@ check_cert() {
 		CERTBOT_EXIT=$?
 	fi
 	
-	# Stop the dot-printer
-	kill "$PROGRESS_PID" 2>/dev/null
-	echo ""
-
 	bashio::log.debug "Certbot Output: ${CERTBOT_OUTPUT}"
 	
 	NOW_EPOCH=$(date +%s)
