@@ -230,7 +230,7 @@ check_ip_status() {
 	
 	if [[ ${#IPV4_DOMAIN_ARR[@]} -eq 0 || -n "$IPV4" ]] && [[ ${#IPV6_DOMAIN_ARR[@]} -eq 0 || -n "$IPV6" ]]; then
 		mqtt_publish "wan_connection" "true"
-		fire_event '{"action": "wan_connection", "status": "ok"}'
+		fire_event '{"action": "wan_connection", "status": "up"}'
 		mqtt_publish "last_ip_check" "$(date -Is)"
 		
 		if [[ "$LAST_CHECK" == "false" || "$IPV4" != "$CURRENT_IPV4" || "$IPV6" != "$CURRENT_IPV6" ]]; then
@@ -306,7 +306,7 @@ check_ip_status() {
 
 	else
 		mqtt_publish "wan_connection" "false"
-		fire_event '{"action": "wan_connection", "status": "fail"}'
+		fire_event '{"action": "wan_connection", "status": "down"}'
 		bashio::log.error "Dynu IP Updater - Unable to retrieve current IP address data."
 		NOW_EPOCH=$(date +%s)
 		NEXT_CHECK=$(( NOW_EPOCH + 60 ))

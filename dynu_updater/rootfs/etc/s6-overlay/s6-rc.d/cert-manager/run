@@ -63,9 +63,6 @@ KEY_ARGUMENTS=()
 ADDITIONAL_ARGS=()
 PROPAGATION_SECONDS=300
 
-VALID_FROM_RAW=""
-CREATED_RAW=""
-EXPIRY_RAW=""
 VALID_FROM_ISO=""
 CREATED_ISO=""
 EXPIRY_ISO=""
@@ -135,6 +132,9 @@ KEY_ARGUMENTS+=("--elliptic-curve" "secp256r1")
 check_dates() {
 	bashio::log.info "Certificate Manager - Checking Certificate dates."
 	NOW_EPOCH=$(date +%s)
+	VALID_FROM_RAW=""
+	CREATED_RAW=""
+	EXPIRY_RAW=""
 	if [[ -f "$CERT_FILE" ]]; then
 		if ! VALID_FROM_RAW=$(openssl x509 -in "${CERT_FILE}" -noout -startdate 2>/dev/null | cut -d= -f2); then
 			VALID_FROM_RAW=""
@@ -180,24 +180,12 @@ check_dates() {
 				return 0
 			fi
 		else
-			VALID_FROM_RAW=""
-			CREATED_RAW=""
-			EXPIRY_RAW=""
-			VALID_FROM_ISO=""
-			CREATED_ISO=""
-			EXPIRY_ISO=""
 			bashio::log.error "Certificate Manager - Unable to parse certificate dates."
 			mqtt_publish "last_cert_status" "false"
 			NEXT_CHECK=$(( NOW_EPOCH + 600 ))
 			return 1
 		fi
 	else
-		VALID_FROM_RAW=""
-		CREATED_RAW=""
-		EXPIRY_RAW=""
-		VALID_FROM_ISO=""
-		CREATED_ISO=""
-		EXPIRY_ISO=""
 		bashio::log.error "Certificate Manager - Certificate file does not exist."
 		mqtt_publish "last_cert_status" "false"
 		NEXT_CHECK=$(( NOW_EPOCH + 600 ))
@@ -206,11 +194,11 @@ check_dates() {
 }
 
 check_cert() {
-	set -o pipefail
+	# set -o pipefail
 	
-	bashio::log.info "Certificate Manager - Running Certbot."
+	bashio::log.info "Certificate Manager - Running Certbot. This can take up to ${PROPAGATION_SECONDS} seconds to complete, if a new certificate is being generated."
 	
-	TMP_OUTPUT=$(mktemp)
+	# TMP_OUTPUT=$(mktemp)
 	
 	ADDITIONAL_ARGS=()
 	
@@ -223,33 +211,35 @@ check_cert() {
 	fi
 	
 	if [[ "$LOG_LEVEL" == "debug" ]]; then
-		if certbot certonly --non-interactive --keep-until-expiring --expand -vvv \
-			  --email "${EMAIL}" --agree-tos \
-			  "${KEY_ARGUMENTS[@]}" \
-			  "${ADDITIONAL_ARGS[@]}" \
-			  --cert-name "${DYNU_HOSTNAME}" "${DOMAIN_ARR[@]/#/-d }" \
-			  --config-dir "${CERT_DIR}" --work-dir "${WORK_DIR}" \
-			  --preferred-challenges dns \
-			  "${ACME_ARGUMENTS[@]}" \
-			  2>&1 | tee "$TMP_OUTPUT"; then
-			CERTBOT_EXIT=0
-		else
-			CERTBOT_EXIT=$?
-		fi
+		ADDITIONAL_ARGS+=("-vvv")
+	fi
+	
+	# if certbot certonly --non-interactive --keep-until-expiring --expand \
+		  # --email "${EMAIL}" --agree-tos \
+		  # "${KEY_ARGUMENTS[@]}" \
+		  # "${ADDITIONAL_ARGS[@]}" \
+		  # --cert-name "${DYNU_HOSTNAME}" "${DOMAIN_ARR[@]/#/-d }" \
+		  # --config-dir "${CERT_DIR}" --work-dir "${WORK_DIR}" \
+		  # --preferred-challenges dns \
+		  # "${ACME_ARGUMENTS[@]}" \
+		  # 2>&1 | tee "$TMP_OUTPUT"; then
+		# CERTBOT_EXIT=0
+	# else
+		# CERTBOT_EXIT=$?
+	# fi
+	
+	if CERTBOT_OUTPUT=$(certbot certonly --non-interactive --keep-until-expiring --expand \
+		  --email "${EMAIL}" --agree-tos \
+		  "${KEY_ARGUMENTS[@]}" \
+		  "${ADDITIONAL_ARGS[@]}" \
+		  --cert-name "${DYNU_HOSTNAME}" "${DOMAIN_ARR[@]/#/-d }" \
+		  --config-dir "${CERT_DIR}" --work-dir "${WORK_DIR}" \
+		  --preferred-challenges dns \
+		  "${ACME_ARGUMENTS[@]}" \
+		  2>&1); then
+		CERTBOT_EXIT=0
 	else
-		if certbot certonly --non-interactive --keep-until-expiring --expand \
-			  --email "${EMAIL}" --agree-tos \
-			  "${KEY_ARGUMENTS[@]}" \
-			  "${ADDITIONAL_ARGS[@]}" \
-			  --cert-name "${DYNU_HOSTNAME}" "${DOMAIN_ARR[@]/#/-d }" \
-			  --config-dir "${CERT_DIR}" --work-dir "${WORK_DIR}" \
-			  --preferred-challenges dns \
-			  "${ACME_ARGUMENTS[@]}" \
-			  >"$TMP_OUTPUT" 2>&1; then
-			CERTBOT_EXIT=0
-		else
-			CERTBOT_EXIT=$?
-		fi
+		CERTBOT_EXIT=$?
 	fi
 	
 	NOW_EPOCH=$(date +%s)
@@ -261,7 +251,7 @@ check_cert() {
 	else
 		# If certbot succeeded, check if certificate was updated
 		# Load output into a variable
-		CERTBOT_OUTPUT=$(< "$TMP_OUTPUT")
+		# CERTBOT_OUTPUT=$(< "$TMP_OUTPUT")
 		
 		if echo "$CERTBOT_OUTPUT" | grep -q "Successfully received certificate"; then
 			bashio::log.info "Certificate Manager - New certificate received."

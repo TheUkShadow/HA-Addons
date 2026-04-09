@@ -72,8 +72,8 @@ If **Events** are enabled, the app will publish events on the Home Assistant Eve
 {"event_type": "dynu_updater", "data": {"action": "certificate_update", "status": "no_change", "created": "--Certificate Creation Date--", "expires": "--Certificate Expiry Date--"}}
 {"event_type": "dynu_updater", "data": {"action": "certificate_update", "status": "fail"}}
 
-{"event_type": "dynu_updater", "data": {"action": "wan_connection", "status": "ok"}}
-{"event_type": "dynu_updater", "data": {"action": "wan_connection", "status": "fail"}}
+{"event_type": "dynu_updater", "data": {"action": "wan_connection", "status": "up"}}
+{"event_type": "dynu_updater", "data": {"action": "wan_connection", "status": "down"}}
 ```
 All dates are published in ISO Format
 
