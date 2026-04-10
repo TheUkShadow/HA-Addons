@@ -61,6 +61,9 @@ Wildcards are supported (\*.yourdomain.com or \*.sub.yourdomain.com). The primar
 Up to 100 hostnames can be added to the certificate.
 Hostnames which would be covered by a wildcard, are automatically ignored. If you specify \*.yourdomain.com and sub.yourdomain.com, then sub.yourdomain.com is not added to the certificate. Duplicate hostnames are also ignored.
 
+If ""MQTT" is enabled, various sensors and controls are created in the MQTT integration under the dynu_updater device. The sensors are self-explanatory. The controls enable forcing an IP update and forcing the renewal of a certificate.
+**Force IP Update** can only be ran once every minute. **Force Certificate Update** can only be ran once every hour. Other attempts to run will generate a warning in the app logs.
+
 ## Events
 If **Events** are enabled, the app will publish events on the Home Assistant Event Bus. All events are published to 'dynu_updater'. The following lists the possible events:
 ```JSON

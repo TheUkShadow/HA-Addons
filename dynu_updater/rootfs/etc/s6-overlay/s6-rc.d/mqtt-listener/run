@@ -28,6 +28,8 @@ if [[ "$USE_MQTT" == "true" ]]; then
 	MQTT_CLIENT_ID=$(jq -r '.mqtt.client_id' <<< "$API_DATA")
 	readarray -t TLS_FLAGS < <(jq -r '.mqtt.tls_flags[]' <<< "$API_DATA")
 	bashio::log.info "MQTT Listener - Started"
+	LAST_IP_UPDATE=0
+	LAST_CERT_UPDATE=0
 	while true; do
 		mosquitto_sub \
 			-v \
@@ -43,13 +45,19 @@ if [[ "$USE_MQTT" == "true" ]]; then
 			if [[ "$payload" == "PRESS" ]]; then
 				case "$topic" in
 					dynu_updater/service/force_ip_update)
-						if bashio::config.true 'dns.update_ip'; then
+						if [[ ! -f /tmp/force_ip_update.mqtt ]] && (( $(date +%s) > LAST_IP_UPDATE + 60 )) && bashio::config.true 'dns.update_ip'; then
 							touch /tmp/force_ip_update.mqtt
+							LAST_IP_UPDATE=$(date +%s)
+						else
+							bashio::log.warning "MQTT Listener - Unable to run Force IP Update"
 						fi
 						;;
 					dynu_updater/service/force_cert_update)
-						if bashio::config.true 'cert.update_cert'; then
+						if [[ ! -f /tmp/force_cert_update.mqtt ]] && (( $(date +%s) > LAST_CERT_UPDATE + 3600 )) && bashio::config.true 'cert.update_cert'; then
 							touch /tmp/force_cert_update.mqtt
+							LAST_CERT_UPDATE=$(date +%s)
+						else
+							bashio::log.warning "MQTT Listener - Unable to run Force Certificate Update"
 						fi
 						;;
 					*)
