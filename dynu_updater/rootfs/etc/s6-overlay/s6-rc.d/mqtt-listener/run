@@ -39,6 +39,18 @@ if [[ "$USE_MQTT" == "true" ]]; then
             -t "dynu_updater/service/#" \
 			"${TLS_FLAGS[@]}" | \
 		while read -r topic payload; do
+			topic="${topic%./dynu_updater/service/}"
+			case "$topic" in
+				reset_ip_data)
+					touch /tmp/reset_ip_data.mqtt
+					;;
+				force_ip_check)
+					touch /tmp/force_ip_check.mqtt
+					;;
+				*)
+					bashio::log.error "MQTT Listener - Unknow topic or payload."
+					;;
+			esac
 			echo "Received: $topic - $payload"
 		done
 
