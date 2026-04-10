@@ -318,6 +318,9 @@ check_ip_status() {
 		touch /run/dynu-dns-update.ready
 		FIRST_RUN="false"
 	fi
+	
+	NEXT_RUN_ISO=$(date -u -d "@$NEXT_CHECK" +"%Y-%m-%dT%H:%M:%S+00:00")
+	mqtt_publish "next_ip_check" "$NEXT_RUN_ISO"
 }
 
 while true; do
@@ -348,9 +351,7 @@ while true; do
 	while (( $(date +%s) < NEXT_CHECK )); do
 		if [[ -f /tmp/force_ip_update.mqtt ]]; then
 			check_ip_status "true"
-			NEXT_RUN_ISO=$(date -u -d "@$NEXT_CHECK" +"%Y-%m-%dT%H:%M:%S+00:00")
 			bashio::log.info "Dynu IP Updater - Next scheduled IP check: ${NEXT_RUN_ISO}."
-			mqtt_publish "next_ip_check" "$NEXT_RUN_ISO"
 			rm -f /tmp/force_ip_update.mqtt
         fi
 		sleep 1
