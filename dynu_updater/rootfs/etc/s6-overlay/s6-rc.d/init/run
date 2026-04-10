@@ -480,8 +480,6 @@ if [[ "$USE_MQTT" == "true" ]]; then
 		fi
 	fi
 	
-	OPENSSL_FLAGS=()
-	
 	if [[ "$MQTT_USE_TLS" == "true" ]]; then
 		if [[ -n "$MQTT_CAFILE" && ! -f "$MQTT_CAFILE" ]]; then
 			bashio::log.error "Dynu Updater Initialisation - Specified CA File does not exist."
@@ -497,22 +495,17 @@ if [[ "$USE_MQTT" == "true" ]]; then
 		fi
 		if [[ -n "$MQTT_CAFILE" ]]; then
 			TLS_FLAGS+=("--cafile" "$MQTT_CAFILE")
-			OPENSSL_FLAGS+=("-CAfile" "$MQTT_CAFILE")
 		else
 			TLS_FLAGS+=("--tls-use-os-certs")
 		fi
 		if [[ -n "$MQTT_CERTFILE" ]]; then
 			TLS_FLAGS+=("--cert" "$MQTT_CERTFILE")
-			OPENSSL_FLAGS+=("-cert" "$MQTT_CERTFILE")
 		fi
 		if [[ -n "$MQTT_KEYFILE" ]]; then
 			TLS_FLAGS+=("--key" "$MQTT_KEYFILE")
-			OPENSSL_FLAGS+=("-key" "$MQTT_KEYFILE")
 		fi
 		if [[ "$MQTT_VALIDATE" == "false" ]]; then
 			TLS_FLAGS+=("--insecure")
-		else
-			OPENSSL_FLAGS+=("-verify_hostname" "$MQTT_HOST")
 		fi
 	fi
 	
