@@ -348,6 +348,9 @@ while true; do
 	
 	if (( NOW_EPOCH >= NEXT_CHECK )); then
 		check_ip_status
+		NEXT_RUN_ISO=$(date -u -d "@$NEXT_CHECK" +"%Y-%m-%dT%H:%M:%S+00:00")
+		bashio::log.info "Dynu IP Updater - Next IP check: ${NEXT_RUN_ISO}."
+		mqtt_publish "next_ip_check" "$NEXT_RUN_ISO"
 	fi
 
 	sleep 10

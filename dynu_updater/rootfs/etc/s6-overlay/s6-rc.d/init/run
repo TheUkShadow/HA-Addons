@@ -544,6 +544,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
 
 	MQTT_ENTITIES=(
 	  "last_ip_check|Last IP Check|timestamp|dynu_updater/last_ip_check|sensor||mdi:clock-check|dns"
+	  "next_ip_check|Next IP Check|timestamp|dynu_updater/next_ip_check|sensor||mdi:calendar-clock-outline|dns"
 	  "last_ip_update|Last IP Update|timestamp|dynu_updater/last_ip_update|sensor||mdi:update|dns"
 	  "current_ipv4|Current IPv4||dynu_updater/current_ipv4|sensor||mdi:ip-network|dns"
 	  "current_ipv6|Current IPv6||dynu_updater/current_ipv6|sensor||mdi:ip-network-outline|dns"
