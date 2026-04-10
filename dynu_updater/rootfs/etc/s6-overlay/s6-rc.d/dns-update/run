@@ -359,5 +359,6 @@ while true; do
 			fi
         fi
 		sleep 0.1
+		bashio::log.info "Dynu IP Updater - Bump"
     done
 done
