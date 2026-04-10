@@ -98,7 +98,7 @@ cert:
     - yourdomain.com
     - homeassistant.yourdomain.com
     - mx.yourdomain.com
-	- "*.api.yourdomain.com"
+    - "*.api.yourdomain.com"
 mqtt:
   enabled: true
   core: true
