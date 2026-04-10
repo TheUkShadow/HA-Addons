@@ -71,8 +71,8 @@ If **Events** are enabled, the app will publish events on the Home Assistant Eve
 {"event_type": "dynu_updater", "data": {"action": "ip_update", "status": "no_change", "ipv4": "--Current IPv4 Address--", "ipv6": "--Current IPv6 Address--"}}
 {"event_type": "dynu_updater", "data": {"action": "ip_update", "status": "fail"}}
 
-{"event_type": "dynu_updater", "data": {"action": "certificate_update", "status": "updated", "created": "--New Creation Date--", "expires": "--New Expiry Date--"}}
-{"event_type": "dynu_updater", "data": {"action": "certificate_update", "status": "no_change", "created": "--Current Certificate Creation Date--", "expires": "--Current Expiry Date--"}}
+{"event_type": "dynu_updater", "data": {"action": "certificate_update", "status": "updated", "created": "--New Certificate Creation Date--", "expires": "--New Certificate Expiry Date--"}}
+{"event_type": "dynu_updater", "data": {"action": "certificate_update", "status": "no_change", "created": "--Current Certificate Creation Date--", "expires": "--Current Certificate Expiry Date--"}}
 {"event_type": "dynu_updater", "data": {"action": "certificate_update", "status": "fail"}}
 ```
 All dates are published in ISO Format
