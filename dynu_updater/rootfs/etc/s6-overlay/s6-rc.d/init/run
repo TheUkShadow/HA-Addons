@@ -543,6 +543,8 @@ if [[ "$USE_MQTT" == "true" ]]; then
 	fi
 
 	MQTT_ENTITIES=(
+	  "force_ip_check|Force IP Check||dynu_updater/service/force_ip_check|button||mdi:play-network|dns"
+	  "reset_ip_data|Reset IP Data||dynu_updater/service/reset_ip_data|button||mdi:help-network|dns"
 	  "last_ip_check|Last IP Check|timestamp|dynu_updater/last_ip_check|sensor||mdi:clock-check|dns"
 	  "next_ip_check|Next IP Check|timestamp|dynu_updater/next_ip_check|sensor||mdi:calendar-clock-outline|dns"
 	  "last_ip_update|Last IP Update|timestamp|dynu_updater/last_ip_update|sensor||mdi:update|dns"

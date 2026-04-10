@@ -1,0 +1,52 @@
+#!/usr/bin/with-contenv bashio
+# vim: ft=bash
+# shellcheck shell=bash
+# ==============================================================================
+# MQTT Listener
+# ==============================================================================
+
+LOG_LEVEL=$(bashio::config 'log_level')
+bashio::log.level "$LOG_LEVEL"
+
+DYNU_CONF="/run/dynu-updater.conf"
+
+sleep 1
+
+if [[ ! -f "$DYNU_CONF" ]]; then
+	bashio::log.error "MQTT Listener - Dynu API Config not found."
+	exit 1
+fi
+
+API_DATA=$(< "$DYNU_CONF")
+USE_MQTT=$(jq -r '.mqtt.enabled' <<< "$API_DATA")
+
+if [[ "$USE_MQTT" == "true" ]]; then
+	MQTT_HOST=$(jq -r '.mqtt.host' <<< "$API_DATA")
+	MQTT_PORT=$(jq -r '.mqtt.port' <<< "$API_DATA")
+	MQTT_USER=$(jq -r '.mqtt.user' <<< "$API_DATA")
+	MQTT_PASSWORD=$(jq -r '.mqtt.password' <<< "$API_DATA")
+	MQTT_CLIENT_ID=$(jq -r '.mqtt.client_id' <<< "$API_DATA")
+	readarray -t TLS_FLAGS < <(jq -r '.mqtt.tls_flags[]' <<< "$API_DATA")
+	bashio::log.info "MQTT Listener - Started"
+	while true; do
+		mosquitto_sub \
+			-v \
+            -h "$MQTT_HOST" \
+            -p "$MQTT_PORT" \
+            -u "$MQTT_USER" \
+            -P "$MQTT_PASSWORD" \
+			-i "$MQTT_CLIENT_ID" \
+            -t "dynu_updater/service/#" \
+			"${TLS_FLAGS[@]}" | \
+		while read -r topic payload; do
+			echo "Received: $topic - $payload"
+		done
+
+		echo "MQTT Listener - Disconnected, retrying in 5 seconds"
+		sleep 5
+	done
+else
+	bashio::log.info "MQTT Listener - Not required."
+	sleep infinity
+fi
+

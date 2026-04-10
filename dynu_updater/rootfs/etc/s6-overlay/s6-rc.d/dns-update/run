@@ -267,8 +267,7 @@ check_ip_status() {
 				bashio::log.error "Dynu IP Updater - ${UPDATED} Hosts/Aliases could not be updated."
 				LAST_CHECK="false"
 				mqtt_publish "update_status" "false"
-				NOW_EPOCH=$(date +%s)
-				NEXT_CHECK=$(( NOW_EPOCH + 60 ))
+				NEXT_CHECK=$(( $(date +%s) + 60 ))
 				fire_event '{"action": "ip_update", "status": "fail"}'
 			else
 				CURRENT_IPV4="$IPV4"
@@ -293,21 +292,18 @@ check_ip_status() {
 				  > "$IP_CONF"
 				  
 				bashio::log.info "Dynu IP Updater - All Hosts/Aliases were updated."
-				NOW_EPOCH=$(date +%s)
-				NEXT_CHECK=$(( NOW_EPOCH + (IP_TIME * 60) ))
+				NEXT_CHECK=$(( $(date +%s) + (IP_TIME * 60) ))
 				fire_event "{\"action\": \"ip_update\", \"status\": \"updated\", \"ipv4\": \"${IPV4}\", \"ipv6\": \"${IPV6}\"}"
 			fi
 		else
 			bashio::log.debug "Dynu IP Updater - No IP address change detected."
-			NOW_EPOCH=$(date +%s)
-			NEXT_CHECK=$(( NOW_EPOCH + (IP_TIME * 60) ))
+			NEXT_CHECK=$(( $(date +%s) + (IP_TIME * 60) ))
 			fire_event "{\"action\": \"ip_update\", \"status\": \"no_change\", \"ipv4\": \"${IPV4}\", \"ipv6\": \"${IPV6}\"}"
 		fi
 
 	else
 		bashio::log.error "Dynu IP Updater - Unable to retrieve current IP address data."
-		NOW_EPOCH=$(date +%s)
-		NEXT_CHECK=$(( NOW_EPOCH + 60 ))
+		NEXT_CHECK=$(( $(date +%s) + 60 ))
 	fi
 	
 	if [[ "$FIRST_RUN" == "true" ]]; then
@@ -316,12 +312,16 @@ check_ip_status() {
 		FIRST_RUN="false"
 	fi
 	
-	bashio::log.debug "Dynu IP Updater - Checking and updating complete."
+	NEXT_RUN_ISO=$(date -u -d "@$NEXT_CHECK" +"%Y-%m-%dT%H:%M:%S+00:00")
+	bashio::log.info "Dynu IP Updater - Next scheduled IP check: ${NEXT_RUN_ISO}."
+	mqtt_publish "next_ip_check" "$NEXT_RUN_ISO"
 }
 
 NEXT_CHECK=$(date +%s)
 
 while true; do
+	check_ip_status
+	
 	if [[ ${#MQTT_RETRY_MAP[@]} -ne 0 ]]; then
 		for topic in "${!MQTT_RETRY_MAP[@]}"; do
             payload="${MQTT_RETRY_MAP[$topic]}"
@@ -343,15 +343,16 @@ while true; do
             fi
         done
 	fi
-	
-	NOW_EPOCH=$(date +%s)
-	
-	if (( NOW_EPOCH >= NEXT_CHECK )); then
-		check_ip_status
-		NEXT_RUN_ISO=$(date -u -d "@$NEXT_CHECK" +"%Y-%m-%dT%H:%M:%S+00:00")
-		bashio::log.info "Dynu IP Updater - Next IP check: ${NEXT_RUN_ISO}."
-		mqtt_publish "next_ip_check" "$NEXT_RUN_ISO"
-	fi
 
-	sleep 10
+	while (( $(date +%s) < NEXT_CHECK )); do
+        if [[ -f /tmp/force_ip_check.mqtt ]]; then
+			rm -f /tmp/force_ip_check.mqtt
+			check_ip_status
+		elif [[ -f /tmp/reset_ip_data.mqtt ]]; then
+			rm -f /tmp/reset_ip_data.mqtt
+			rm -f "$IP_CONF"
+			check_ip_status
+        fi
+        sleep 1
+    done
 done
