@@ -39,13 +39,12 @@ if [[ "$USE_MQTT" == "true" ]]; then
             -t "dynu_updater/service/#" \
 			"${TLS_FLAGS[@]}" | \
 		while read -r topic payload; do
-			topic="${topic%.dynu_updater/service/}"
 			if [[ "$payload" == "PRESS" ]]; then
 				case "$topic" in
-					reset_ip_data)
+					dynu_updater/service/reset_ip_data)
 						touch /tmp/reset_ip_data.mqtt
 						;;
-					force_ip_check)
+					dynu_updater/service/force_ip_check)
 						touch /tmp/force_ip_check.mqtt
 						;;
 					*)
