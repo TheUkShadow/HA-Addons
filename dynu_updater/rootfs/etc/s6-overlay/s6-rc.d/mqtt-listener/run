@@ -63,7 +63,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
 		sleep 5
 	done
 else
-	bashio::log.info "MQTT Listener - Not required."
+	bashio::log.debug "MQTT Listener - Not required."
 	sleep infinity
 fi
 

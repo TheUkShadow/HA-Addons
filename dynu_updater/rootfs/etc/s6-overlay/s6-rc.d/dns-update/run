@@ -9,7 +9,7 @@ LOG_LEVEL=$(bashio::config 'log_level')
 bashio::log.level "$LOG_LEVEL"
 
 if ! bashio::config.true 'dns.update_ip'; then
-	bashio::log.info "Dynu IP Updater - Not required."
+	bashio::log.debug "Dynu IP Updater - Not required."
 	bashio::log.debug "Dynu IP Updater - Setting ready flag for Certificate Manager."
 	touch /run/dynu-dns-update.ready
 	sleep infinity

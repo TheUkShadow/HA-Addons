@@ -13,7 +13,7 @@ while [[ ! -f /run/dynu-dns-update.ready ]]; do
 done
 
 if ! bashio::config.true 'cert.update_cert'; then
-	bashio::log.info "Certificate Manager - Not required."
+	bashio::log.debug "Certificate Manager - Not required."
 	sleep infinity
 fi
 

@@ -756,3 +756,5 @@ jq -n \
 sleep 1
 
 bashio::log.info "Dynu Updater Initialisation - Complete."
+
+exit 0
