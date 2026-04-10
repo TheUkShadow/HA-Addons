@@ -260,9 +260,9 @@ check_ip_status() {
 				fi
 			done
 			
-			UPDATED=${#MERGED_KEYS[@]}
+			UPDATED=${#MERGED_ARRAY[@]}
 			
-			for HOST in "${!MERGED_KEYS[@]}"; do
+			for HOST in "${MERGED_KEYS[@]}"; do
 				IFS='|' read -r IP4 IP6 <<< "${MERGED_ARRAY[$HOST]}"
 				if update_host "$HOST" "$IP4" "$IP6"; then
 					UPDATED=$((UPDATED - 1))
