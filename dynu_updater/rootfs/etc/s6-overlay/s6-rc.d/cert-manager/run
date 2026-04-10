@@ -26,6 +26,9 @@ if [[ ! -f "$DYNU_CONF" ]]; then
 	exit 1
 fi
 
+FIFO="/tmp/cert_events"
+exec 3<> "$FIFO"
+
 bashio::log.info "Certificate Manager - Started."
 
 API_DATA=$(< "$DYNU_CONF")
@@ -300,11 +303,12 @@ while true; do
 	fi
 	
 	while (( $(date +%s) < NEXT_CHECK )); do
-        # if [[ -f /tmp/force_cert_update.mqtt ]]; then
-			# bashio::log.info "Certificate Manager - Performing manual update."
-			# check_cert "true"
-			# rm -f /tmp/force_cert_update.mqtt
-        # fi
-        sleep 10
+		if read -t 1 event <&3; then
+			if [[ "$event" == "force_cert_update" ]]; then
+				bashio::log.info "Certificate Manager - Performing manual update."
+				check_cert "true"
+				while read -t 0.1 _ <&3; do :; done
+			fi
+        fi
     done
 done

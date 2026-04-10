@@ -437,12 +437,6 @@ bashio::log.info "Dynu Updater Initialisation - Generating MQTT Configuration."
 TLS_FLAGS=()
 MQTT_ENTITIES=()
 
-FIFO="/tmp/file_events"
-
-if [[ ! -p "$FIFO" ]]; then
-	mkfifo "$FIFO"
-fi
-
 if [[ "$USE_MQTT" == "true" ]]; then
 	if [[ -z "$MQTT_HOST" || ! "$MQTT_HOST" =~ ^([A-Za-z0-9._-]+|\[?[A-Fa-f0-9:]+\]?)$ \
 		  || -z "$MQTT_PORT" || ! "$MQTT_PORT" =~ ^[0-9]+$ ]]; then
@@ -759,6 +753,15 @@ jq -n \
    }' \
   > /run/dynu-updater.conf
 
+IP_FIFO="/tmp/ip_events"
+if [[ ! -p "$IP_FIFO" ]]; then
+	mkfifo "$IP_FIFO"
+fi
+
+CERT_FIFO="/tmp/cert_evets"
+if [[ ! -p "$CERT_FIFO" ]]; then
+	mkfifo "$CERT_FIFO"
+fi
 
 sleep 1
 

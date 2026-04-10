@@ -28,7 +28,8 @@ if [[ "$USE_MQTT" == "true" ]]; then
 	MQTT_CLIENT_ID=$(jq -r '.mqtt.client_id' <<< "$API_DATA")
 	readarray -t TLS_FLAGS < <(jq -r '.mqtt.tls_flags[]' <<< "$API_DATA")
 	bashio::log.info "MQTT Listener - Started"
-	FIFO="/tmp/file_events"
+	IP_FIFO="/tmp/ip_events"
+	CERT_FIFO="/tmp/cert_events"
 	while true; do
 		mosquitto_sub \
 			-v \
@@ -44,11 +45,14 @@ if [[ "$USE_MQTT" == "true" ]]; then
 			if [[ "$payload" == "PRESS" ]]; then
 				case "$topic" in
 					dynu_updater/service/force_ip_update)
-						#touch /tmp/force_ip_update.mqtt
-						echo "force_ip_update" > "$FIFO"
+						if bashio::config.true 'dns.update_ip'; then
+							echo "force_ip_update" > "$IP_FIFO"
+						fi
 						;;
 					dynu_updater/service/force_cert_update)
-						touch /tmp/force_cert_update.mqtt
+						if bashio::config.true 'cert.update_cert'; then
+							echo "force_cert_update" > "$CERT_FIFO"
+						fi
 						;;
 					*)
 						bashio::log.error "MQTT Listener - Unknow topic or payload."

@@ -19,10 +19,14 @@ DYNU_CONF="/run/dynu-updater.conf"
 
 sleep 1
 
+
 if [[ ! -f "$DYNU_CONF" ]]; then
 	bashio::log.error "Dynu IP Updater - Dynu API Config not found."
 	exit 1
 fi
+
+FIFO="/tmp/ip_events"
+exec 3<> "$FIFO"
 
 bashio::log.info "Dynu IP Updater - Started"
 
@@ -319,8 +323,6 @@ check_ip_status() {
 	fi
 }
 
-FIFO="/tmp/file_events"
-
 while true; do
 	check_ip_status "false"
 	
@@ -347,16 +349,14 @@ while true; do
 	fi
 	
 	while (( $(date +%s) < NEXT_CHECK )); do
-		if read -t 1 event < "$FIFO"; then
-			echo "$event"
+		if read -t 1 event <&3; then
 			if [[ "$event" == "force_ip_update" ]]; then
 				check_ip_status "true"
 				NEXT_RUN_ISO=$(date -u -d "@$NEXT_CHECK" +"%Y-%m-%dT%H:%M:%S+00:00")
 				bashio::log.info "Dynu IP Updater - Next scheduled IP check: ${NEXT_RUN_ISO}."
 				mqtt_publish "next_ip_check" "$NEXT_RUN_ISO"
-				rm -f /tmp/force_ip_update.mqtt
+				while read -t 0.1 _ <&3; do :; done
 			fi
         fi
-		# sleep 1
     done
 done
