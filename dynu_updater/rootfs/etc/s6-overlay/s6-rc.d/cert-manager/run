@@ -131,7 +131,6 @@ KEY_ARGUMENTS+=("--elliptic-curve" "secp256r1")
 
 check_dates() {
 	bashio::log.info "Certificate Manager - Checking Certificate dates."
-	NOW_EPOCH=$(date +%s)
 	local VALID_FROM_RAW=""
 	local CREATED_RAW=""
 	local EXPIRY_RAW=""
@@ -151,22 +150,22 @@ check_dates() {
 			EXPIRY_ISO=$(date -u -d "${EXPIRY_RAW}" +"%Y-%m-%dT%H:%M:%S+00:00")
 			EXPIRY_EPOCH=$(date -d "${EXPIRY_RAW}" +%s)
 			
-			MAX_EPOCH=$(( NOW_EPOCH + (CHECK_DAYS * 86400) + 60 ))
+			MAX_EPOCH=$(( $(date +%s) + (CHECK_DAYS * 86400) + 60 ))
 			
-			if (( NOW_EPOCH >= EXPIRY_EPOCH )); then
+			if (( $(date +%s) >= EXPIRY_EPOCH )); then
 				bashio::log.warning "Certificate Manager - Certificate has expired."
 				mqtt_publish "cert_valid" "false"
-				NEXT_CHECK=$(( NOW_EPOCH + 600 ))
+				NEXT_CHECK=$(( $(date +%s) + 600 ))
 			elif (( MAX_EPOCH >= EXPIRY_EPOCH )); then
 				bashio::log.warning "Certificate Manager - Certificate renewal required soon."
 				mqtt_publish "cert_valid" "true"
-				NEXT_CHECK=$(( NOW_EPOCH + 600 ))
+				NEXT_CHECK=$(( $(date +%s) + 600 ))
 			else
 				bashio::log.info "Certificate Manager - Certificate is valid."
 				mqtt_publish "cert_valid" "true"
 				NEXT_CHECK=$(( EXPIRY_EPOCH - (CHECK_DAYS * 86400) ))
-				if (( NOW_EPOCH >= NEXT_CHECK )); then
-					NEXT_CHECK=$(( NOW_EPOCH + 600 ))
+				if (( $(date +%s) >= NEXT_CHECK )); then
+					NEXT_CHECK=$(( $(date +%s) + 600 ))
 				fi
 			fi
 			
@@ -174,13 +173,13 @@ check_dates() {
 		else
 			bashio::log.error "Certificate Manager - Unable to parse certificate dates."
 			mqtt_publish "cert_valid" "unknown"
-			NEXT_CHECK=$(( NOW_EPOCH + 600 ))
+			NEXT_CHECK=$(( $(date +%s) + 600 ))
 			return 1
 		fi
 	else
 		bashio::log.error "Certificate Manager - Certificate file does not exist."
 		mqtt_publish "cert_valid" "false"
-		NEXT_CHECK=$(( NOW_EPOCH + 600 ))
+		NEXT_CHECK=$(( $(date +%s) + 600 ))
 		return 1
 	fi
 }
@@ -218,13 +217,12 @@ check_cert() {
 	
 	bashio::log.debug "Certbot Output: ${CERTBOT_OUTPUT}"
 	
-	NOW_EPOCH=$(date +%s)
 	CERT_UPDATE_STATUS="fail"
 	
 	# If certbot failed
 	if [[ "$CERTBOT_EXIT" -ne 0 ]]; then
 		bashio::log.error "Certificate Manager - Certbot failed with code ${CERTBOT_EXIT}."
-		NEXT_CHECK=$(( NOW_EPOCH + 600 ))
+		NEXT_CHECK=$(( $(date +%s) + 600 ))
 	else
 		# If certbot succeeded, check if certificate was updated
 		if [[ $CERTBOT_OUTPUT == *"Successfully received certificate"* ]]; then
@@ -241,7 +239,7 @@ check_cert() {
 			CERT_UPDATE_STATUS="no_change"
 		else
 			bashio::log.error "Certificate Manager - Unexpected Certbot output"
-			NEXT_CHECK=$(( NOW_EPOCH + 600 ))
+			NEXT_CHECK=$(( $(date +%s) + 600 ))
 		fi
 	fi
 	
@@ -264,11 +262,19 @@ check_cert() {
 		fire_event "{\"action\": \"certificate_update\", \"status\": \"${CERT_UPDATE_STATUS}\", \"created\": \"${CREATED_ISO}\", \"expires\": \"${EXPIRY_ISO}\"}"
 	fi
 	
+	NEXT_RUN_ISO=$(date -u -d "@$NEXT_CHECK" +"%Y-%m-%dT%H:%M:%S+00:00")
+	bashio::log.info "Certificate Manager - Next renewal check: ${NEXT_RUN_ISO}."
+	mqtt_publish "next_cert_check" "$NEXT_RUN_ISO"
 }
 
-NEXT_CHECK=$(date +%s)
-
 while true; do
+	check_cert
+	
+	if [[ "FORCE_RENEW" == "true" || "DRY_RUN" == "true" ]]; then
+		FORCE_RENEW="false"
+		DRY_RUN="false"
+	fi
+	
 	if [[ ${#MQTT_RETRY_MAP[@]} -ne 0 ]]; then
 		for topic in "${!MQTT_RETRY_MAP[@]}"; do
             payload="${MQTT_RETRY_MAP[$topic]}"
@@ -290,22 +296,14 @@ while true; do
             fi
         done
 	fi
-
-	NOW_EPOCH=$(date +%s)
 	
-	if (( NOW_EPOCH >= NEXT_CHECK )); then
-		check_cert
-	
-		NEXT_RUN_ISO=$(date -u -d "@$NEXT_CHECK" +"%Y-%m-%dT%H:%M:%S+00:00")
-		bashio::log.info "Certificate Manager - Next renewal check: ${NEXT_RUN_ISO}."
-		mqtt_publish "next_cert_check" "$NEXT_RUN_ISO"
-		
-		if [[ "FORCE_RENEW" == "true" || "DRY_RUN" == "true" ]]; then
-			FORCE_RENEW="false"
-			DRY_RUN="false"
-		fi
-	fi
-	
-	sleep 10
+	while (( $(date +%s) < NEXT_CHECK )); do
+        if [[ -f /tmp/force_cert_check.mqtt ]]; then
+			rm -f /tmp/force_cert_check.mqtt
+			bashio::log.info "Certificate Manager - Performing manual check."
+			check_cert
+        fi
+        sleep 1
+    done
 done
 

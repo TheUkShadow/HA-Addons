@@ -551,10 +551,11 @@ if [[ "$USE_MQTT" == "true" ]]; then
 	  "current_ipv4|Current IPv4||dynu_updater/current_ipv4|sensor||mdi:ip-network|dns"
 	  "current_ipv6|Current IPv6||dynu_updater/current_ipv6|sensor||mdi:ip-network-outline|dns"
 	  "ip_update_status|IP Update Status|problem|dynu_updater/ip_update_status|binary_sensor|\"payload_on\": \"false\", \"payload_off\": \"true\",|mdi:sticker-check|dns"
+	  "force_cert_check|Force Certificate Check||dynu_updater/service/force_cert_check|button||mdi:archive-check-outline|cert"
 	  "next_cert_check|Next Certificate Check|timestamp|dynu_updater/next_cert_check|sensor||mdi:calendar-clock|cert"
 	  "last_cert_check|Last Certificate Check|timestamp|dynu_updater/last_cert_check|sensor||mdi:certificate-outline|cert"
 	  "cert_valid|Certificate Valid|problem|dynu_updater/cert_valid|binary_sensor|\"payload_on\": \"false\", \"payload_off\": \"true\",|mdi:shield-check|cert"
-	  "cert_update_status|Cert. Update Status|problem|dynu_updater/cert_update_status|binary_sensor|\"payload_on\": \"false\", \"payload_off\": \"true\",|mdi:shield-alert|cert"
+	  "cert_update_status|Certificate Update Status|problem|dynu_updater/cert_update_status|binary_sensor|\"payload_on\": \"false\", \"payload_off\": \"true\",|mdi:shield-alert|cert"
 	  "cert_expires|Certificate Expires|timestamp|dynu_updater/cert_expires|sensor||mdi:calendar-alert|cert"
 	  "cert_created|Certificate Created|timestamp|dynu_updater/cert_created|sensor||mdi:certificate|cert"
 	)

@@ -39,6 +39,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
             -t "dynu_updater/service/#" \
 			"${TLS_FLAGS[@]}" | \
 		while read -r topic payload; do
+			bashio::log.debug "MQTT Listener - Received: $topic - $payload"
 			if [[ "$payload" == "PRESS" ]]; then
 				case "$topic" in
 					dynu_updater/service/reset_ip_data)
@@ -47,15 +48,17 @@ if [[ "$USE_MQTT" == "true" ]]; then
 					dynu_updater/service/force_ip_check)
 						touch /tmp/force_ip_check.mqtt
 						;;
+					dynu_updater/service/force_cert_check)
+						touch /tmp/force_cert_check.mqtt
+						;;
 					*)
 						bashio::log.error "MQTT Listener - Unknow topic or payload."
 						;;
 				esac
 			fi
-			echo "Received: $topic - $payload"
 		done
 
-		echo "MQTT Listener - Disconnected, retrying in 5 seconds"
+		bashio::log.error "MQTT Listener - Disconnected, retrying in 5 seconds"
 		sleep 5
 	done
 else
