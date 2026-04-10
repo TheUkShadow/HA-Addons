@@ -26,9 +26,6 @@ if [[ ! -f "$DYNU_CONF" ]]; then
 	exit 1
 fi
 
-FIFO="/tmp/cert_events"
-exec 3<> "$FIFO"
-
 bashio::log.info "Certificate Manager - Started."
 
 API_DATA=$(< "$DYNU_CONF")
@@ -196,6 +193,7 @@ check_cert() {
 	
 	if [[ "$FORCE_UPDATE" == "true" ]]; then
 		ADDITIONAL_ARGS+=("--force-renewal")
+		bashio::log.info "Certificate Manager - Force Renew active"
 	fi
 
 	if [[ "$DRY_RUN" == "true" ]]; then
@@ -275,8 +273,10 @@ check_cert() {
 while true; do
 	check_cert "$FORCE_RENEW"
 	
-	if [[ "FORCE_RENEW" == "true" || "DRY_RUN" == "true" ]]; then
+	if [[ "FORCE_RENEW" == "true" ]]; then
 		FORCE_RENEW="false"
+	fi
+	if [[ "DRY_RUN" == "true" ]]; then
 		DRY_RUN="false"
 	fi
 	
@@ -303,12 +303,10 @@ while true; do
 	fi
 	
 	while (( $(date +%s) < NEXT_CHECK )); do
-		if read -t 0.01 event <&3; then
-			if [[ "$event" == "force_cert_update" ]]; then
-				bashio::log.info "Certificate Manager - Performing manual update."
-				check_cert "true"
-				while read -t 0.1 _ <&3; do :; done
-			fi
+		if [[ -f /tmp/force_cert_update.mqtt ]]; then
+			bashio::log.info "Certificate Manager - Performing manual update."
+			check_cert "true"
+			rm -f /tmp/force_cert_update.mqtt
         fi
 		sleep 1
     done

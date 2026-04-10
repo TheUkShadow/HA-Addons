@@ -753,16 +753,6 @@ jq -n \
    }' \
   > /run/dynu-updater.conf
 
-IP_FIFO="/tmp/ip_events"
-if [[ ! -p "$IP_FIFO" ]]; then
-	mkfifo "$IP_FIFO"
-fi
-
-CERT_FIFO="/tmp/cert_evets"
-if [[ ! -p "$CERT_FIFO" ]]; then
-	mkfifo "$CERT_FIFO"
-fi
-
 sleep 1
 
 bashio::log.info "Dynu Updater Initialisation - Complete."
