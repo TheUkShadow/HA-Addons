@@ -358,5 +358,6 @@ while true; do
 				while read -t 0.1 _ <&3; do :; done
 			fi
         fi
+		sleep 0.1
     done
 done
