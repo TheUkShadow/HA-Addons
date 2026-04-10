@@ -437,6 +437,12 @@ bashio::log.info "Dynu Updater Initialisation - Generating MQTT Configuration."
 TLS_FLAGS=()
 MQTT_ENTITIES=()
 
+FIFO="/tmp/file_events"
+
+if [[ ! -p "$FIFO" ]]; then
+	mkfifo "$FIFO"
+fi
+
 if [[ "$USE_MQTT" == "true" ]]; then
 	if [[ -z "$MQTT_HOST" || ! "$MQTT_HOST" =~ ^([A-Za-z0-9._-]+|\[?[A-Fa-f0-9:]+\]?)$ \
 		  || -z "$MQTT_PORT" || ! "$MQTT_PORT" =~ ^[0-9]+$ ]]; then
@@ -539,7 +545,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
 		bashio::log.error "Dynu Updater Initialisation - Unable to connect to ${MQTT_HOST}: ${OUTPUT}."
 		exit 1
 	else
-		bashio::log.info "Dynu Updater Initialisation - Connected to ${MQTT_HOST}."	
+		bashio::log.info "Dynu Updater Initialisation - Connected to ${MQTT_HOST}."		
 	fi
 
 	MQTT_ENTITIES=(

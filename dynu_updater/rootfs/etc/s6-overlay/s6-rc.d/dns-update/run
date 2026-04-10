@@ -320,18 +320,6 @@ check_ip_status() {
 }
 
 FIFO="/tmp/file_events"
-[[ -p "$FIFO" ]] || mkfifo "$FIFO"
-
-(
-    inotifywait -m -q -e create /tmp |
-    while read -r dir event file; do
-        case "$file" in
-            *.mqtt)
-                echo "$dir$file" > "$FIFO"
-                ;;
-        esac
-    done
-) &
 
 while true; do
 	check_ip_status "false"
@@ -357,16 +345,18 @@ while true; do
             fi
         done
 	fi
-
+	
 	while (( $(date +%s) < NEXT_CHECK )); do
 		if read -t 1 event < "$FIFO"; then
-			if [[ "$event" == "/tmp/force_ip_update.mqtt" ]]; then
-			check_ip_status "true"
-			NEXT_RUN_ISO=$(date -u -d "@$NEXT_CHECK" +"%Y-%m-%dT%H:%M:%S+00:00")
-			bashio::log.info "Dynu IP Updater - Next scheduled IP check: ${NEXT_RUN_ISO}."
-			mqtt_publish "next_ip_check" "$NEXT_RUN_ISO"
-			rm -f /tmp/force_ip_update.mqtt
+			echo "$event"
+			if [[ "$event" == "force_ip_update" ]]; then
+				check_ip_status "true"
+				NEXT_RUN_ISO=$(date -u -d "@$NEXT_CHECK" +"%Y-%m-%dT%H:%M:%S+00:00")
+				bashio::log.info "Dynu IP Updater - Next scheduled IP check: ${NEXT_RUN_ISO}."
+				mqtt_publish "next_ip_check" "$NEXT_RUN_ISO"
+				rm -f /tmp/force_ip_update.mqtt
+			fi
         fi
-        sleep 1
+		# sleep 1
     done
 done

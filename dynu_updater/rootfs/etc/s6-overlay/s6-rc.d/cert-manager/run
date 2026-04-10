@@ -305,6 +305,6 @@ while true; do
 			# check_cert "true"
 			# rm -f /tmp/force_cert_update.mqtt
         # fi
-        sleep 1
+        sleep 10
     done
 done
