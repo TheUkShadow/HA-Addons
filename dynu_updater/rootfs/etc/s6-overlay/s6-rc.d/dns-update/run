@@ -244,9 +244,11 @@ check_ip_status() {
 			fi
 			
 			declare -A MERGED_ARRAY
+			declare -a MERGED_KEYS=()
 			
 			for HOST in "${IPV4_DOMAIN_ARR[@]}"; do
 				MERGED_ARRAY["$HOST"]="$IPV4|"
+				MERGED_KEYS+=("$HOST")
 			done
 			
 			for HOST in "${IPV6_DOMAIN_ARR[@]}"; do
@@ -254,12 +256,13 @@ check_ip_status() {
 					MERGED_ARRAY["$HOST"]="${MERGED_ARRAY[$HOST]}$IPV6"
 				else
 					MERGED_ARRAY["$HOST"]="|$IPV6"
+					MERGED_KEYS+=("$HOST")
 				fi
 			done
 			
-			UPDATED=${#MERGED_ARRAY[@]}
+			UPDATED=${#MERGED_KEYS[@]}
 			
-			for HOST in "${!MERGED_ARRAY[@]}"; do
+			for HOST in "${!MERGED_KEYS[@]}"; do
 				IFS='|' read -r IP4 IP6 <<< "${MERGED_ARRAY[$HOST]}"
 				if update_host "$HOST" "$IP4" "$IP6"; then
 					UPDATED=$((UPDATED - 1))
