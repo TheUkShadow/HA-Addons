@@ -303,7 +303,7 @@ while true; do
 	fi
 	
 	while (( $(date +%s) < NEXT_CHECK )); do
-		if read -t 0 event <&3; then
+		if read -t 0.01 event <&3; then
 			if [[ "$event" == "force_cert_update" ]]; then
 				bashio::log.info "Certificate Manager - Performing manual update."
 				check_cert "true"

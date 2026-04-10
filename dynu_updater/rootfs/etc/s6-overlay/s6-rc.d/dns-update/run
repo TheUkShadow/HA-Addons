@@ -349,7 +349,7 @@ while true; do
 	fi
 	
 	while (( $(date +%s) < NEXT_CHECK )); do
-		if read -t 0 event <&3; then
+		if read -t 0.01 event <&3; then
 			if [[ "$event" == "force_ip_update" ]]; then
 				check_ip_status "true"
 				NEXT_RUN_ISO=$(date -u -d "@$NEXT_CHECK" +"%Y-%m-%dT%H:%M:%S+00:00")
