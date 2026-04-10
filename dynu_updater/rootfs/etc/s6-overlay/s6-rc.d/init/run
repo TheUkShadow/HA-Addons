@@ -590,6 +590,12 @@ if [[ "$USE_MQTT" == "true" ]]; then
 				icon_json="\"icon\": \"${icon}\","
 			fi
 			
+			# Use state_topic normally, except for buttons
+			local topic_json="\"state_topic\": \"${state_topic}\","
+			if [[ "$component" == "button" ]]; then
+				topic_json="\"command_topic\": \"${state_topic}\","
+			fi
+			
 			# Per‑entity availability topic
 			local entity_avail_topic="dynu_updater/${entity_id}/availability"
 
@@ -599,7 +605,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
 				  -m "{
 					\"name\": \"${name}\",
 					\"unique_id\": \"${DEVICE_ID}_${entity_id}\",
-					\"state_topic\": \"${state_topic}\",
+					${topic_json}
 					\"availability\": [
 					  { \"topic\": \"${AVAIL_TOPIC}\" },
 					  { \"topic\": \"${entity_avail_topic}\" }
