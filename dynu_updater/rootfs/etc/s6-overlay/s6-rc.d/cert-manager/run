@@ -185,11 +185,13 @@ check_dates() {
 }
 
 check_cert() {
+	FORCE_UPDATE="$1"
+	
 	bashio::log.info "Certificate Manager - Running Certbot. This can take up to ${PROPAGATION_SECONDS} seconds when generating a new certificate."
 	
 	ADDITIONAL_ARGS=()
 	
-	if [[ "$FORCE_RENEW" == "true" ]]; then
+	if [[ "$FORCE_UPDATE" == "true" ]]; then
 		ADDITIONAL_ARGS+=("--force-renewal")
 	fi
 
@@ -268,7 +270,7 @@ check_cert() {
 }
 
 while true; do
-	check_cert
+	check_cert "$FORCE_RENEW"
 	
 	if [[ "FORCE_RENEW" == "true" || "DRY_RUN" == "true" ]]; then
 		FORCE_RENEW="false"
@@ -298,12 +300,11 @@ while true; do
 	fi
 	
 	while (( $(date +%s) < NEXT_CHECK )); do
-        if [[ -f /tmp/force_cert_check.mqtt ]]; then
-			rm -f /tmp/force_cert_check.mqtt
+        if [[ -f /tmp/force_cert_update.mqtt ]]; then
 			bashio::log.info "Certificate Manager - Performing manual check."
-			check_cert
+			check_cert "true"
+			rm -f /tmp/force_cert_update.mqtt
         fi
         sleep 1
     done
 done
-

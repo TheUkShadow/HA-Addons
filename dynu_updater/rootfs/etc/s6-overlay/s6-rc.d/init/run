@@ -543,15 +543,14 @@ if [[ "$USE_MQTT" == "true" ]]; then
 	fi
 
 	MQTT_ENTITIES=(
-	  "force_ip_check|Force IP Check||dynu_updater/service/force_ip_check|button||mdi:play-network|dns"
-	  "reset_ip_data|Reset IP Data||dynu_updater/service/reset_ip_data|button||mdi:help-network|dns"
+	  "force_ip_update|Force IP Update||dynu_updater/service/force_ip_update|button||mdi:play-network|dns"
 	  "last_ip_check|Last IP Check|timestamp|dynu_updater/last_ip_check|sensor||mdi:clock-check|dns"
 	  "next_ip_check|Next IP Check|timestamp|dynu_updater/next_ip_check|sensor||mdi:calendar-clock-outline|dns"
 	  "last_ip_update|Last IP Update|timestamp|dynu_updater/last_ip_update|sensor||mdi:update|dns"
 	  "current_ipv4|Current IPv4||dynu_updater/current_ipv4|sensor||mdi:ip-network|dns"
 	  "current_ipv6|Current IPv6||dynu_updater/current_ipv6|sensor||mdi:ip-network-outline|dns"
 	  "ip_update_status|IP Update Status|problem|dynu_updater/ip_update_status|binary_sensor|\"payload_on\": \"false\", \"payload_off\": \"true\",|mdi:sticker-check|dns"
-	  "force_cert_check|Force Certificate Check||dynu_updater/service/force_cert_check|button||mdi:archive-check-outline|cert"
+	  "force_cert_update|Force Certificate Update||dynu_updater/service/force_cert_update|button||mdi:archive-check-outline|cert"
 	  "next_cert_check|Next Certificate Check|timestamp|dynu_updater/next_cert_check|sensor||mdi:calendar-clock|cert"
 	  "last_cert_check|Last Certificate Check|timestamp|dynu_updater/last_cert_check|sensor||mdi:certificate-outline|cert"
 	  "cert_valid|Certificate Valid|problem|dynu_updater/cert_valid|binary_sensor|\"payload_on\": \"false\", \"payload_off\": \"true\",|mdi:shield-check|cert"

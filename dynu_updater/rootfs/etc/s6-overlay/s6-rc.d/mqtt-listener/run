@@ -42,14 +42,11 @@ if [[ "$USE_MQTT" == "true" ]]; then
 			bashio::log.debug "MQTT Listener - Received: $topic - $payload"
 			if [[ "$payload" == "PRESS" ]]; then
 				case "$topic" in
-					dynu_updater/service/reset_ip_data)
-						touch /tmp/reset_ip_data.mqtt
+					dynu_updater/service/force_ip_update)
+						touch /tmp/force_ip_update.mqtt
 						;;
-					dynu_updater/service/force_ip_check)
-						touch /tmp/force_ip_check.mqtt
-						;;
-					dynu_updater/service/force_cert_check)
-						touch /tmp/force_cert_check.mqtt
+					dynu_updater/service/force_cert_update)
+						touch /tmp/force_cert_update.mqtt
 						;;
 					*)
 						bashio::log.error "MQTT Listener - Unknow topic or payload."
