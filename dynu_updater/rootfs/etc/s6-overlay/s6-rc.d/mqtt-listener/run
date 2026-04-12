@@ -13,7 +13,7 @@ DYNU_CONF="/run/dynu-updater.conf"
 sleep 1
 
 if [[ ! -f "$DYNU_CONF" ]]; then
-	bashio::log.error "MQTT Listener - Dynu API Config not found."
+	bashio::log.error "MQTT Listener - Config not found."
 	exit 1
 fi
 
@@ -61,7 +61,7 @@ if [[ "$USE_MQTT" == "true" ]]; then
 						fi
 						;;
 					*)
-						bashio::log.error "MQTT Listener - Unknow topic or payload."
+						bashio::log.error "MQTT Listener - Unknown topic or payload."
 						;;
 				esac
 			fi

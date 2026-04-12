@@ -22,7 +22,7 @@ DYNU_CONF="/run/dynu-updater.conf"
 sleep 1
 
 if [[ ! -f "$DYNU_CONF" ]]; then
-	bashio::log.error "Certificate Manager - Dynu API Config not found."
+	bashio::log.error "Certificate Manager - Config not found."
 	exit 1
 fi
 
@@ -67,8 +67,6 @@ VALID_FROM_ISO=""
 CREATED_ISO=""
 EXPIRY_ISO=""
 
-declare -A MQTT_RETRY_MAP=()
-
 mqtt_publish() {
     if [[ "$USE_MQTT" == "true" ]]; then
         local topic="$1"
@@ -86,10 +84,9 @@ mqtt_publish() {
             -r \
 			"${TLS_FLAGS[@]}"; then
 
-            bashio::log.warning "Certificate Manager - MQTT publish failed: Topic=${topic}."
-			
-			# Store only the latest payload for this topic
-			MQTT_RETRY_MAP["$topic"]="$payload"
+            bashio::log.error "Certificate Manager - MQTT failed to publish Payload: ${payload} to Topic: ${topic}."
+		else
+			bashio::log.debug "Certificate Manager - MQTT published Payload: ${payload} to Topic: ${topic}."
         fi
     fi
 }
@@ -102,9 +99,9 @@ fire_event() {
 		  -d "$1" \
 		  "http://hassio/homeassistant/api/events/dynu_updater" >/dev/null; then
 		  
-			bashio::log.error "Dynu IP Updater - Could not send ${1} to Home Assistant Events."
+			bashio::log.error "Certificate Manager - Could not send ${1} to Home Assistant Events."
 		else
-			bashio::log.debug "Dynu IP Updater - Sent ${1} to Home Assistant Events."
+			bashio::log.debug "Certificate Manager - Sent ${1} to Home Assistant Events."
 		fi
 	fi
 }
@@ -273,34 +270,8 @@ check_cert() {
 while true; do
 	check_cert "$FORCE_RENEW"
 	
-	if [[ "FORCE_RENEW" == "true" ]]; then
-		FORCE_RENEW="false"
-	fi
-	if [[ "DRY_RUN" == "true" ]]; then
-		DRY_RUN="false"
-	fi
-	
-	if [[ ${#MQTT_RETRY_MAP[@]} -ne 0 ]]; then
-		for topic in "${!MQTT_RETRY_MAP[@]}"; do
-            payload="${MQTT_RETRY_MAP[$topic]}"
-
-            if mosquitto_pub \
-				--quiet \
-                -h "$MQTT_HOST" \
-                -p "$MQTT_PORT" \
-                -u "$MQTT_USER" \
-                -P "$MQTT_PASSWORD" \
-                -i "$MQTT_CLIENT_ID" \
-                -t "dynu_updater/${topic}" \
-                -m "$payload" \
-                -r \
-                "${TLS_FLAGS[@]}"; then
-
-                bashio::log.info "Certificate Manager - Resent MQTT message: ${topic}"
-                unset MQTT_RETRY_MAP["$topic"]
-            fi
-        done
-	fi
+	FORCE_RENEW="false"
+	DRY_RUN="false"
 	
 	while (( $(date +%s) < NEXT_CHECK )); do
 		if [[ -f /tmp/force_cert_update.mqtt ]]; then

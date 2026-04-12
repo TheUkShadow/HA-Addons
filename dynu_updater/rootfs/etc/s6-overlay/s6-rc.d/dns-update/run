@@ -21,7 +21,7 @@ sleep 1
 
 
 if [[ ! -f "$DYNU_CONF" ]]; then
-	bashio::log.error "Dynu IP Updater - Dynu API Config not found."
+	bashio::log.error "Dynu IP Updater - Config not found."
 	exit 1
 fi
 
@@ -49,8 +49,6 @@ if [[ "$USE_MQTT" == "true" ]]; then
 	readarray -t TLS_FLAGS < <(jq -r '.mqtt.tls_flags[]' <<< "$API_DATA")
 fi
 
-declare -A MQTT_RETRY_MAP=()
-
 mqtt_publish() {
     if [[ "$USE_MQTT" == "true" ]]; then
         local topic="$1"
@@ -68,10 +66,9 @@ mqtt_publish() {
             -r \
 			"${TLS_FLAGS[@]}"; then
 
-            bashio::log.warning "Dynu IP Updater - MQTT publish failed: Topic=${topic}."
-			
-			# Store only the latest payload for this topic
-			MQTT_RETRY_MAP["$topic"]="$payload"
+            bashio::log.error "Dynu IP Updater - MQTT failed to publish Payload: ${payload} to Topic: ${topic}."
+		else
+			bashio::log.debug "Dynu IP Updater - MQTT published Payload: ${payload} to Topic: ${topic}."
         fi
     fi
 }
@@ -105,6 +102,7 @@ else
 fi
 
 LAST_CHECK="true"
+LAST_UPDATE="true"
 FIRST_RUN="true"
 
 update_host() {
@@ -235,10 +233,16 @@ check_ip_status() {
 	if [[ ${#IPV4_DOMAIN_ARR[@]} -eq 0 || -n "$IPV4" ]] && [[ ${#IPV6_DOMAIN_ARR[@]} -eq 0 || -n "$IPV6" ]]; then
 		mqtt_publish "last_ip_check" "$(date -Is)"
 		
-		if [[ "$FORCE_UPDATE" == "true" || "$LAST_CHECK" == "false" || "$IPV4" != "$CURRENT_IPV4" || "$IPV6" != "$CURRENT_IPV6" ]]; then
+		if [[ "$LAST_CHECK" == "false" ]]; then
+			bashio::log.info "Dynu IP Updater - Current IP address data retrieved."
+		fi
+		
+		LAST_CHECK="true"
+		
+		if [[ "$FORCE_UPDATE" == "true" || "$LAST_UPDATE" == "false" || "$IPV4" != "$CURRENT_IPV4" || "$IPV6" != "$CURRENT_IPV6" ]]; then
 			if [[ "$FORCE_UPDATE" == "true" ]]; then
 				bashio::log.info "Dynu IP Updater - Manual update requested. Updating all hosts."
-			elif [[ "$LAST_CHECK" == "false" ]]; then
+			elif [[ "$LAST_UPDATE" == "false" ]]; then
 				bashio::log.info "Dynu IP Updater - Last update failed. Updating all hosts."
 			else
 				bashio::log.info "Dynu IP Updater - IP address change detected. Updating all hosts."
@@ -272,7 +276,7 @@ check_ip_status() {
 	
 			if (( UPDATED > 0 )); then
 				bashio::log.error "Dynu IP Updater - ${UPDATED} Hosts/Aliases could not be updated."
-				LAST_CHECK="false"
+				LAST_UPDATE="false"
 				mqtt_publish "ip_update_status" "false"
 				NEXT_CHECK=$(( $(date +%s) + 60 ))
 				fire_event '{"action": "ip_update", "status": "fail"}'
@@ -280,7 +284,7 @@ check_ip_status() {
 				CURRENT_IPV4="$IPV4"
 				CURRENT_IPV6="$IPV6"
 				LAST_IP_UPDATE="$(date -Is)"
-				LAST_CHECK="true"
+				LAST_UPDATE="true"
 				
 				mqtt_publish "ip_update_status" "true"
 				mqtt_publish "current_ipv4" "$IPV4"
@@ -309,6 +313,7 @@ check_ip_status() {
 		fi
 
 	else
+		LAST_CHECK="false"
 		bashio::log.error "Dynu IP Updater - Unable to retrieve current IP address data."
 		NEXT_CHECK=$(( $(date +%s) + 60 ))
 	fi
@@ -325,28 +330,6 @@ check_ip_status() {
 
 while true; do
 	check_ip_status "false"
-	
-	if [[ ${#MQTT_RETRY_MAP[@]} -ne 0 ]]; then
-		for topic in "${!MQTT_RETRY_MAP[@]}"; do
-            payload="${MQTT_RETRY_MAP[$topic]}"
-			
-            if mosquitto_pub \
-				--quiet \
-                -h "$MQTT_HOST" \
-                -p "$MQTT_PORT" \
-                -u "$MQTT_USER" \
-                -P "$MQTT_PASSWORD" \
-                -i "$MQTT_CLIENT_ID" \
-                -t "dynu_updater/${topic}" \
-                -m "$payload" \
-                -r \
-                "${TLS_FLAGS[@]}"; then
-
-                bashio::log.info "Dynu IP Updater - Resent MQTT message: ${topic}"
-                unset MQTT_RETRY_MAP["$topic"]
-            fi
-        done
-	fi
 	
 	while (( $(date +%s) < NEXT_CHECK )); do
 		if [[ -f /tmp/force_ip_update.mqtt ]]; then
