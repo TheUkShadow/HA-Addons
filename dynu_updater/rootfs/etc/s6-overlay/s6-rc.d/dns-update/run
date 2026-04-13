@@ -182,6 +182,7 @@ check_ip_status() {
 			  
 				bashio::log.debug "Dynu IP Updater - Entity State JSON = ${STATE_JSON}"
 				IPV4="$STATE_JSON" | jq -r '.state'
+				bashio::log.debug "Dynu IP Updater - Entity State = ${IPV4}"
 				if [[ -z "$IPV4" || ! "$IPV4" =~ $IPV4_REGEX ]]; then
 					bashio::log.warning "Dynu IP Updater - Entity ${IPV4_ENTITY} returned an invalid IPv4 address."
 					IPV4=""
