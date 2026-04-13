@@ -84,9 +84,9 @@ mqtt_publish() {
             -r \
 			"${TLS_FLAGS[@]}"; then
 
-            bashio::log.error "Certificate Manager - MQTT failed to publish Payload: ${payload} to Topic: ${topic}."
+            bashio::log.error "Certificate Manager - MQTT - Failed to publish Payload: ${payload} to Topic: ${topic}."
 		else
-			bashio::log.debug "Certificate Manager - MQTT published Payload: ${payload} to Topic: ${topic}."
+			bashio::log.debug "Certificate Manager - MQTT - Published Payload: ${payload} to Topic: ${topic}."
         fi
     fi
 }
@@ -99,9 +99,9 @@ fire_event() {
 		  -d "$1" \
 		  "http://hassio/homeassistant/api/events/dynu_updater.certificate_update" >/dev/null; then
 		  
-			bashio::log.error "Certificate Manager - Could not send ${1} to Home Assistant Events."
+			bashio::log.error "Dynu IP Updater - Events - Could not send ${1} to dynu_updater.certificate_update."
 		else
-			bashio::log.debug "Certificate Manager - Sent ${1} to Home Assistant Events."
+			bashio::log.debug "Dynu IP Updater - Events - Sent ${1} to dynu_updater.certificate_update."
 		fi
 	fi
 }

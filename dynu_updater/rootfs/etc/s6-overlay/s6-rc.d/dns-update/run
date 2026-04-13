@@ -35,6 +35,9 @@ API_DATA=$(< "$DYNU_CONF")
 DYNU_HOSTNAME=$(jq -r '.hostname' <<< "$API_DATA")
 PASSWORD=$(jq -r '.dns.password' <<< "$API_DATA")
 IP_TIME=$(jq -r '.dns.ip_time' <<< "$API_DATA")
+IPV4_ENTITY=$(jq -r '.dns.ipv4_entity' <<< "$API_DATA")
+IPV6_ENTITY=$(jq -r '.dns.ipv6_entity' <<< "$API_DATA")
+
 readarray -t IPV4_DOMAIN_ARR < <(jq -r '.dns.ipv4_domains[]' <<< "$API_DATA")
 readarray -t IPV6_DOMAIN_ARR < <(jq -r '.dns.ipv6_domains[]' <<< "$API_DATA")
 
@@ -66,9 +69,9 @@ mqtt_publish() {
             -r \
 			"${TLS_FLAGS[@]}"; then
 
-            bashio::log.error "Dynu IP Updater - MQTT failed to publish Payload: ${payload} to Topic: ${topic}."
+            bashio::log.error "Dynu IP Updater - MQTT - Failed to publish Payload: ${payload} to Topic: ${topic}."
 		else
-			bashio::log.debug "Dynu IP Updater - MQTT published Payload: ${payload} to Topic: ${topic}."
+			bashio::log.debug "Dynu IP Updater - MQTT - Published Payload: ${payload} to Topic: ${topic}."
         fi
     fi
 }
@@ -81,9 +84,9 @@ fire_event() {
 		  -d "$1" \
 		  "http://hassio/homeassistant/api/events/dynu_updater.ip_update" >/dev/null; then
 		  
-			bashio::log.error "Dynu IP Updater - Could not send ${1} to Home Assistant Events."
+			bashio::log.error "Dynu IP Updater - Events - Could not send ${1} to dynu_updater.ip_update."
 		else
-			bashio::log.debug "Dynu IP Updater - Sent ${1} to Home Assistant Events."
+			bashio::log.debug "Dynu IP Updater - Events - Sent ${1} to dynu_updater.ip_update."
 		fi
 	fi
 }
@@ -170,16 +173,36 @@ check_ip_status() {
 	
 	if [[ ${#IPV4_DOMAIN_ARR[@]} -ne 0 ]]; then
 		# --- Detect IPv4 ---
-		bashio::log.debug "Dynu IP Updater - Retrieving current IPv4 address from Dynu."
-		if RAW=$(curl -4 -s --fail --max-time 5 https://checkip.dynu.com 2>/dev/null); then
-			IPV4="${RAW#*: }"
-			IPV4="${IPV4//[[:space:]]/}"
-			if [[ -z "$IPV4" || ! "$IPV4" =~ $IPV4_REGEX ]]; then
-				bashio::log.warning "Dynu IP Updater - dynu.com returned an invalid IPv4 address."
+		if [[ -n "$IPV4_ENTITY" ]]; then
+			bashio::log.debug "Dynu IP Updater - Retrieving current IPv4 address from entity ${IPV4_ENTITY}."
+			if STATE_JSON=$(curl -s --fail --max-time 5 \
+			  -H "Authorization: Bearer $SUPERVISOR_TOKEN" \
+			  -H "Content-Type: application/json" \
+			  "http://supervisor/core/api/states/${IPV4_ENTITY}"); then
+			  
+				IPV4="$STATE_JSON" | jq -r '.state'
+				if [[ -z "$IPV4" || ! "$IPV4" =~ $IPV4_REGEX ]]; then
+					bashio::log.warning "Dynu IP Updater - entity ${IPV4_ENTITY} returned an invalid IPv4 address."
+					IPV4=""
+				fi
+			else
+				bashio::log.warning "Dynu IP Updater - Error retrieving IPv4 address from entity ${IPV4_ENTITY}."
 				IPV4=""
 			fi
-		else
-			bashio::log.warning "Dynu IP Updater - dynu.com IPv4 query failed."
+		fi
+		
+		if [[ -z "$IPV4" || ! "$IPV4" =~ $IPV4_REGEX ]]; then
+			bashio::log.debug "Dynu IP Updater - Retrieving current IPv4 address from Dynu."
+			if RAW=$(curl -4 -s --fail --max-time 5 https://checkip.dynu.com 2>/dev/null); then
+				IPV4="${RAW#*: }"
+				IPV4="${IPV4//[[:space:]]/}"
+				if [[ -z "$IPV4" || ! "$IPV4" =~ $IPV4_REGEX ]]; then
+					bashio::log.warning "Dynu IP Updater - dynu.com returned an invalid IPv4 address."
+					IPV4=""
+				fi
+			else
+				bashio::log.warning "Dynu IP Updater - dynu.com IPv4 query failed."
+			fi
 		fi
 		
 		if [[ -z "$IPV4" || ! "$IPV4" =~ $IPV4_REGEX ]]; then
@@ -201,16 +224,36 @@ check_ip_status() {
 	
 	# --- Detect IPv6 ---
 	if [[ ${#IPV6_DOMAIN_ARR[@]} -ne 0 ]]; then
-		bashio::log.debug "Dynu IP Updater - Retrieving current IPv6 address from Dynu."
-		if RAW=$(curl -6 -s --fail --max-time 5 https://checkipv6.dynu.com 2>/dev/null); then
-			IPV6="${RAW#*: }"
-			IPV6="${IPV6//[[:space:]]/}"
-			if [[ -z "$IPV6" || ! "$IPV6" =~ $IPV6_REGEX ]]; then
-				bashio::log.warning "Dynu IP Updater - dynu.com returned an invalid IPv6 address."
+		if [[ -n "$IPV6_ENTITY" ]]; then
+			bashio::log.debug "Dynu IP Updater - Retrieving current IPv6 address from entity ${IPV6_ENTITY}."
+			if STATE_JSON=$(curl -s --fail --max-time 5 \
+			  -H "Authorization: Bearer $SUPERVISOR_TOKEN" \
+			  -H "Content-Type: application/json" \
+			  "http://supervisor/core/api/states/${IPV6_ENTITY}"); then
+			  
+				IPV6="$STATE_JSON" | jq -r '.state'
+				if [[ -z "$IPV6" || ! "$IPV6" =~ $IPV6_REGEX ]]; then
+					bashio::log.warning "Dynu IP Updater - entity ${IPV6_ENTITY} returned an invalid IPv6 address."
+					IPV6=""
+				fi
+			else
+				bashio::log.warning "Dynu IP Updater - Error retrieving IPv6 address from entity ${IPV6_ENTITY}."
 				IPV6=""
 			fi
-		else
-			bashio::log.warning "Dynu IP Updater - dynu.com IPv6 query failed."
+		fi
+		
+		if [[ -z "$IPV6" || ! "$IPV6" =~ $IPV6_REGEX ]]; then
+			bashio::log.debug "Dynu IP Updater - Retrieving current IPv6 address from Dynu."
+			if RAW=$(curl -6 -s --fail --max-time 5 https://checkipv6.dynu.com 2>/dev/null); then
+				IPV6="${RAW#*: }"
+				IPV6="${IPV6//[[:space:]]/}"
+				if [[ -z "$IPV6" || ! "$IPV6" =~ $IPV6_REGEX ]]; then
+					bashio::log.warning "Dynu IP Updater - dynu.com returned an invalid IPv6 address."
+					IPV6=""
+				fi
+			else
+				bashio::log.warning "Dynu IP Updater - dynu.com IPv6 query failed."
+			fi
 		fi
 		
 		if [[ -z "$IPV6" || ! "$IPV6" =~ $IPV6_REGEX ]]; then
@@ -245,15 +288,13 @@ check_ip_status() {
 				bashio::log.info "Dynu IP Updater - Last update failed. Updating all hosts."
 			else
 				if [[ "$IPV4" != "$CURRENT_IPV4" && "$IPV6" != "$CURRENT_IPV6" ]]; then
-					bashio::log.info "Dynu IP Updater - IPv4 and IPv6 address change detected. Updating all hosts."
+					bashio::log.info "Dynu IP Updater - IPv4 and IPv6 address change detected."
 				elif [[ "$IPV4" != "$CURRENT_IPV4" ]]; then
-					bashio::log.info "Dynu IP Updater - IPv4 address change detected. Updating all hosts."
+					bashio::log.info "Dynu IP Updater - IPv4 address change detected."
 				elif [[ "$IPV6" != "$CURRENT_IPV6" ]]; then
-					bashio::log.info "Dynu IP Updater - IPv6 address change detected. Updating all hosts."
+					bashio::log.info "Dynu IP Updater - IPv6 address change detected."
 				fi
 			fi
-			
-			LAST_UPDATE="true"
 			
 			if [[ -z "$IPV4" && ${#IPV4_DOMAIN_ARR[@]} -ne 0 ]]; then
 				bashio::log.warning "Dynu IP Updater - IPv4 address was not retrieved. IPv4 hosts will not be updated."
@@ -275,6 +316,8 @@ check_ip_status() {
 				MERGED_ARRAY["$HOST"]="${UPDATE_IPV4}|"
 				MERGED_KEYS+=("$HOST")
 			done
+			
+			LAST_UPDATE="true"
 			
 			for HOST in "${IPV6_DOMAIN_ARR[@]}"; do
 				if [[ -n "$IPV6" ]]; then

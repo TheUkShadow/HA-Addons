@@ -1,5 +1,5 @@
 ---
-version: 1.1.54
+version: 1.1.55
 slug: dynu_updater
 name: Dynu Domain Update Tool
 description: Update dynamic IP addresses and generate a SSL certificate for a domain registerd with dynu.com
@@ -53,6 +53,8 @@ schema:
     domains:
       - str?
     disable_ipv6: bool
+    ipv4_entity: str?
+    ipv6_entity: str?
   cert:
     update_cert: bool
     email: email?

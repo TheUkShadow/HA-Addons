@@ -31,6 +31,12 @@ configuration:
       domains:
         name: Hostnames
         description: Hostnames listed here will have their IP address information updated (eg yourdomain.com, example.yourdomain.com. Use *.yourdomain.com to update all registered hostnames)
+      ipv4_entity:
+        name: IPv4 Entity ID
+        description: A Home Assistant entity with the cuurent IPv4 address as it's state.
+      ipv6_entity:
+        name: IPv6 Entity ID
+        description: A Home Assistant entity with the cuurent IPv6 address as it's state.
   cert:
     name: Certificate Options
     description: Options for the Certificate Request using Let's Encrypt

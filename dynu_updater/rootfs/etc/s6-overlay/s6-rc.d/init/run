@@ -12,6 +12,8 @@ CERT_DOMAINS=""
 IP_DOMAINS=""
 DYNU_API_KEY=""
 PASSWORD=""
+IPV4_ENTITY=""
+IPV6_ENTITY=""
 KEYFILE=""
 CERTFILE=""
 MQTT_HOST=""
@@ -55,6 +57,12 @@ if bashio::config.has_value 'dynu_api_key'; then
 fi
 if bashio::config.has_value 'dns.dynu_update_password'; then
 	PASSWORD=$(bashio::config 'dns.dynu_update_password' | xargs)
+fi
+if bashio::config.has_value 'dns.ipv4_entity'; then
+	IPV4_ENTITY=$(bashio::config 'dns.ipv4_entity' | xargs)
+fi
+if bashio::config.has_value 'dns.ipv6_entity'; then
+	IPV6_ENTITY=$(bashio::config 'dns.ipv6_entity' | xargs)
 fi
 if bashio::config.has_value 'cert.keyfile'; then
 	KEYFILE=$(bashio::config 'cert.keyfile' | xargs)
@@ -700,6 +708,8 @@ jq -n \
   --arg api_key "$DYNU_API_KEY" \
   --arg dynu_host "$DYNU_HOSTNAME" \
   --arg email "$EMAIL" \
+  --arg ipv4_entity "$IPV4_ENTITY" \
+  --arg ipv6_entity "$IPV6_ENTITY" \
   --arg keyfile "$KEYFILE" \
   --arg certfile "$CERTFILE" \
   --arg ip_time "$IP_TIME" \
@@ -723,7 +733,9 @@ jq -n \
         ipv4_domains: $ipv4_domains,
 		ipv6_domains: $ipv6_domains,
 		password: $dynu_pass,
-		ip_time: $ip_time
+		ip_time: $ip_time,
+		ipv4_entity: $ipv4_entity,
+		ipv6_entity: $ipv6_entity
 	  },
 	  cert: {
 	    api_key: $api_key,
