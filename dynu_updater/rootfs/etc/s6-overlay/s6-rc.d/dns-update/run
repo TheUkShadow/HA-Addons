@@ -180,9 +180,10 @@ check_ip_status() {
 			  -H "Content-Type: application/json" \
 			  "http://supervisor/core/api/states/${IPV4_ENTITY}"); then
 			  
+				bashio::log.debug "Dynu IP Updater - Entity State JSON = ${STATE_JSON}"
 				IPV4="$STATE_JSON" | jq -r '.state'
 				if [[ -z "$IPV4" || ! "$IPV4" =~ $IPV4_REGEX ]]; then
-					bashio::log.warning "Dynu IP Updater - entity ${IPV4_ENTITY} returned an invalid IPv4 address."
+					bashio::log.warning "Dynu IP Updater - Entity ${IPV4_ENTITY} returned an invalid IPv4 address."
 					IPV4=""
 				fi
 			else
@@ -231,9 +232,10 @@ check_ip_status() {
 			  -H "Content-Type: application/json" \
 			  "http://supervisor/core/api/states/${IPV6_ENTITY}"); then
 			  
+				bashio::log.debug "Dynu IP Updater - Entity State JSON = ${STATE_JSON}"
 				IPV6="$STATE_JSON" | jq -r '.state'
 				if [[ -z "$IPV6" || ! "$IPV6" =~ $IPV6_REGEX ]]; then
-					bashio::log.warning "Dynu IP Updater - entity ${IPV6_ENTITY} returned an invalid IPv6 address."
+					bashio::log.warning "Dynu IP Updater - Entity ${IPV6_ENTITY} returned an invalid IPv6 address."
 					IPV6=""
 				fi
 			else
