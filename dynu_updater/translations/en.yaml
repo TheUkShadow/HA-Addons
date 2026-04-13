@@ -27,7 +27,7 @@ configuration:
         description: This prevents the IP Updater from trying to determine the current IPv6 address and updating AAAA records. If IPv6 is disabled in the Dynu control panel, or no AAAA records exist, IPv6 checking is automatically disabled.
       dynu_update_password:
         name: Dynu Account Password
-        description: This is either the account password, or the IP Update password
+        description: This is either the account password, or the IP Update password.
       domains:
         name: Hostnames
         description: Hostnames listed here will have their IP address information updated (eg yourdomain.com, example.yourdomain.com. Use *.yourdomain.com to update all registered hostnames)

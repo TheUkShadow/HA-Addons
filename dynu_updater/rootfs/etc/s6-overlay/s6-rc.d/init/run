@@ -291,7 +291,7 @@ else
 	DYNU_IPV6_HOSTNAMES=()
 fi
 
-if [[ ${#DYNU_IPV4_HOSTNAMES[@]} -eq 0 ]] && [[ ${#DYNU_IPV6_HOSTNAMES[@]} -eq 0 ]]; then
+if [[ ${#DYNU_IPV4_HOSTNAMES[@]} -eq 0 && ${#DYNU_IPV6_HOSTNAMES[@]} -eq 0 ]]; then
 	bashio::log.error "Dynu Updater Initialisation - no valid hostnames returned by Dynu Records API."
 	exit 1
 fi
@@ -316,7 +316,10 @@ if [[ "$DNS_VALID" == "true" ]]; then
 			fi
 			break
 		else
-			if [[ " ${DYNU_IPV4_HOSTNAMES[*]} " =~ " $DOMAIN " ]]; then
+			if [[ " ${DYNU_IPV4_HOSTNAMES[*]} " =~ " $DOMAIN " && " ${DYNU_IPV6_HOSTNAMES[*]} " =~ " $DOMAIN " ]]; then
+				IPV4_HOSTNAMES+=("$DOMAIN")
+				IPV6_HOSTNAMES+=("$DOMAIN")
+			elif [[ " ${DYNU_IPV4_HOSTNAMES[*]} " =~ " $DOMAIN " ]]; then
 				IPV4_HOSTNAMES+=("$DOMAIN")
 			elif [[ " ${DYNU_IPV6_HOSTNAMES[*]} " =~ " $DOMAIN " ]]; then
 				IPV6_HOSTNAMES+=("$DOMAIN")
@@ -327,21 +330,19 @@ if [[ "$DNS_VALID" == "true" ]]; then
 		fi
 	done
 	
-	if [[ ${#IPV4_HOSTNAMES[@]} -eq 0 ]] && [[ ${#IPV6_HOSTNAMES[@]} -eq 0 ]]; then
+	if [[ ${#IPV4_HOSTNAMES[@]} -eq 0 && ${#IPV6_HOSTNAMES[@]} -eq 0 ]]; then
 		bashio::log.error "Dynu Updater Initialisation - No valid IP Update hostnames."
 		exit 1
 	fi
 	
-	if [[ "$LOG_LEVEL" == "debug" ]]; then
-		bashio::log.debug "Dynu Updater Initialisation - IPv4 Update Hostnames:"
-		for DOMAIN in "${IPV4_HOSTNAMES[@]}"; do
-			bashio::log.debug "    - $DOMAIN"
-		done
-		bashio::log.debug "Dynu Updater Initialisation - IPv6 Update Hostnames:"
-		for DOMAIN in "${IPV6_HOSTNAMES[@]}"; do
-			bashio::log.debug "    - $DOMAIN"
-		done
-	fi
+	bashio::log.debug "Dynu Updater Initialisation - IPv4 Update Hostnames:"
+	for DOMAIN in "${IPV4_HOSTNAMES[@]}"; do
+		bashio::log.debug "    - $DOMAIN"
+	done
+	bashio::log.debug "Dynu Updater Initialisation - IPv6 Update Hostnames:"
+	for DOMAIN in "${IPV6_HOSTNAMES[@]}"; do
+		bashio::log.debug "    - $DOMAIN"
+	done
 fi
 
 CERT_HOSTNAMES=()

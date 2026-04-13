@@ -79,7 +79,7 @@ fire_event() {
 		  -H "Authorization: Bearer $HASSIO_TOKEN" \
 		  -H "Content-Type: application/json" \
 		  -d "$1" \
-		  "http://hassio/homeassistant/api/events/dynu_updater" >/dev/null; then
+		  "http://hassio/homeassistant/api/events/dynu_updater.ip_update" >/dev/null; then
 		  
 			bashio::log.error "Dynu IP Updater - Could not send ${1} to Home Assistant Events."
 		else
@@ -230,14 +230,13 @@ check_ip_status() {
 		bashio::log.debug "Dynu IP Updater - No IPv6 hostnames configured. Bypassing IPv6 check"
 	fi
 	
-	if [[ ${#IPV4_DOMAIN_ARR[@]} -eq 0 || -n "$IPV4" ]] && [[ ${#IPV6_DOMAIN_ARR[@]} -eq 0 || -n "$IPV6" ]]; then
+	if [[ -n "$IPV4" || -n "$IPV6" ]]; then
 		mqtt_publish "last_ip_check" "$(date -Is)"
 		
 		if [[ "$LAST_CHECK" == "false" ]]; then
 			bashio::log.info "Dynu IP Updater - Current IP address data retrieved."
+			LAST_CHECK="true"
 		fi
-		
-		LAST_CHECK="true"
 		
 		if [[ "$FORCE_UPDATE" == "true" || "$LAST_UPDATE" == "false" || "$IPV4" != "$CURRENT_IPV4" || "$IPV6" != "$CURRENT_IPV6" ]]; then
 			if [[ "$FORCE_UPDATE" == "true" ]]; then
@@ -245,46 +244,67 @@ check_ip_status() {
 			elif [[ "$LAST_UPDATE" == "false" ]]; then
 				bashio::log.info "Dynu IP Updater - Last update failed. Updating all hosts."
 			else
-				bashio::log.info "Dynu IP Updater - IP address change detected. Updating all hosts."
+				if [[ "$IPV4" != "$CURRENT_IPV4" && "$IPV6" != "$CURRENT_IPV6" ]]; then
+					bashio::log.info "Dynu IP Updater - IPv4 and IPv6 address change detected. Updating all hosts."
+				elif [[ "$IPV4" != "$CURRENT_IPV4" ]]; then
+					bashio::log.info "Dynu IP Updater - IPv4 address change detected. Updating all hosts."
+				elif [[ "$IPV6" != "$CURRENT_IPV6" ]]; then
+					bashio::log.info "Dynu IP Updater - IPv6 address change detected. Updating all hosts."
+				fi
+			fi
+			
+			LAST_UPDATE="true"
+			
+			if [[ -z "$IPV4" && ${#IPV4_DOMAIN_ARR[@]} -ne 0 ]]; then
+				bashio::log.warning "Dynu IP Updater - IPv4 address was not retrieved. IPv4 hosts will not be updated."
+			fi
+			
+			if [[ -z "$IPV6" && ${#IPV6_DOMAIN_ARR[@]} -ne 0 ]]; then
+				bashio::log.warning "Dynu IP Updater - IPv6 address was not retrieved. IPv6 hosts will not be updated."
 			fi
 			
 			declare -A MERGED_ARRAY
 			declare -a MERGED_KEYS=()
 			
 			for HOST in "${IPV4_DOMAIN_ARR[@]}"; do
-				MERGED_ARRAY["$HOST"]="$IPV4|"
+				if [[ -n "$IPV4" ]]; then
+					UPDATE_IPV4="$IPV4"
+				else
+					UPDATE_IPV4="no"
+				fi
+				MERGED_ARRAY["$HOST"]="${UPDATE_IPV4}|"
 				MERGED_KEYS+=("$HOST")
 			done
 			
 			for HOST in "${IPV6_DOMAIN_ARR[@]}"; do
-				if [[ -n "${MERGED_ARRAY[$HOST]}" ]]; then
-					MERGED_ARRAY["$HOST"]="${MERGED_ARRAY[$HOST]}$IPV6"
+				if [[ -n "$IPV6" ]]; then
+					UPDATE_IPV6="$IPV6"
 				else
-					MERGED_ARRAY["$HOST"]="|$IPV6"
+					UPDATE_IPV6="no"
+				fi
+				if [[ -n "${MERGED_ARRAY[$HOST]}" ]]; then
+					MERGED_ARRAY["$HOST"]="${MERGED_ARRAY[$HOST]}${UPDATE_IPV6}"
+				else
+					MERGED_ARRAY["$HOST"]="|${UPDATE_IPV6}"
 					MERGED_KEYS+=("$HOST")
 				fi
 			done
 			
-			UPDATED=${#MERGED_ARRAY[@]}
-			
 			for HOST in "${MERGED_KEYS[@]}"; do
 				IFS='|' read -r IP4 IP6 <<< "${MERGED_ARRAY[$HOST]}"
-				if update_host "$HOST" "$IP4" "$IP6"; then
-					UPDATED=$((UPDATED - 1))
+				if ! update_host "$HOST" "$IP4" "$IP6"; then
+					LAST_UPDATE="false"
 				fi
 			done
 	
-			if (( UPDATED > 0 )); then
-				bashio::log.error "Dynu IP Updater - ${UPDATED} Hosts/Aliases could not be updated."
-				LAST_UPDATE="false"
+			if [[ "$LAST_UPDATE" == "false" ]]; then
 				mqtt_publish "ip_update_status" "false"
 				NEXT_CHECK=$(( $(date +%s) + 60 ))
-				fire_event '{"action": "ip_update", "status": "fail"}'
+				fire_event '{"status": "fail"}'
 			else
 				CURRENT_IPV4="$IPV4"
 				CURRENT_IPV6="$IPV6"
 				LAST_IP_UPDATE="$(date -Is)"
-				LAST_UPDATE="true"
 				
 				mqtt_publish "ip_update_status" "true"
 				mqtt_publish "current_ipv4" "$IPV4"
@@ -304,12 +324,12 @@ check_ip_status() {
 				  
 				bashio::log.info "Dynu IP Updater - All Hosts/Aliases were updated."
 				NEXT_CHECK=$(( $(date +%s) + (IP_TIME * 60) ))
-				fire_event "{\"action\": \"ip_update\", \"status\": \"updated\", \"ipv4\": \"${IPV4}\", \"ipv6\": \"${IPV6}\"}"
+				fire_event "{\"status\": \"updated\", \"ipv4\": \"${IPV4}\", \"ipv6\": \"${IPV6}\"}"
 			fi
 		else
 			bashio::log.debug "Dynu IP Updater - No IP address change detected."
 			NEXT_CHECK=$(( $(date +%s) + (IP_TIME * 60) ))
-			fire_event "{\"action\": \"ip_update\", \"status\": \"no_change\", \"ipv4\": \"${IPV4}\", \"ipv6\": \"${IPV6}\"}"
+			fire_event "{\"status\": \"no_change\", \"ipv4\": \"${IPV4}\", \"ipv6\": \"${IPV6}\"}"
 		fi
 
 	else

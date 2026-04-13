@@ -97,7 +97,7 @@ fire_event() {
 		  -H "Authorization: Bearer $HASSIO_TOKEN" \
 		  -H "Content-Type: application/json" \
 		  -d "$1" \
-		  "http://hassio/homeassistant/api/events/dynu_updater" >/dev/null; then
+		  "http://hassio/homeassistant/api/events/dynu_updater.certificate_update" >/dev/null; then
 		  
 			bashio::log.error "Certificate Manager - Could not send ${1} to Home Assistant Events."
 		else
@@ -250,7 +250,7 @@ check_cert() {
 	if [[ "$CERT_UPDATE_STATUS" == "fail" ]] || ! check_dates; then
 		bashio::log.info "Certificate Manager - The certificate update process did not complete."
 		mqtt_publish "cert_update_status" "false"
-		fire_event '{"action": "certificate_update", "status": "fail"}'
+		fire_event '{"status": "fail"}'
 	else
 		mqtt_publish "cert_update_status" "true"
 		mqtt_publish "last_cert_check" "$(date -Is)"
@@ -259,7 +259,7 @@ check_cert() {
 		bashio::log.info "Certificate Manager - Certificate expires ${EXPIRY_ISO}."
 		mqtt_publish "cert_expires" "$EXPIRY_ISO"
 		mqtt_publish "cert_created" "$CREATED_ISO"
-		fire_event "{\"action\": \"certificate_update\", \"status\": \"${CERT_UPDATE_STATUS}\", \"created\": \"${CREATED_ISO}\", \"expires\": \"${EXPIRY_ISO}\"}"
+		fire_event "{\"status\": \"${CERT_UPDATE_STATUS}\", \"created\": \"${CREATED_ISO}\", \"expires\": \"${EXPIRY_ISO}\"}"
 	fi
 	
 	NEXT_RUN_ISO=$(date -u -d "@$NEXT_CHECK" +"%Y-%m-%dT%H:%M:%S+00:00")

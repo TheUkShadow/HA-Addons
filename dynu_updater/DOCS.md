@@ -56,6 +56,9 @@ By default, the IP Updater service will check and update the IP address of all h
 IPv6 can be disabled manually in the Configuration using **Disable IPv6**.
 If you want to update the IP address for every A/AAAA record in the Dynu domain, add a single hostname to **IP Update Hostnames** with \*.yourdomain.com.
 
+Current IP adrresses are resolved using external calls. Dynu is used as the primary source, with Icanhazip as a backup. If no IP addresses can be resolved, the update process will automatically try again in 1 minute. If either an IPv4 or IPv6 address is resolved and found to have changed since the last update, an update rwquest will be performed.
+If an IPv4 address is resolved, but not an IPv6 address, only IPv4 hosts will be updated. If an IPv6 address is resolved, but not an IPv4 address, only IPv6 hosts will be updated. If both IPv4 and IPv6 addresses are resolved, all hosts are updated.
+
 The Certificate Manager will create an SSL certificate for all the hostnames in **Certificate Hostnames**. These must be valid for your Dynu domain or an error is raised.
 Wildcards are supported (\*.yourdomain.com or \*.sub.yourdomain.com). The primary domain (yourdomain.com) is not automatically included and must be added to the list of hostnames, if required.
 Up to 100 hostnames can be added to the certificate.
@@ -67,13 +70,13 @@ If ""MQTT" is enabled, various sensors and controls are created in the MQTT inte
 ## Events
 If **Events** are enabled, the app will publish events on the Home Assistant Event Bus. All events are published to 'dynu_updater'. The following lists the possible events:
 ```JSON
-{"event_type": "dynu_updater", "data": {"action": "ip_update", "status": "updated", "ipv4": "--New IPv4 Address--", "ipv6": "--New IPv6 Address--"}}
-{"event_type": "dynu_updater", "data": {"action": "ip_update", "status": "no_change", "ipv4": "--Current IPv4 Address--", "ipv6": "--Current IPv6 Address--"}}
-{"event_type": "dynu_updater", "data": {"action": "ip_update", "status": "fail"}}
+{"event_type": "dynu_updater.ip_update", "data": {"status": "updated", "ipv4": "--New IPv4 Address--", "ipv6": "--New IPv6 Address--"}}
+{"event_type": "dynu_updater.ip_update", "data": {"status": "no_change", "ipv4": "--Current IPv4 Address--", "ipv6": "--Current IPv6 Address--"}}
+{"event_type": "dynu_updater.ip_update", "data": {"status": "fail"}}
 
-{"event_type": "dynu_updater", "data": {"action": "certificate_update", "status": "updated", "created": "--New Certificate Creation Date--", "expires": "--New Certificate Expiry Date--"}}
-{"event_type": "dynu_updater", "data": {"action": "certificate_update", "status": "no_change", "created": "--Current Certificate Creation Date--", "expires": "--Current Certificate Expiry Date--"}}
-{"event_type": "dynu_updater", "data": {"action": "certificate_update", "status": "fail"}}
+{"event_type": "dynu_updater.certificate_update", "data": {"status": "updated", "created": "--New Certificate Creation Date--", "expires": "--New Certificate Expiry Date--"}}
+{"event_type": "dynu_updater.certificate_update", "data": {"status": "no_change", "created": "--Current Certificate Creation Date--", "expires": "--Current Certificate Expiry Date--"}}
+{"event_type": "dynu_updater.certificate_update", "data": {"status": "fail"}}
 ```
 All dates are published in ISO Format
 
