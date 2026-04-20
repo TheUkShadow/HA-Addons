@@ -181,6 +181,7 @@ def api_test_device():
     code = str(data["code"])
     type = get_type(str(data["type"]))['name']
     name = str(data["name"])
+    event_type = type.lower().replace(" ", "_")
     
     logging.info(f"Triggering test event for {code}")
     
@@ -190,7 +191,7 @@ def api_test_device():
         "type": type,
     }
     requests.post(
-        f"{HA_URL}/events/rf433_bridge",
+        f"{HA_URL}/events/rf433_bridge.{event_type}",
         headers={"Authorization": f"Bearer {HA_TOKEN}"},
         json=event_payload
     )
@@ -266,7 +267,9 @@ def serial_reader():
         # If device is known, fire event with metadata
         if code in devices:
             device = devices[code]
-            device_type = get_type(device['type'])
+            name = device['name']
+            type = get_type(device['type'])['name']
+            event_type = type.lower().replace(" ", "_")
             
             global last_event
             last_event = {"code": code, "timestamp": time.time()};
@@ -274,11 +277,11 @@ def serial_reader():
             logging.info(f"Triggering event for {code}")
             event_payload = {
                 "code": code,
-                "name": device["name"],
-                "type": device_type['name'],
+                "name": name,
+                "type": type,
             }
             requests.post(
-                f"{HA_URL}/events/rf433_bridge",
+                f"{HA_URL}/events/rf433_bridge.{event_type}",
                 headers={"Authorization": f"Bearer {HA_TOKEN}"},
                 json=event_payload
             )
