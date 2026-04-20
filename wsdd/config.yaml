@@ -1,5 +1,5 @@
 name: "WSD Host"
-version: "1.0.1"
+version: "1.0.2"
 slug: "wsdd"
 description: "Advertise Home Assistant Samba shares to Windows using WS-Discovery"
 arch:
