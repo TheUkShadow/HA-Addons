@@ -1,8 +1,6 @@
 ARG BUILD_FROM=ghcr.io/home-assistant/base:latest
 FROM $BUILD_FROM
 
-EXPOSE 8100
-
 # Install Python + required packages
 RUN apk add --no-cache \
     python3 \

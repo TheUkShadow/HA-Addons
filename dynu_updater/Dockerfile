@@ -1,11 +1,16 @@
-ARG BUILD_FROM
-FROM $BUILD_FROM
+ARG BUILD_ARCH
+FROM ghcr.io/home-assistant/${BUILD_ARCH}-base-debian:trixie-2026.03.1
+
+ARG ACME_VERSION=3.3.0
+ARG CERTBOT_DNS_MULTI_VERSION=4.33.0
+ARG CERTBOT_VERSION=3.3.0
+ARG CRYPTOGRAPHY_VERSION=44.0.2
+ARG FLASK_VERSION=3.0.2
+ARG GUNICORN_VERSION=21.2.0
+ARG REQUESTS_VERSION=2.31.0
 
 # Allow pip to install packages system-wide on Debian
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
-
-# setup base
-# certbot-dns-multi replaces most individual DNS plugins using lego
 
 ARG \
     BUILD_ARCH \
