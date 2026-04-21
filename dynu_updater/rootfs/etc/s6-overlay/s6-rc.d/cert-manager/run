@@ -99,9 +99,9 @@ fire_event() {
 		  -d "$1" \
 		  "http://hassio/homeassistant/api/events/dynu_updater.certificate_update" >/dev/null; then
 		  
-			bashio::log.error "Dynu IP Updater - Events - Could not send ${1} to dynu_updater.certificate_update."
+			bashio::log.error "Certificate Manager - Events - Could not send ${1} to dynu_updater.certificate_update."
 		else
-			bashio::log.debug "Dynu IP Updater - Events - Sent ${1} to dynu_updater.certificate_update."
+			bashio::log.debug "Certificate Manager - Events - Sent ${1} to dynu_updater.certificate_update."
 		fi
 	fi
 }
