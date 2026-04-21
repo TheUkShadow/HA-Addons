@@ -58,7 +58,7 @@ By default, the IP Updater service will check and update the IP address of all h
 IPv6 can be disabled manually in the Configuration using **Disable IPv6**.
 If you want to update the IP address for every A/AAAA record in the Dynu domain, add a single hostname to **IP Update Hostnames** with \*.yourdomain.com.
 
-Current IP adrresses are resolved either by reading the state of the entity assigned to **IPv4 Entity**/**IPv6 Entity** (if set in the configuration) or, using external calls. Dynu is used as the primary external source, with Icanhazip as a backup. If no IP addresses can be resolved, the update process will automatically try again in 1 minute. If either an IPv4 or IPv6 address is resolved and found to have changed since the last update, an update rwquest will be performed.
+Current IP adrresses are resolved either by reading the state of the entity assigned to **IPv4 Entity**/**IPv6 Entity** (if set in the configuration) or, using external calls. Dynu is used as the primary external source, with Icanhazip as a backup. If no IP addresses can be resolved, the update process will automatically try again in 1 minute. If either an IPv4 or IPv6 address is resolved and found to have changed since the last update, an update request will be performed.
 If an IPv4 address is resolved, but not an IPv6 address, only IPv4 hosts will be updated. If an IPv6 address is resolved, but not an IPv4 address, only IPv6 hosts will be updated. If both IPv4 and IPv6 addresses are resolved, all hosts are updated.
 
 The Certificate Manager will create an SSL certificate for all the hostnames in **Certificate Hostnames**. These must be valid for your Dynu domain or an error is raised.
