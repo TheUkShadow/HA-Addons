@@ -37,7 +37,7 @@ section h2 {
 
 input, select {
   width: 100%;
-  box-sizing: border-box;   /* <-- THIS is the fix */
+  box-sizing: border-box;
   padding: 10px;
   margin-top: 4px;
   margin-bottom: 12px;

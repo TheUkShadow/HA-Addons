@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dynu Tools</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+
+    <h1>Dynu Tools</h1>
+
+    <div class="settings-card">
+        <label for="api_key">API Key</label>
+        <input id="api_key" type="password">
+		<label for="password">IP Update Password</label>
+        <input id="password" type="password">
+		<label for="email">Email Address</label>
+        <input id="email" type="text">
+        <button id="save_settings">Save Settings</button>
+        <small>Saving settings will refresh domains and DNS records.</small>
+    </div>
+
+    <div id="domains" class="domain-card"></div>
+	<br>
+	<button id="refresh_domains">Reload Domains</button>
+	<button id="save_domains">Save Domains</button>
+
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

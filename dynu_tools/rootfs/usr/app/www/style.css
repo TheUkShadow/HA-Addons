@@ -1,0 +1,153 @@
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f4f7;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    /*max-width: 1200px;*/
+    margin: 30px auto;
+    padding: 20px;
+}
+
+h1 {
+    margin-bottom: 20px;
+}
+
+.settings-card {
+	width: 600px;
+    background: white;
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.domain-card {
+    max-width: 1200px;
+    width: 100%;
+    padding: 15px;
+    margin-right: auto;
+	border-radius: 6px;
+	box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+
+label {
+    font-weight: bold;
+}
+
+input[type="text"],
+input[type="password"] {
+    width: 100%;
+	box-sizing: border-box;
+    padding: 10px;
+    margin-top: 6px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
+
+button {
+    padding: 8px 14px;
+    background: #0078d4;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #005fa3;
+}
+
+table {
+    /*width: 100%;*/
+    border-collapse: collapse;
+    margin-bottom: 25px;
+    background: white;
+    border-radius: 6px;
+    overflow: hidden;
+	margin-left: 20px;
+    margin-right: auto;
+}
+
+
+th, td {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+th {
+    background: #fafafa;
+    text-align: left;
+}
+
+.checkbox-cell {
+    white-space: nowrap;
+    text-align: center;
+}
+
+#save_domains, #refresh_domains {
+    display: none;
+}
+
+/* Dark mode — automatically enabled when the OS is in dark theme */
+@media (prefers-color-scheme: dark) {
+
+    body {
+        background: #1e1f22;
+        color: #e5e5e5;
+    }
+
+    .settings-card,
+    .domain-card,
+    table {
+        background: #2a2b2f;
+        color: #e5e5e5;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.6);
+    }
+
+    h1 {
+        color: #ffffff;
+    }
+
+    label {
+        color: #e5e5e5;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+        background: #2f3034;
+        color: #ffffff;
+        border: 1px solid #555;
+    }
+
+    input[type="text"]::placeholder,
+    input[type="password"]::placeholder {
+        color: #aaaaaa;
+    }
+
+    button {
+        background: #0a84ff;
+        color: white;
+    }
+
+    button:hover {
+        background: #006edc;
+    }
+
+    th {
+        background: #3a3b3f;
+        color: #ffffff;
+    }
+
+    td {
+        border-bottom: 1px solid #444;
+    }
+
+    .checkbox-cell {
+        color: #e5e5e5;
+    }
+}

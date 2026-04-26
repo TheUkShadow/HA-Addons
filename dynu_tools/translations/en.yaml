@@ -1,0 +1,38 @@
+---
+configuration:
+  mqtt:
+    name: MQTT Settings
+    description: Creates MQTT Sensors for use in automations, etc.
+    fields:
+      core:
+        name: Core Mosquitto Credentials
+        description: The User and Password from the Mosquitto app will be used, if it is installed.
+      host:
+        name: Hostname
+        description: The hostname for the MQTT server (eg core-mosquitto, localhost, yourdomain.com, 192.168.4.10).
+      port:
+        name: Port
+        description: The port for the MQTT server (eg 1883 or 8883 when using TLS).
+      username:
+        name: Username
+        description: The username for the MQTT server (Not required if using Core Mosqitto Credentials).
+      password:
+        name: Password
+        description: The password for the MQTT server (Not required if using Core Mosqitto Credentials).
+      ssl:
+        name: TLS
+        description: Enables TLS for the MQTT server.
+      server_cert:
+        name: Validate Server Certificate
+        description: When connecting using TLS, the Hostname will be validated using the server Certificate.
+      keyfile:
+        name: Private Key File
+        description: The Private Key File to use for MQTT TLS
+      certfile:
+        name: Certificate File
+        description: The Certificate File to use for MQTT TLS
+      cafile:
+        name: CA File
+        description: The CA File to use for MQTT TLS
+network:
+  8100/tcp: "The webserver port for external access"

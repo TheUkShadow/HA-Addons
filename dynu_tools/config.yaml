@@ -1,0 +1,50 @@
+name: "Dynu Tools"
+version: "1.0.0"
+slug: "dynu_tools"
+description: "Manage SSL Certificate and IP Address updating for a dynu.com account"
+url: https://github.com/TheUkShadow/HA-Addons/blob/main/dynu_tools
+startup: application
+init: false
+boot: auto
+
+homeassistant_api: true
+
+ingress: true
+ingress_port: 8100
+
+host_network: false
+
+services:
+  - mqtt:need
+
+arch:
+  - amd64
+  - aarch64
+
+panel_icon: "mdi:ip-network"
+
+map:
+  - addon_config:rw
+  - ssl:rw
+  
+ports:
+  8100/tcp: null
+
+options:
+  mqtt:
+    core: true
+  log_level: info
+  
+schema:
+  mqtt:
+    core: bool
+    host: str?
+    port: int?
+    username: str?
+    password: password?
+    ssl: bool?
+    keyfile: str?
+    certfile: str?
+    cafile: str?
+    server_cert: bool?
+  log_level: list(debug|info|warning|error)

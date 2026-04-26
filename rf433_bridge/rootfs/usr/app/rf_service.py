@@ -305,7 +305,6 @@ def serial_reader():
         logging.info("Serial Port closed")
     except:
         logging.error("Error trying to close Serial Port")
-        pass
 
 def startup():
     global ser
