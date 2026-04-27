@@ -100,6 +100,11 @@ document.addEventListener("DOMContentLoaded", () => {
         heading.textContent = "Domains";
         domainsContainer.appendChild(heading);
 		
+		const wrapper = document.createElement("div");
+		wrapper.className = "domain-block";
+
+		const table = document.createElement("table");
+			
 		for (const domainName of data.sort_order) {
 			const domainObj = data.domains[domainName];
 			
@@ -107,57 +112,49 @@ document.addEventListener("DOMContentLoaded", () => {
 			const ipv6_connection = domainObj["ipv6_connection"];
 			const wildcardV4 = domainObj["wildcards"].ipv4;
 			const wildcardV6 = domainObj["wildcards"].ipv6;
-	
-            const wrapper = document.createElement("div");
-            wrapper.className = "domain-block";
-
-            const title = document.createElement("h2");
-            title.textContent = domainName;
-            wrapper.appendChild(title);
 			
-			const domain_settings = document.createElement("h4");
-            domain_settings.textContent = "(IPv6: ";
+			const domain_row = document.createElement("tr");
+			
+			const stats = []
+			
 			if (enableV6) {
 				if (ipv6_connection) {
-					domain_settings.textContent += "Enabled";
+					stats.push("IPv6 Enabled")
 				} else {
-					domain_settings.textContent += "Host IPv6 Failed";
+					stats.push("IPv6 Enabled (No IPv6 Connection)")
 				}
-			} else {
-				domain_settings.textContent += "Disabled";
 			}
-			domain_settings.textContent += ", IPv4 Wildcard: ";			
 			if (wildcardV4) {
-				domain_settings.textContent += "Enabled";
-			} else {
-				domain_settings.textContent += "Disabled";
+				stats.push("IPv4 Wildcard")
 			}
-			domain_settings.textContent += ", IPv6 Wildcard: ";			
-			if (enableV6 && wildcardV6) {
-				domain_settings.textContent += "Enabled";
-			} else {
-				domain_settings.textContent += "Disabled";
+			if (wildcardV6) {
+				stats.push("IPv6 Wildcard")
 			}
-			domain_settings.textContent += ")";
 			
-            wrapper.appendChild(domain_settings);
-
-            const table = document.createElement("table");
-            table.innerHTML = `
-                <tr>
-                    <th>Hostname</th>
-                    <th>IPv4</th>
-                    <th>IPv6</th>
-                    <th class="checkbox-cell">Update IPv4</th>
-                    <th class="checkbox-cell">Update IPv6</th>
-                    <th class="checkbox-cell">Certificate</th>
+			domain_row.innerHTML = `
+				<th>${domainName.toUpperCase()}</th>
+				<th style="text-align: right;" colspan="6">${stats.join(", ")}</th>
+			`;
+			
+			table.appendChild(domain_row);
+			
+			const domain_header = document.createElement("tr");
+			domain_header.innerHTML = `
+				<tr>
+					<th>Hostname</th>
+					<th>IPv4</th>
+					<th>IPv6</th>
+					<th class="checkbox-cell">Update IPv4</th>
+					<th class="checkbox-cell">Update IPv6</th>
+					<th class="checkbox-cell">Certificate</th>
 					<th></th>
-                </tr>
-            `;
+				</tr>
+			`;
+			table.appendChild(domain_header);
 
 			for (const hostname of data.domains[domainName].sort_order) {
 				const rec = data.domains[domainName].records[hostname];
-
+				
                 const row = document.createElement("tr");
 				const deleteButton = rec.custom
 					? `<button class="delete-custom" data-domain="${domainName}" data-host="${hostname}">Delete</button>`
@@ -194,8 +191,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 row.innerHTML = `
                     <td>${hostname}</td>
-                    <td>${rec.ipv4 === null || rec.ipv4 === "" ? "N/A" : rec.ipv4}</td>
-                    <td>${rec.ipv6 === null || rec.ipv6 === "" ? "N/A" : rec.ipv6}</td>
+                    <td title = "Last Update ${rec.ipv4.updated || "N/A"}">${rec.ipv4.address === null || rec.ipv4.address === "" ? "N/A" : rec.ipv4.address}</td>
+                    <td title = "Last Update ${rec.ipv6.updated || "N/A"}">${rec.ipv6.address === null || rec.ipv6.address === "" ? "N/A" : rec.ipv6.address}</td>
                     <td class="checkbox-cell">${ipv4Check}</td>
                     <td class="checkbox-cell">${ipv6Check}</td>
 					<td class="checkbox-cell"><input type="checkbox" ${rec.certificate && !disableCert ? "checked" : ""} ${disableCert || wild ? "disabled" : ""}></td>
@@ -250,11 +247,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
 				table.appendChild(row);
 			}
-
-            wrapper.appendChild(table);
-
-            domainsContainer.appendChild(wrapper);
         }
+		
+		wrapper.appendChild(table);
+        domainsContainer.appendChild(wrapper);
+		
     }
 	
 	function isValidEmail(email) {
@@ -313,8 +310,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
 			// Add to JSON
 			domainData.domains[domainName].records[hostname] = {
-				ipv4: null,
-				ipv6: null,
+				ipv4: {address: null, updated: null},
+				ipv6: {address: null, updated: null},
 				update_ipv4: false,
 				update_ipv6: false,
 				certificate: true,

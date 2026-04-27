@@ -1,6 +1,7 @@
 import json
 import re
 import os
+import sys
 import time
 import copy
 import shutil
@@ -32,11 +33,30 @@ DRY_RUN = False
 IPV6_OK = False
 
 MQTT_CLIENT = mqtt.Client(client_id = os.getenv("HOSTNAME"))
+HA_TOKEN = os.getenv("SUPERVISOR_TOKEN")
+APP_HOSTNAME = os.getenv("HOSTNAME")
+ADDON_VERSION = os.getenv("ADDON_VERSION")
 
 LOG_LEVEL = ADDON_CONFIG.get("log_level", "info")
 
 STOP_EVENT = threading.Event()
 
+RESET = "\033[0m"
+COLOURS = {
+    "DEBUG": "\033[36m",     # Cyan
+    "INFO": "\033[32m",      # Green
+    "WARNING": "\033[33m",   # Yellow
+    "ERROR": "\033[31m",     # Red
+    "CRITICAL": "\033[1;31m" # Bold Red
+}
+
+# Override level names with coloured versions
+for level, color in COLOURS.items():
+    logging.addLevelName(
+        getattr(logging, level),
+        f"{color}{level}{RESET}"
+    )
+    
 logging.basicConfig(
     level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),
     format="%(asctime)s [%(levelname)s] %(message)s"
@@ -159,22 +179,37 @@ MQTT_ENTITIES={
     }
 }
 
-IP_REGEX = {}
-IP_REGEX[socket.AF_INET] = re.compile(r'^([0-9]{1,3}\.){3}[0-9]{1,3}$')
-IP_REGEX[socket.AF_INET6] = re.compile(
-    r'^((([0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4})|'
-    r'(([0-9A-Fa-f]{1,4}:){1,7}:)|'
-    r'(([0-9A-Fa-f]{1,4}:){1,6}:[0-9A-Fa-f]{1,4})|'
-    r'(([0-9A-Fa-f]{1,4}:){1,5}(:[0-9A-Fa-f]{1,4}){1,2})|'
-    r'(([0-9A-Fa-f]{1,4}:){1,4}(:[0-9A-Fa-f]{1,4}){1,3})|'
-    r'(([0-9A-Fa-f]{1,4}:){1,3}(:[0-9A-Fa-f]{1,4}){1,4})|'
-    r'(([0-9A-Fa-f]{1,4}:){1,2}(:[0-9A-Fa-f]{1,4}){1,5})|'
-    r'([0-9A-Fa-f]{1,4}(:([0-9A-Fa-f]{1,4}:){1,6}))|'
-    r'(:((:[0-9A-Fa-f]{1,4}){1,7}|:))|'
-    r'(([0-9A-Fa-f]{1,4}:){1,4}'
-    r'((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\.){3}'
-    r'(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])))$'
-)
+
+IP_DATA = {
+    socket.AF_INET: {
+        "regex": re.compile(r'^([0-9]{1,3}\.){3}[0-9]{1,3}$'),
+        "hosts": [
+            "checkip.dynu.com",
+            "ipv4.icanhazip.com"
+        ]
+    },
+    socket.AF_INET6: {
+        "regex": re.compile(
+            r'^((([0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4})|'
+            r'(([0-9A-Fa-f]{1,4}:){1,7}:)|'
+            r'(([0-9A-Fa-f]{1,4}:){1,6}:[0-9A-Fa-f]{1,4})|'
+            r'(([0-9A-Fa-f]{1,4}:){1,5}(:[0-9A-Fa-f]{1,4}){1,2})|'
+            r'(([0-9A-Fa-f]{1,4}:){1,4}(:[0-9A-Fa-f]{1,4}){1,3})|'
+            r'(([0-9A-Fa-f]{1,4}:){1,3}(:[0-9A-Fa-f]{1,4}){1,4})|'
+            r'(([0-9A-Fa-f]{1,4}:){1,2}(:[0-9A-Fa-f]{1,4}){1,5})|'
+            r'([0-9A-Fa-f]{1,4}(:([0-9A-Fa-f]{1,4}:){1,6}))|'
+            r'(:((:[0-9A-Fa-f]{1,4}){1,7}|:))|'
+            r'(([0-9A-Fa-f]{1,4}:){1,4}'
+            r'((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\.){3}'
+            r'(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])))$'
+        ),
+        "hosts": [
+            "checkipv6.dynu.com",
+            "ipv6.icanhazip.com"
+        ]
+    }
+}
+
 
 # -----------------------------
 # Helpers
@@ -226,7 +261,7 @@ def setup_mqtt():
     if ADDON_CONFIG.get("mqtt", {}).get("core", False):
         core_mqtt = False
         try:
-            r = requests.get("http://supervisor/services", headers={"Authorization": f"Bearer {os.getenv("SUPERVISOR_TOKEN")}"}, timeout=5)
+            r = requests.get("http://supervisor/services", headers={"Authorization": f"Bearer {HA_TOKEN}"}, timeout=5)
             r.raise_for_status()
             
             services = r.json().get("data", {}).get("services", {})
@@ -242,7 +277,7 @@ def setup_mqtt():
                 
         if core_mqtt:
             try:
-                r = requests.get("http://supervisor/services/mqtt", headers={"Authorization": f"Bearer {os.getenv("SUPERVISOR_TOKEN")}"}, timeout=5)
+                r = requests.get("http://supervisor/services/mqtt", headers={"Authorization": f"Bearer {HA_TOKEN}"}, timeout=5)
                 r.raise_for_status()
                 
                 MQTT_CONFIG = r.json().get("data", {})
@@ -260,12 +295,12 @@ def setup_mqtt():
         
         def register_entities():
             logging.info("Dynu Tools - Registering MQTT Entities")
-            device_id=f"dynu_tools_{os.getenv("HOSTNAME")}"
-            device_name="Dynu Tools"
-            manufacturer="TheUkShadow"
-            model="Dynu Tools"
-            sw_version=os.getenv("ADDON_VERSION")
-            avail_topic="dynu_tools/availability"
+            device_id = f"dynu_tools_{APP_HOSTNAME}"
+            device_name = "Dynu Tools"
+            manufacturer = "TheUkShadow"
+            model = "Dynu Tools"
+            sw_version = ADDON_VERSION
+            avail_topic = "dynu_tools/availability"
             
             copy_entities = copy.deepcopy(MQTT_ENTITIES)
             
@@ -374,11 +409,14 @@ def publish_mqtt(topic, payload):
     
 def publish_event(type, event):
     logging.debug(f"Dynu Tools - Publishing Event. type = {type}, event = {event}")
-    requests.post(
-        f"http://supervisor/core/api/events/dynu_tools.{type}",
-        headers={"Authorization": f"Bearer {os.getenv("SUPERVISOR_TOKEN")}"},
-        json=event
-    )
+    try:
+        requests.post(
+            f"http://supervisor/core/api/events/dynu_tools.{type}",
+            headers={"Authorization": f"Bearer {HA_TOKEN}"},
+            json=event
+        )
+    except Exception as e:
+        logging.error(f"Dynu Tools - Unable to publish {event} to dynu_tools.{type}: {e}")
 
 def ipv6_capable():
     if not urllib3_cn.HAS_IPV6:
@@ -436,12 +474,12 @@ def fetch_domains_from_dynu(api_key):
         ipv6_enabled = d.get("ipv6", False)
         ipv4_wildcard = d.get("ipv4WildcardAlias", False)
         ipv6_wildcard = d.get("ipv6WildcardAlias", False)
-
+        
         # Initialize domain entry
         result[domain_name] = {
             "ipv6_enabled": ipv6_enabled,
             "ipv6_connection": IPV6_OK,
-            "wildcards" : {"ipv4": ipv4_wildcard, "ipv6": ipv6_wildcard and ipv6_enabled},
+            "wildcards" : {"ipv4": ipv4_wildcard, "ipv6": ipv6_wildcard},
             "records": {}
         }
 
@@ -450,8 +488,8 @@ def fetch_domains_from_dynu(api_key):
             "custom" : False,
             "wildcard" : False,
             "alias": "",
-            "ipv4": primary_ipv4,
-            "ipv6": primary_ipv6,
+            "ipv4": {"address": primary_ipv4, "updated": primary_updated},
+            "ipv6": {"address": primary_ipv6, "updated": primary_updated},
             "update_ipv4": existing.get("domains", {}).get(domain_name, {}).get("records", {}).get(domain_name, {}).get("update_ipv4", False),
             "update_ipv6": ipv6_enabled and IPV6_OK and existing.get("domains", {}).get(domain_name, {}).get("records", {}).get(domain_name, {}).get("update_ipv6", False),
             "certificate": existing.get("domains", {}).get(domain_name, {}).get("records", {}).get(domain_name, {}).get("certificate", False)
@@ -488,8 +526,8 @@ def fetch_domains_from_dynu(api_key):
                     "custom": False,
                     "wildcard": False,
                     "alias": r.get("nodeName", ""),
-                    "ipv4": "",
-                    "ipv6": "",
+                    "ipv4": {"address": "", "updated": ""},
+                    "ipv6": {"address": "", "updated": ""},
                     "update_ipv4": existing.get("domains", {}).get(domain_name, {}).get("records", {}).get(fqdn, {}).get("update_ipv4", False),
                     "update_ipv6": ipv6_enabled and IPV6_OK and existing.get("domains", {}).get(domain_name, {}).get("records", {}).get(fqdn, {}).get("update_ipv6", False),
                     "certificate": existing.get("domains", {}).get(domain_name, {}).get("records", {}).get(fqdn, {}).get("certificate", False)
@@ -497,10 +535,12 @@ def fetch_domains_from_dynu(api_key):
                 order.append(fqdn)
             
             if r.get("recordType", "") == "A":
-                result[domain_name]["records"][fqdn]["ipv4"] = r.get("ipv4Address", "")
-            
+                result[domain_name]["records"][fqdn]["ipv4"]["address"] = r.get("ipv4Address", "")
+                result[domain_name]["records"][fqdn]["ipv4"]["updated"] = r.get("updatedOn", "")
+                
             if r.get("recordType", "") == "AAAA":
-                result[domain_name]["records"][fqdn]["ipv6"] = r.get("ipv6Address", "")
+                result[domain_name]["records"][fqdn]["ipv6"]["address"] = r.get("ipv6Address", "")
+                result[domain_name]["records"][fqdn]["ipv6"]["updated"] = r.get("updatedOn", "")
         
         for custom in existing.get("domains", {}).get(domain_name, {}).get("records", {}):
             if not existing.get("domains", {}).get(domain_name, {}).get("records", {}).get(custom, {}).get("custom", False):
@@ -510,8 +550,8 @@ def fetch_domains_from_dynu(api_key):
                 result[domain_name]["records"][custom] = {
                     "custom": True,
                     "alias": "",
-                    "ipv4": "",
-                    "ipv6": "",
+                    "ipv4": {"address": None, "updated": None},
+                    "ipv6": {"address": None, "updated": None},
                     "update_ipv4": False,
                     "update_ipv6": False,
                     "certificate": existing.get("domains", {}).get(domain_name, {}).get("records", {}).get(custom, {}).get("certificate", False)
@@ -528,60 +568,47 @@ def handle_sigterm(*args):
     MQTT_CLIENT.loop_stop()
     STOP_EVENT.set()
 
-def get_public_ip(hostname, family):
-    logging.debug(f"IP Updater - Querying {hostname} for {socket.AddressFamily(family).name} IP Address")
+def get_public_ip_data():
+    logging.debug("IP Updater - Retrieving IP Addresses")
     
-    if not IPV6_OK and family == socket.AF_INET6:
-        logging.debug(f"IP Updater - No IPv6 connectivity")
-        return None
+    ip_data = {
+        socket.AF_INET: None,
+        socket.AF_INET6: None
+    }
     
-    def allow_ipv6():
-        return socket.AF_INET6
-        
-    def allow_ipv4():
-        return socket.AF_INET
-        
-    def allow_unspec():
-        return socket.AF_UNSPEC
+    for sock, data in IP_DATA.items():
+        if sock == socket.AF_INET6 and not IPV6_OK:
+            logging.debug(f"IP Updater - No {socket.AddressFamily(sock).name} Connection, skipping")
+            continue
+            
+        for host in data.get("hosts", []):
+            logging.debug(f"IP Updater - Checking {host} for {socket.AddressFamily(sock).name} address")
+            
+            url = f"https://{host}/"
+            
+            try:
+                response = requests.get(
+                    url,
+                    headers={"Host": host},
+                    timeout=5
+                )
+                response.raise_for_status()
+            except Exception as e:
+                logging.error(f"IP Updater - Error during IP request from {host}: {e}")
+                response = None
 
-    if family == socket.AF_INET6:
-        urllib3_cn.allowed_gai_family = allow_ipv6
-    elif family == socket.AF_INET:
-        urllib3_cn.allowed_gai_family = allow_ipv4
-        
-    url = f"https://{hostname}/"
+            if response and response.text:
+                response = response.text.strip()
+                if response.startswith("Current IP Address:"):
+                    response = response.split(":", 1)[1].strip()
+                    
+                if data.get("regex", "").match(response):
+                    ip_data[sock] = response
+                    logging.debug(f"IP Updater - Retrieved {response} for {socket.AddressFamily(sock).name} from {host}")
+                    break
+                    
+    return ip_data
     
-    try:
-        response = requests.get(
-            url,
-            headers={"Host": hostname},
-            timeout=5
-        )
-        response.raise_for_status()
-    except Exception as e:
-        logging.error(f"IP Updater - Error during IP request. Hostname: {hostname}, error: {e}")
-        response = None
-        
-    urllib3_cn.allowed_gai_family = allow_unspec
-
-    if not response:
-        return None
-        
-    raw = response.text.strip()
-    
-    # Split only on the FIRST colon
-    # dynu returns Current IP Address: 81.156.180.253
-    
-    if raw.startswith("Current IP Address:"):
-        ip_address = raw.split(":", 1)[1].strip()
-    else:
-        ip_address = raw
-        
-    if IP_REGEX[family].match(ip_address):
-        return ip_address
-    else:
-        return None
-        
 def update_ip(params):
     url = "https://api.dynu.com/nic/update"
 
@@ -656,37 +683,12 @@ def ip_updater():
             
         if not domain_count or not password:
             continue
+            
+        ip_data = get_public_ip_data()
         
-        ipv4_hosts = ["checkip.dynu.com", "icanhazip.com"]
-        ipv6_hosts = ["checkipv6.dynu.com", "icanhazip.com"]
-        
-        ipv4 = None
-        ipv6 = None
-        
-        for ipv4_host in ipv4_hosts:
-            ipv4 = get_public_ip(ipv4_host, socket.AF_INET)
-            if ipv4:
-                break
-            else:
-                ipv4 = None
-        
-        if ipv4:
-            logging.debug(f"IP Updater - Retrieved IPv4 address: {ipv4}")
-        else:
-            logging.error("IP Updater - Unable to retrive IPv4 address")
-        
-        for ipv6_host in ipv6_hosts:
-            ipv6 = get_public_ip(ipv6_host, socket.AF_INET6)
-            if ipv6:
-                break
-            else:
-                ipv6 = None
-                
-        if ipv6:
-            logging.debug(f"IP Updater - Retrieved IPv6 address: {ipv6}")
-        else:
-            logging.error("IP Updater - Unable to retrive IPv6 address")
-        
+        ipv4 = ip_data[socket.AF_INET]
+        ipv6 = ip_data[socket.AF_INET6]
+
         if ipv4 or ipv6:
             publish_mqtt("dynu_tools/last_ip_check", iso_timestamp(time.time()))
             
@@ -753,8 +755,12 @@ def ip_updater():
         elif ipv4 or ipv6:
             logging.debug("IP Updater - IP not changed")
             publish_event("ip_update", {"status": "no_change", "ipv4": ipv4, "ipv6": ipv6})
+            publish_mqtt("dynu_tools/current_ipv4", ipv4)
+            publish_mqtt("dynu_tools/current_ipv6", ipv6)
         else:
             logging.error("IP Updater - Unable to retrieve IP Addresses")
+            publish_event("ip_update", {"status": "fail"})
+            publish_mqtt("dynu_tools/ip_update_status", "false")
         
         publish_mqtt("dynu_tools/next_ip_check", iso_timestamp(last_run + 60))
         logging.debug(f"IP Updater - Next IP check: {iso_timestamp(last_run + 60)}")
@@ -1004,6 +1010,8 @@ def cert_updater():
             except Exception as e:
                 EXPIRY_RAW = None
                 logging.error(f"Certificate Manager - Unable to parse certificate expiry date: {e}")
+        else:
+            logging.error("Certificate Manager - Certificate file does not exist")
         
         if EXPIRY_RAW and CREATED_RAW and VALID_FROM_RAW:
             logging.debug(f"Certificate Manager - Created raw: {CREATED_RAW}")
@@ -1052,6 +1060,7 @@ def cert_updater():
             publish_event("certificate_update", {"status": cert_update_status, "created": CREATED_ISO, "expires": EXPIRY_ISO})
             
         publish_mqtt("dynu_tools/next_cert_check", iso_timestamp(next_check))
+        logging.info(f"Certificate Manager - Next Certificate Check {iso_timestamp(next_check)}")
         
     logging.info("Certificate Manager - Thread stopped")
   
@@ -1092,5 +1101,23 @@ def api_save_domains():
 signal.signal(signal.SIGTERM, handle_sigterm)
 IPV6_OK = ipv6_capable()
 setup_mqtt()
-threading.Thread(target=ip_updater, daemon=True).start()
-threading.Thread(target=cert_updater, daemon=True).start()
+
+threads = {
+    "IP Updater": threading.Thread(target=ip_updater, daemon=True),
+    "Certificate Manager": threading.Thread(target=cert_updater, daemon=True)
+}
+
+for id, thread in threads.items():
+    thread.start()
+
+def thread_watcher():
+    while not STOP_EVENT.is_set():
+        if STOP_EVENT.wait(5):
+            break
+        for id, thread in threads.items():
+            if not thread.is_alive():
+                logging.error(f"Dynu Tools - {id} Thread failed. Closing app")
+                os.kill(os.getppid(), signal.SIGTERM)
+                break
+    
+threading.Thread(target=thread_watcher, daemon=True).start()
